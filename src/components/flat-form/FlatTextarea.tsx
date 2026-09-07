@@ -1,12 +1,13 @@
 import React from 'react';
 import { InputTextarea, type InputTextareaProps } from 'primereact/inputtextarea';
 
-export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value'> {
+export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value' | 'variant'> {
   value?: string;
   label?: string;
   helperText?: string;
   errorMessage?: string;
   fullWidth?: boolean;
+  variant?: 'default' | 'dark' | 'white';
 }
 
 export const FlatTextarea: React.FC<FlatTextareaProps> = ({
@@ -15,6 +16,7 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
   errorMessage,
   autoResize = true,
   fullWidth = true,
+  variant = 'dark',
   className = '',
   id,
   required,
@@ -22,13 +24,16 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const isDark = variant === 'dark';
 
   return (
     <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className="text-xs font-semibold tracking-wide uppercase text-slate-700 flex items-center gap-1"
+          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
+            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          }`}
         >
           {label}
           {required && <span className="text-red-500">*</span>}
@@ -41,10 +46,12 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
         rows={rows}
         autoResize={autoResize}
         className={`
-          w-full border rounded text-sm px-3 py-2 transition-colors resize-y
-          bg-white border-slate-300 text-slate-900 placeholder-slate-400
-          hover:border-slate-400 focus:border-teal-600 focus:ring-0 focus:outline-none
-          disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed
+          w-full border rounded text-sm px-3.5 py-2.5 transition-colors resize-y
+          ${
+            isDark
+              ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed'
+              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed'
+          }
           ${errorMessage ? '!border-red-500' : ''}
           ${className}
         `}
@@ -57,7 +64,7 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
           {errorMessage}
         </span>
       ) : helperText ? (
-        <span className="text-xs text-slate-500 mt-0.5">{helperText}</span>
+        <span className={`text-xs mt-0.5 ${isDark ? 'text-portal-muted' : 'text-slate-500'}`}>{helperText}</span>
       ) : null}
     </div>
   );

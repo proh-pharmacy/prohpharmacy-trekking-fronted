@@ -282,3 +282,186 @@ div.p-icon-field {
 .portal-sidebar-tooltip.p-tooltip-right .p-tooltip-arrow {
   border-right-color: #444c56 !important;
 }
+
+/* ==========================================================================
+   12. Global Dark Theme Inputs & Overlays (Default App Theme)
+   ========================================================================== */
+.p-inputtext,
+.p-inputtextarea,
+.p-inputnumber-input,
+.p-password-input,
+.p-autocomplete-input {
+  background-color: var(--color-portal-canvas) !important;
+  border-color: var(--color-portal-border) !important;
+  color: #ffffff !important;
+}
+
+.p-inputtext::placeholder,
+.p-inputtextarea::placeholder,
+.p-autocomplete-input::placeholder {
+  color: var(--color-portal-muted) !important;
+}
+
+.p-inputtext:hover,
+.p-inputtextarea:hover,
+.p-inputnumber-input:hover,
+.p-password-input:hover,
+.p-autocomplete-input:hover {
+  border-color: rgba(68, 76, 86, 0.8) !important;
+}
+
+.p-inputtext:focus,
+.p-inputtextarea:focus,
+.p-inputnumber-input:focus,
+.p-password-input:focus,
+.p-autocomplete-input:focus {
+  border-color: var(--color-portal-accent) !important;
+  background-color: var(--color-portal-canvas) !important;
+}
+
+/* Dropdown & MultiSelect Main Containers */
+.p-dropdown,
+.p-multiselect {
+  background-color: var(--color-portal-canvas) !important;
+  border-color: var(--color-portal-border) !important;
+  color: #ffffff !important;
+}
+
+.p-dropdown:hover,
+.p-multiselect:hover {
+  border-color: rgba(68, 76, 86, 0.8) !important;
+}
+
+.p-dropdown:focus-within,
+.p-multiselect:focus-within,
+.p-dropdown.p-focus,
+.p-multiselect.p-focus {
+  border-color: var(--color-portal-accent) !important;
+}
+
+.p-dropdown .p-dropdown-label,
+.p-multiselect .p-multiselect-label {
+  color: #ffffff !important;
+}
+
+.p-dropdown .p-dropdown-label.p-placeholder,
+.p-multiselect .p-multiselect-label.p-placeholder {
+  color: var(--color-portal-muted) !important;
+}
+
+.p-dropdown .p-dropdown-trigger,
+.p-multiselect .p-multiselect-trigger {
+  color: var(--color-portal-muted) !important;
+}
+
+/* Dropdown, MultiSelect, AutoComplete Panels */
+.p-dropdown-panel,
+.p-multiselect-panel,
+.p-autocomplete-panel,
+.p-datepicker {
+  background: var(--color-portal-surface) !important;
+  border: 1px solid var(--color-portal-border) !important;
+  border-radius: 4px !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.7) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item,
+.p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+  color: #adbac7 !important;
+  padding: 8px 12px !important;
+  border-radius: 2px !important;
+  transition: all 0.15s ease !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item:hover,
+.p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item.p-highlight {
+  background: rgba(65, 204, 132, 0.15) !important;
+  color: var(--color-portal-accent) !important;
+  font-weight: 600 !important;
+}
+
+.p-multiselect-panel .p-multiselect-header {
+  background: var(--color-portal-canvas) !important;
+  border-bottom: 1px solid var(--color-portal-border) !important;
+  color: #ffffff !important;
+  padding: 8px 12px !important;
+}
+
+.p-multiselect-panel .p-multiselect-filter-container input {
+  background: var(--color-portal-surface) !important;
+  border-color: var(--color-portal-border) !important;
+  color: #ffffff !important;
+}
+
+/* MultiSelect Token Chips */
+.p-multiselect .p-multiselect-token {
+  background: var(--color-portal-surface) !important;
+  border: 1px solid var(--color-portal-border) !important;
+  color: #ffffff !important;
+  border-radius: 2px !important;
+  padding: 2px 6px !important;
+}
+
+.p-multiselect .p-multiselect-token .p-multiselect-token-icon {
+  color: var(--color-portal-muted) !important;
+}
+
+.p-multiselect .p-multiselect-token .p-multiselect-token-icon:hover {
+  color: #ffffff !important;
+}
+
+/* Checkbox & RadioButton Dark Theme */
+.p-checkbox .p-checkbox-box {
+  background: var(--color-portal-canvas) !important;
+  border-color: var(--color-portal-border) !important;
+}
+
+.p-checkbox .p-checkbox-box.p-highlight {
+  background: var(--color-portal-accent) !important;
+  border-color: var(--color-portal-accent) !important;
+  color: #ffffff !important;
+}
+
+.p-radiobutton .p-radiobutton-box {
+  background: var(--color-portal-canvas) !important;
+  border-color: var(--color-portal-border) !important;
+}
+
+.p-radiobutton .p-radiobutton-box.p-highlight {
+  border-color: var(--color-portal-accent) !important;
+  background: var(--color-portal-canvas) !important;
+}
+
+.p-radiobutton .p-radiobutton-box .p-radiobutton-icon {
+  background-color: var(--color-portal-accent) !important;
+}
+
+/* DatePicker (Calendar) */
+.p-datepicker .p-datepicker-header {
+  background: var(--color-portal-canvas) !important;
+  border-bottom: 1px solid var(--color-portal-border) !important;
+  color: #ffffff !important;
+}
+
+.p-datepicker table td > span {
+  color: #adbac7 !important;
+}
+
+.p-datepicker table td > span:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.p-datepicker table td > span.p-highlight {
+  background: var(--color-portal-accent) !important;
+  color: #ffffff !important;
+}

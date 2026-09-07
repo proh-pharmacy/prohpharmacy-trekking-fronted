@@ -1,13 +1,14 @@
 import React from 'react';
 import { Calendar, type CalendarProps } from 'primereact/calendar';
 
-export interface FlatDatePickerProps extends Omit<CalendarProps, 'value' | 'onChange'> {
+export interface FlatDatePickerProps extends Omit<CalendarProps, 'value' | 'onChange' | 'variant'> {
   value?: any;
   onChange?: (value: any) => void;
   label?: string;
   helperText?: string;
   errorMessage?: string;
   fullWidth?: boolean;
+  variant?: 'default' | 'dark' | 'white';
 }
 
 export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
@@ -17,6 +18,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
   helperText,
   errorMessage,
   fullWidth = true,
+  variant = 'dark',
   className = '',
   inputClassName = '',
   id,
@@ -24,16 +26,20 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
   placeholder = 'Select date',
   showIcon = true,
   dateFormat = 'yy-mm-dd',
+  panelClassName = '',
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const isDark = variant === 'dark';
 
   return (
     <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className="text-xs font-semibold tracking-wide uppercase text-slate-700 flex items-center gap-1"
+          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
+            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          }`}
         >
           {label}
           {required && <span className="text-red-500">*</span>}
@@ -49,14 +55,16 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
         placeholder={placeholder}
         className={`w-full ${className}`}
         inputClassName={`
-          w-full border rounded text-sm px-3 py-2 transition-colors
-          bg-white border-slate-300 text-slate-900 placeholder-slate-400
-          hover:border-slate-400 focus:border-teal-600 focus:ring-0 focus:outline-none
-          disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed
+          w-full border rounded text-sm px-3.5 py-2.5 transition-colors
+          ${
+            isDark
+              ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'
+              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none'
+          }
           ${errorMessage ? '!border-red-500' : ''}
           ${inputClassName}
         `}
-        panelClassName="rounded shadow-xl border border-slate-200"
+        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white ${panelClassName}`}
         {...props}
       />
 
@@ -66,7 +74,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
           {errorMessage}
         </span>
       ) : helperText ? (
-        <span className="text-xs text-slate-500 mt-0.5">{helperText}</span>
+        <span className={`text-xs mt-0.5 ${isDark ? 'text-portal-muted' : 'text-slate-500'}`}>{helperText}</span>
       ) : null}
     </div>
   );

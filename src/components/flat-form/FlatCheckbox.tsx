@@ -47,7 +47,7 @@ export const FlatCheckbox: React.FC<FlatCheckboxProps> = ({
         />
 
         {label && (
-          <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors">
+          <span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </span>
