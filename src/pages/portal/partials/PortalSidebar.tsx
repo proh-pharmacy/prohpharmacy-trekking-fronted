@@ -147,15 +147,15 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   key={item.to}
                   to={item.to}
                   title={collapsed ? item.label : undefined}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
+                  className={`relative flex items-center gap-3 px-3 py-2.5 text-xs rounded transition-all duration-150 group ${
                     isActive
                       ? 'bg-portal-accent hover:bg-portal-accent-hover text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
-                      : 'text-white/90 hover:text-white hover:bg-white/[0.08]'
+                      : 'text-light-green font-normal hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
                   <i
                     className={`${item.icon} text-sm shrink-0 transition-colors ${
-                      isActive ? 'text-white' : 'text-white/70 group-hover:text-white'
+                      isActive ? 'text-white' : 'text-light-green/80 group-hover:text-white'
                     }`}
                   />
 
@@ -166,10 +166,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   {!collapsed && (
                     item.badge ? (
                       <span
-                        className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                        className={`ml-auto px-1.5 py-0.5 text-[10px] font-medium rounded ${
                           isActive
                             ? 'bg-black/20 text-white'
-                            : 'bg-portal-canvas text-white/90 border border-portal-border'
+                            : 'bg-portal-canvas text-light-green border border-portal-border'
                         }`}
                       >
                         {item.badge}
@@ -179,7 +179,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                         className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
                           isActive
                             ? 'text-white/70'
-                            : 'text-white/40 group-hover:text-white/80 opacity-0 group-hover:opacity-100'
+                            : 'text-light-green/50 group-hover:text-white/80 opacity-0 group-hover:opacity-100'
                         }`}
                       />
                     )
