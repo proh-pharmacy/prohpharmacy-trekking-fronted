@@ -8,13 +8,13 @@ export const PortalHeader: React.FC = () => {
   const currentSection = location.pathname.replace('/portal/', '') || 'Overview';
 
   return (
-    <header className="h-14 bg-[#22272e] border-b border-[#444c56]/60 px-6 flex items-center justify-between shrink-0 z-20">
+    <header className="h-14 bg-portal-canvas border-b border-portal-border/60 px-6 flex items-center justify-between shrink-0 z-20">
       {/* Breadcrumb with Subtle Icons */}
       <div className="flex items-center gap-2.5 text-xs">
-        <i className="pi pi-th-large text-[#768390] text-xs" />
-        <i className="pi pi-star text-[#768390] text-xs" />
-        <span className="text-[#768390] font-medium">Dashboards</span>
-        <span className="text-[#444c56]">/</span>
+        <i className="pi pi-th-large text-portal-muted text-xs" />
+        <i className="pi pi-star text-portal-muted text-xs" />
+        <span className="text-portal-muted font-medium">Dashboards</span>
+        <span className="text-portal-border">/</span>
         <span className="text-white font-semibold capitalize">
           {currentSection}
         </span>
@@ -25,7 +25,7 @@ export const PortalHeader: React.FC = () => {
         {/* Dark Mode Icon */}
         <button
           type="button"
-          className="p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
+          className="p-1.5 text-portal-muted hover:text-white rounded transition cursor-pointer"
           title="Dark Mode Active"
         >
           <i className="pi pi-moon text-xs" />
@@ -35,26 +35,26 @@ export const PortalHeader: React.FC = () => {
         <button
           type="button"
           onClick={() => toast.success('Feed synced with Ashaiman Hub')}
-          className="p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
+          className="p-1.5 text-portal-muted hover:text-white rounded transition cursor-pointer"
           title="Refresh Sync"
         >
           <i className="pi pi-sync text-xs" />
         </button>
 
-        {/* Notifications Icon with Green #41cc84 Unread Dot */}
+        {/* Notifications Icon with Green Portal Accent Unread Dot */}
         <button
           type="button"
           onClick={() => toast.success('3 field teams currently reporting telemetry.')}
-          className="relative p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
+          className="relative p-1.5 text-portal-muted hover:text-white rounded transition cursor-pointer"
           title="Notifications"
         >
           <i className="pi pi-bell text-xs" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#41cc84] rounded-full shadow-[0_0_6px_#41cc84]" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-portal-accent rounded-full shadow-[0_0_6px_var(--color-portal-accent)]" />
         </button>
 
         {/* Hub Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#2d333b] border border-[#444c56] text-[11px] font-medium text-[#cdd9e5] rounded">
-          <span className="w-1.5 h-1.5 bg-[#41cc84] rounded-full animate-pulse" />
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-portal-surface border border-portal-border text-[11px] font-medium text-[#cdd9e5] rounded">
+          <span className="w-1.5 h-1.5 bg-portal-accent rounded-full animate-pulse" />
           <span>Ashaiman Regional Hub</span>
         </div>
       </div>

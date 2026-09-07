@@ -35,22 +35,22 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   return (
     <aside
-      className={`h-full bg-[#2d333b] border-r border-[#444c56]/60 flex flex-col shrink-0 transition-all duration-300 z-30 ${
+      className={`h-full bg-portal-surface border-r border-portal-border/60 flex flex-col shrink-0 transition-all duration-300 z-30 ${
         collapsed ? 'w-[72px]' : 'w-60 lg:w-64'
       }`}
     >
       {/* Top: User Profile & Collapse Toggle */}
-      <div className="shrink-0 p-4 border-b border-[#444c56]/60 bg-[#2d333b]">
+      <div className="shrink-0 p-4 border-b border-portal-border/60 bg-portal-surface">
         {!collapsed ? (
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {/* User Avatar with Primary Green Active Dot */}
               <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-xs font-semibold text-white shadow-inner">
+                <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                   {userInitials}
                 </div>
                 <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#2d333b] rounded-full"
+                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-portal-accent border-2 border-portal-surface rounded-full"
                   title="Online"
                 />
               </div>
@@ -59,7 +59,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 <div className="text-xs font-bold text-white truncate tracking-tight">
                   {userName}
                 </div>
-                <div className="text-[10px] text-[#768390] truncate font-mono">
+                <div className="text-[10px] text-portal-muted truncate font-mono">
                   {user?.roles?.[0] || 'Operations Lead'}
                 </div>
               </div>
@@ -69,7 +69,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
+              className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
               title="Collapse sidebar"
             >
               <i className="pi pi-chevron-left text-xs" />
@@ -78,11 +78,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         ) : (
           <div className="flex flex-col items-center gap-2.5">
             <div className="relative">
-              <div className="w-9 h-9 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-xs font-semibold text-white shadow-inner">
+              <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                 {userInitials}
               </div>
               <span
-                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#2d333b] rounded-full"
+                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-portal-accent border-2 border-portal-surface rounded-full"
                 title="Online"
               />
             </div>
@@ -90,7 +90,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
+              className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
               title="Expand sidebar"
             >
               <i className="pi pi-chevron-right text-xs" />
@@ -100,16 +100,16 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
         {/* Quick Search Box */}
         {!collapsed ? (
-          <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-[#22272e] border border-[#444c56] rounded text-xs text-[#adbac7] focus-within:border-[#41cc84] focus-within:text-white transition">
-            <i className="pi pi-search text-xs text-[#768390]" />
+          <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-portal-canvas border border-portal-border rounded text-xs text-portal-text focus-within:border-portal-accent focus-within:text-white transition">
+            <i className="pi pi-search text-xs text-portal-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="bg-transparent border-none outline-none text-xs text-[#cdd9e5] placeholder-[#768390] w-full"
+              className="bg-transparent border-none outline-none text-xs text-[#cdd9e5] placeholder-portal-muted w-full"
             />
-            <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-[#2d333b] text-[#768390] rounded border border-[#444c56]">
+            <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-portal-surface text-portal-muted rounded border border-portal-border">
               ⌘K
             </span>
           </div>
@@ -118,7 +118,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="p-2 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition"
+              className="p-2 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition"
               title="Search (⌘K)"
             >
               <i className="pi pi-search text-xs" />
@@ -149,7 +149,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   title={collapsed ? item.label : undefined}
                   className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
                     isActive
-                      ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
+                      ? 'bg-portal-accent hover:bg-portal-accent-hover text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
                       : 'text-white/90 hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
@@ -159,31 +159,31 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                     }`}
                   />
 
-                    {!collapsed && (
-                      <span className="truncate flex-1 tracking-tight">{item.label}</span>
-                    )}
+                  {!collapsed && (
+                    <span className="truncate flex-1 tracking-tight">{item.label}</span>
+                  )}
 
-                    {!collapsed && (
-                      item.badge ? (
-                        <span
-                          className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
-                            isActive
-                              ? 'bg-black/20 text-white'
-                              : 'bg-[#22272e] text-white/90 border border-[#444c56]'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      ) : (
-                        <i
-                          className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
-                            isActive
-                              ? 'text-white/70'
-                              : 'text-white/40 group-hover:text-white/80 opacity-0 group-hover:opacity-100'
-                          }`}
-                        />
-                      )
-                    )}
+                  {!collapsed && (
+                    item.badge ? (
+                      <span
+                        className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                          isActive
+                            ? 'bg-black/20 text-white'
+                            : 'bg-portal-canvas text-white/90 border border-portal-border'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    ) : (
+                      <i
+                        className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
+                          isActive
+                            ? 'text-white/70'
+                            : 'text-white/40 group-hover:text-white/80 opacity-0 group-hover:opacity-100'
+                        }`}
+                      />
+                    )
+                  )}
                 </NavLink>
               );
             })}
@@ -192,11 +192,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       </nav>
 
       {/* Bottom Sidebar Brand Mark */}
-      <div className="shrink-0 p-3.5 border-t border-[#444c56]/60 bg-[#2d333b] flex items-center justify-between">
+      <div className="shrink-0 p-3.5 border-t border-portal-border/60 bg-portal-surface flex items-center justify-between">
         {!collapsed ? (
           <>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded bg-[#22272e] border border-[#444c56] flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded bg-portal-canvas border border-portal-border flex items-center justify-center shrink-0">
                 <img
                   src="/images/prohpharmacy_icon_white.png"
                   alt="ProH Logo"
@@ -214,7 +214,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               type="button"
               onClick={handleLogout}
               title="Sign Out"
-              className="p-1.5 text-[#DE2512] hover:text-[#ff5c4c] hover:bg-[#DE2512]/10 rounded transition cursor-pointer ml-auto"
+              className="p-1.5 text-red-accent hover:text-red-accent-hover hover:bg-red-accent/10 rounded transition cursor-pointer ml-auto"
             >
               <i className="pi pi-sign-out text-sm" />
             </button>
@@ -224,7 +224,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             type="button"
             onClick={handleLogout}
             title="Sign Out"
-            className="w-full flex justify-center p-2 text-[#DE2512] hover:text-[#ff5c4c] hover:bg-[#DE2512]/10 rounded transition cursor-pointer"
+            className="w-full flex justify-center p-2 text-red-accent hover:text-red-accent-hover hover:bg-red-accent/10 rounded transition cursor-pointer"
           >
             <i className="pi pi-sign-out text-sm" />
           </button>

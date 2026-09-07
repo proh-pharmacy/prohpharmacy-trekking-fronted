@@ -16,6 +16,22 @@
   --color-main-text: #102218;
   --color-muted-text: #5F6F64;
   --color-light-border: #DDE9E0;
+
+  /* Portal & Dark Theme Palette */
+  --color-portal-canvas: #22272e;
+  --color-portal-surface: #2d333b;
+  --color-portal-border: #444c56;
+  --color-portal-muted: #768390;
+  --color-portal-text: #adbac7;
+  --color-portal-accent: #41cc84;
+  --color-portal-accent-hover: #38b273;
+
+  /* Semantic Aliases */
+  --color-dark-canvas: #22272e;
+  --color-dark-surface: #2d333b;
+  --color-dark-border: #444c56;
+  --color-dark-muted: #768390;
+  --color-dark-text: #adbac7;
 }
 
 /* ==========================================================================

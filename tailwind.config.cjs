@@ -14,6 +14,22 @@ module.exports = {
         'main-text': '#102218',
         'muted-text': '#5F6F64',
         'light-border': '#DDE9E0',
+
+        // Portal & Dark Theme System
+        'portal-canvas': '#22272e',
+        'portal-surface': '#2d333b',
+        'portal-border': '#444c56',
+        'portal-muted': '#768390',
+        'portal-text': '#adbac7',
+        'portal-accent': '#41cc84',
+        'portal-accent-hover': '#38b273',
+
+        // Semantic Dark Canvas Aliases
+        'dark-canvas': '#22272e',
+        'dark-surface': '#2d333b',
+        'dark-border': '#444c56',
+        'dark-muted': '#768390',
+        'dark-text': '#adbac7',
       },
     },
   },
