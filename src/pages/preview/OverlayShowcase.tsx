@@ -62,15 +62,15 @@ export const OverlayShowcase: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#101214] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-black flex flex-col">
+    <div className="min-h-screen bg-[#22272e] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-black flex flex-col">
       {/* Top Navbar */}
-      <header className="h-16 bg-[#101214] border-b border-white/[0.08] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <header className="h-16 bg-[#22272e] border-b border-[#444c56]/60 px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <Link
             to="/portal/dashboard"
             className="flex items-center gap-2.5 group focus:outline-none"
           >
-            <div className="w-8 h-8 rounded bg-[#1e2126] border border-white/10 flex items-center justify-center text-[#41cc84] group-hover:border-[#41cc84]/40 transition">
+            <div className="w-8 h-8 rounded bg-[#2d333b] border border-[#444c56]/60 flex items-center justify-center text-[#41cc84] group-hover:border-[#41cc84]/40 transition">
               <img
                 src="/images/prohpharmacy_icon_white.png"
                 alt="Logo"
@@ -102,14 +102,14 @@ export const OverlayShowcase: React.FC = () => {
           </Link>
           <Link
             to="/toasts"
-            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/80 rounded transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[#444c56]/60 text-white/80 rounded transition flex items-center gap-1.5"
           >
             <i className="pi pi-bell text-xs text-[#41cc84]" />
             <span>Toasts</span>
           </Link>
           <Link
             to="/table"
-            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/80 rounded transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[#444c56]/60 text-white/80 rounded transition flex items-center gap-1.5"
           >
             <i className="pi pi-table text-xs text-[#41cc84]" />
             <span>Data Table</span>
@@ -120,7 +120,7 @@ export const OverlayShowcase: React.FC = () => {
       {/* Main Showcase Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-10 space-y-10">
         {/* Intro Banner */}
-        <div className="p-6 bg-[#1e2126] border border-white/[0.08] rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="p-6 bg-[#2d333b] border border-[#444c56]/60 rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5 max-w-2xl">
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
               <span>Interactive Overlay & Dialog Showcase</span>
@@ -128,12 +128,12 @@ export const OverlayShowcase: React.FC = () => {
             <p className="text-xs text-[#e2eee6]/75 leading-relaxed">
               Explore the four core overlay patterns built for ProH Pharmacy Trekking: Center Modals,
               Slide-Over Drawers, Bottom Action Sheets, and Confirmation Dialogs. All components adhere strictly
-              to the dark obsidian palette (<code className="text-[#41cc84]">#101214</code>), flat card surfaces (<code className="text-[#41cc84]">#1e2126</code>),
+              to the dark obsidian palette (<code className="text-[#41cc84]">#22272e</code>), flat card surfaces (<code className="text-[#41cc84]">#2d333b</code>),
               subtle 4px borders, and <code className="text-[#41cc84]">#41cc84</code> action triggers.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono text-[#e2eee6]/60 bg-[#101214] px-3.5 py-2 rounded border border-white/10 shrink-0">
+          <div className="flex items-center gap-2 text-xs font-mono text-[#e2eee6]/60 bg-[#22272e] px-3.5 py-2 rounded border border-[#444c56]/60 shrink-0">
             <i className="pi pi-info-circle text-[#41cc84]" />
             <span>Press ESC or click backdrop to close</span>
           </div>
@@ -141,7 +141,7 @@ export const OverlayShowcase: React.FC = () => {
 
         {/* Section 1: Center Modals */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
+          <div className="flex items-center gap-2 border-b border-[#444c56]/60 pb-2">
             <div className="w-2 h-2 rounded-full bg-[#41cc84]" />
             <h2 className="text-base font-bold text-white tracking-wide">
               1. Center Modals (<code className="text-[#41cc84] font-mono text-xs">FlatModal</code>)
@@ -151,9 +151,9 @@ export const OverlayShowcase: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Form Modal */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-[#41cc84] mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-[#41cc84] mb-3">
                   <i className="pi pi-send text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Form Modal (md)</h3>
@@ -171,9 +171,9 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Small Alert Modal */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-blue-400 mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-blue-400 mb-3">
                   <i className="pi pi-info-circle text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Compact Modal (sm)</h3>
@@ -192,9 +192,9 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Large Audit Modal */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-purple-400 mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-purple-400 mb-3">
                   <i className="pi pi-table text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Large Viewport (lg)</h3>
@@ -213,9 +213,9 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Full Screen Viewport */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-amber-400 mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-amber-400 mb-3">
                   <i className="pi pi-window-maximize text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Full Screen (full)</h3>
@@ -237,7 +237,7 @@ export const OverlayShowcase: React.FC = () => {
 
         {/* Section 2: Side Modals / Drawers */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
+          <div className="flex items-center gap-2 border-b border-[#444c56]/60 pb-2">
             <div className="w-2 h-2 rounded-full bg-blue-400" />
             <h2 className="text-base font-bold text-white tracking-wide">
               2. Side Modals / Drawers (<code className="text-[#41cc84] font-mono text-xs">FlatSideModal</code>)
@@ -247,10 +247,10 @@ export const OverlayShowcase: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Right Drawer - Staff Form */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-[#41cc84]">
+                  <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-[#41cc84]">
                     <i className="pi pi-user-plus text-sm" />
                   </div>
                   <span className="px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded">
@@ -272,10 +272,10 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Right Drawer - Mission Telemetry */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-cyan-400">
+                  <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-cyan-400">
                     <i className="pi pi-compass text-sm" />
                   </div>
                   <span className="px-1.5 py-0.5 text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded">
@@ -298,10 +298,10 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Left Drawer - Navigation & Quick Filters */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-amber-400">
+                  <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-amber-400">
                     <i className="pi pi-filter text-sm" />
                   </div>
                   <span className="px-1.5 py-0.5 text-[10px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded">
@@ -327,7 +327,7 @@ export const OverlayShowcase: React.FC = () => {
 
         {/* Section 3: Bottom Sheets */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
+          <div className="flex items-center gap-2 border-b border-[#444c56]/60 pb-2">
             <div className="w-2 h-2 rounded-full bg-purple-400" />
             <h2 className="text-base font-bold text-white tracking-wide">
               3. Bottom Sheets (<code className="text-[#41cc84] font-mono text-xs">FlatBottomSheet</code>)
@@ -337,9 +337,9 @@ export const OverlayShowcase: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Quick Actions Sheet */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-purple-400 mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-purple-400 mb-3">
                   <i className="pi pi-bolt text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Operational Action Sheet</h3>
@@ -357,9 +357,9 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Filter & Sort Sheet */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-8 h-8 rounded bg-[#101214] border border-white/10 flex items-center justify-center text-teal-400 mb-3">
+                <div className="w-8 h-8 rounded bg-[#22272e] border border-[#444c56]/60 flex items-center justify-center text-teal-400 mb-3">
                   <i className="pi pi-sliders-h text-sm" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Mobile Filter Sheet</h3>
@@ -381,7 +381,7 @@ export const OverlayShowcase: React.FC = () => {
 
         {/* Section 4: Confirmation Dialogs */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
+          <div className="flex items-center gap-2 border-b border-[#444c56]/60 pb-2">
             <div className="w-2 h-2 rounded-full bg-[#DE2512]" />
             <h2 className="text-base font-bold text-white tracking-wide">
               4. Confirmation Dialogs (<code className="text-[#41cc84] font-mono text-xs">FlatConfirmDialog</code>)
@@ -391,7 +391,7 @@ export const OverlayShowcase: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Destructive Action */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="w-8 h-8 rounded bg-[#DE2512]/15 border border-[#DE2512]/30 flex items-center justify-center text-[#DE2512] mb-3">
                   <i className="pi pi-trash text-sm" />
@@ -426,7 +426,7 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Primary Action */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="w-8 h-8 rounded bg-[#41cc84]/15 border border-[#41cc84]/30 flex items-center justify-center text-[#41cc84] mb-3">
                   <i className="pi pi-check-circle text-sm" />
@@ -460,7 +460,7 @@ export const OverlayShowcase: React.FC = () => {
             </div>
 
             {/* Warning Action */}
-            <div className="p-5 bg-[#1e2126] border border-white/[0.08] rounded flex flex-col justify-between space-y-4">
+            <div className="p-5 bg-[#2d333b] border border-[#444c56]/60 rounded flex flex-col justify-between space-y-4">
               <div>
                 <div className="w-8 h-8 rounded bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
                   <i className="pi pi-exclamation-triangle text-sm" />
@@ -520,7 +520,7 @@ export const OverlayShowcase: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setActiveModal(null)}
-              className="!border-white/10 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
+              className="!border-[#444c56]/60 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
             >
               Cancel
             </FlatButton>
@@ -602,7 +602,7 @@ export const OverlayShowcase: React.FC = () => {
             All 14 field units are transmitting healthy cardiac and GPS telemetry. Cloud sync latency is
             operating at <span className="text-[#41cc84] font-semibold">42ms</span>.
           </p>
-          <div className="p-3 bg-[#101214] border border-white/10 rounded flex justify-between items-center text-xs">
+          <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded flex justify-between items-center text-xs">
             <span className="text-white/60">Cold-Chain Temperature</span>
             <span className="font-mono text-[#41cc84] font-bold">4.2°C (Optimal)</span>
           </div>
@@ -622,7 +622,7 @@ export const OverlayShowcase: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setActiveModal(null)}
-            className="!border-white/10 !text-white/80 hover:!bg-white/5 text-xs font-semibold"
+            className="!border-[#444c56]/60 !text-white/80 hover:!bg-white/5 text-xs font-semibold"
           >
             Close Audit
           </FlatButton>
@@ -630,23 +630,23 @@ export const OverlayShowcase: React.FC = () => {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-3 bg-[#101214] border border-white/10 rounded">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded">
               <div className="text-xs text-white/50">Total Ampoules</div>
               <div className="text-lg font-bold text-white mt-0.5">2,840</div>
             </div>
-            <div className="p-3 bg-[#101214] border border-white/10 rounded">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded">
               <div className="text-xs text-white/50">In-Transit</div>
               <div className="text-lg font-bold text-[#41cc84] mt-0.5">620</div>
             </div>
-            <div className="p-3 bg-[#101214] border border-white/10 rounded">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded">
               <div className="text-xs text-white/50">Quarantine Reserve</div>
               <div className="text-lg font-bold text-amber-400 mt-0.5">48</div>
             </div>
           </div>
 
-          <div className="border border-white/10 rounded overflow-hidden">
+          <div className="border border-[#444c56]/60 rounded overflow-hidden">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#101214] text-white/50 border-b border-white/10">
+              <thead className="bg-[#22272e] text-white/50 border-b border-[#444c56]/60">
                 <tr>
                   <th className="p-3 font-semibold">SKU Code</th>
                   <th className="p-3 font-semibold">Product Name</th>
@@ -729,7 +729,7 @@ export const OverlayShowcase: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setActiveDrawer(null)}
-              className="!border-white/10 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
+              className="!border-[#444c56]/60 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
             >
               Cancel
             </FlatButton>
@@ -793,7 +793,7 @@ export const OverlayShowcase: React.FC = () => {
             defaultValue="TRK-2026-0049"
           />
 
-          <div className="p-3.5 bg-[#101214] border border-white/10 rounded space-y-1.5 text-xs">
+          <div className="p-3.5 bg-[#22272e] border border-[#444c56]/60 rounded space-y-1.5 text-xs">
             <div className="font-semibold text-white">Emergency Dispatch Beacon</div>
             <div className="text-white/50 text-[11px]">
               Assigned Satellite Transponder: <span className="font-mono text-[#41cc84]">GARMIN-INREACH-8848</span>
@@ -821,7 +821,7 @@ export const OverlayShowcase: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setActiveDrawer(null)}
-            className="!border-white/10 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
+            className="!border-[#444c56]/60 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
           >
             Close Inspector
           </FlatButton>
@@ -830,19 +830,19 @@ export const OverlayShowcase: React.FC = () => {
         <div className="space-y-5">
           {/* Live Sensor Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 bg-[#101214] border border-white/10 rounded text-center">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded text-center">
               <div className="text-[10px] text-white/50 uppercase font-bold">Altitude</div>
               <div className="text-base font-bold text-white mt-0.5">3,440 m</div>
             </div>
-            <div className="p-3 bg-[#101214] border border-white/10 rounded text-center">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded text-center">
               <div className="text-[10px] text-white/50 uppercase font-bold">Cooler Temp</div>
               <div className="text-base font-bold text-[#41cc84] mt-0.5">3.8°C</div>
             </div>
-            <div className="p-3 bg-[#101214] border border-white/10 rounded text-center">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded text-center">
               <div className="text-[10px] text-white/50 uppercase font-bold">Heart Rate</div>
               <div className="text-base font-bold text-white mt-0.5">88 bpm</div>
             </div>
-            <div className="p-3 bg-[#101214] border border-white/10 rounded text-center">
+            <div className="p-3 bg-[#22272e] border border-[#444c56]/60 rounded text-center">
               <div className="text-[10px] text-white/50 uppercase font-bold">ETA Destination</div>
               <div className="text-base font-bold text-cyan-300 mt-0.5">48 mins</div>
             </div>
@@ -854,15 +854,15 @@ export const OverlayShowcase: React.FC = () => {
               Route Checkpoint Timeline
             </div>
             <div className="space-y-2.5 text-xs font-mono">
-              <div className="p-2.5 bg-[#101214] border-l-2 border-l-[#41cc84] rounded-r border-y border-r border-white/5 flex justify-between items-center">
+              <div className="p-2.5 bg-[#22272e] border-l-2 border-l-[#41cc84] rounded-r border-y border-r border-white/5 flex justify-between items-center">
                 <span>Checkpoint A (Namche Gate)</span>
                 <span className="text-[#41cc84]">Passed • 09:14 AM</span>
               </div>
-              <div className="p-2.5 bg-[#101214] border-l-2 border-l-[#41cc84] rounded-r border-y border-r border-white/5 flex justify-between items-center">
+              <div className="p-2.5 bg-[#22272e] border-l-2 border-l-[#41cc84] rounded-r border-y border-r border-white/5 flex justify-between items-center">
                 <span>Checkpoint B (Tengboche Bridge)</span>
                 <span className="text-[#41cc84]">Passed • 11:20 AM</span>
               </div>
-              <div className="p-2.5 bg-[#101214] border-l-2 border-l-cyan-400 rounded-r border-y border-r border-white/5 flex justify-between items-center">
+              <div className="p-2.5 bg-[#22272e] border-l-2 border-l-cyan-400 rounded-r border-y border-r border-white/5 flex justify-between items-center">
                 <span>Checkpoint C (Pangboche Health Post)</span>
                 <span className="text-cyan-300">En Route • Current</span>
               </div>
@@ -940,7 +940,7 @@ export const OverlayShowcase: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setActiveSheet(null)}
-            className="!border-white/10 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
+            className="!border-[#444c56]/60 !text-white/75 hover:!bg-white/[0.08] text-xs font-semibold"
           >
             Dismiss Sheet
           </FlatButton>
@@ -953,7 +953,7 @@ export const OverlayShowcase: React.FC = () => {
               toast.success('Dispatched batch print request');
               setActiveSheet(null);
             }}
-            className="p-3.5 bg-[#101214] hover:bg-white/[0.05] border border-white/10 rounded flex items-center gap-3 text-left transition cursor-pointer"
+            className="p-3.5 bg-[#22272e] hover:bg-white/[0.05] border border-[#444c56]/60 rounded flex items-center gap-3 text-left transition cursor-pointer"
           >
             <div className="w-9 h-9 rounded bg-[#41cc84]/15 text-[#41cc84] flex items-center justify-center shrink-0">
               <i className="pi pi-print text-sm" />
@@ -970,7 +970,7 @@ export const OverlayShowcase: React.FC = () => {
               toast.success('Telemetry streams synced with satellite');
               setActiveSheet(null);
             }}
-            className="p-3.5 bg-[#101214] hover:bg-white/[0.05] border border-white/10 rounded flex items-center gap-3 text-left transition cursor-pointer"
+            className="p-3.5 bg-[#22272e] hover:bg-white/[0.05] border border-[#444c56]/60 rounded flex items-center gap-3 text-left transition cursor-pointer"
           >
             <div className="w-9 h-9 rounded bg-cyan-500/15 text-cyan-300 flex items-center justify-center shrink-0">
               <i className="pi pi-sync text-sm" />
@@ -987,7 +987,7 @@ export const OverlayShowcase: React.FC = () => {
               toast.success('Emergency alert sent to all 14 units');
               setActiveSheet(null);
             }}
-            className="p-3.5 bg-[#101214] hover:bg-white/[0.05] border border-white/10 rounded flex items-center gap-3 text-left transition cursor-pointer"
+            className="p-3.5 bg-[#22272e] hover:bg-white/[0.05] border border-[#444c56]/60 rounded flex items-center gap-3 text-left transition cursor-pointer"
           >
             <div className="w-9 h-9 rounded bg-[#DE2512]/15 text-[#DE2512] flex items-center justify-center shrink-0">
               <i className="pi pi-exclamation-triangle text-sm" />
@@ -1004,7 +1004,7 @@ export const OverlayShowcase: React.FC = () => {
               toast.success('CSV data exported');
               setActiveSheet(null);
             }}
-            className="p-3.5 bg-[#101214] hover:bg-white/[0.05] border border-white/10 rounded flex items-center gap-3 text-left transition cursor-pointer"
+            className="p-3.5 bg-[#22272e] hover:bg-white/[0.05] border border-[#444c56]/60 rounded flex items-center gap-3 text-left transition cursor-pointer"
           >
             <div className="w-9 h-9 rounded bg-purple-500/15 text-purple-300 flex items-center justify-center shrink-0">
               <i className="pi pi-download text-sm" />

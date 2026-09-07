@@ -73,25 +73,25 @@ export const PortalLayout: React.FC = () => {
   const userName = user?.fullName || 'Kwesi Mensah';
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#101214] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-white">
-      {/* Fixed Sleek Obsidian Sidebar with Primary Green #41cc84 Accent */}
+    <div className="h-screen w-screen overflow-hidden flex bg-[#22272e] text-[#adbac7] font-sans antialiased selection:bg-[#41cc84] selection:text-white">
+      {/* Sidebar with #2d333b palette matching reference */}
       <aside
-        className={`h-full bg-[#101214] border-r border-white/[0.06] flex flex-col shrink-0 transition-all duration-300 z-30 ${
+        className={`h-full bg-[#2d333b] border-r border-[#444c56]/60 flex flex-col shrink-0 transition-all duration-300 z-30 ${
           collapsed ? 'w-[72px]' : 'w-60 lg:w-64'
         }`}
       >
         {/* Top: User Profile & Collapse Toggle */}
-        <div className="shrink-0 p-4 border-b border-white/[0.06]">
+        <div className="shrink-0 p-4 border-b border-[#444c56]/60 bg-[#2d333b]">
           {!collapsed ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 {/* User Avatar with Primary Green #41cc84 Active Dot */}
                 <div className="relative shrink-0">
-                  <div className="w-9 h-9 rounded-full bg-[#1e2126] border border-white/10 flex items-center justify-center text-xs font-semibold text-white shadow-inner">
+                  <div className="w-9 h-9 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                     {userInitials}
                   </div>
                   <span
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#101214] rounded-full"
+                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#2d333b] rounded-full"
                     title="Online"
                   />
                 </div>
@@ -100,7 +100,7 @@ export const PortalLayout: React.FC = () => {
                   <div className="text-xs font-bold text-white truncate tracking-tight">
                     {userName}
                   </div>
-                  <div className="text-[10px] text-white/50 truncate font-mono">
+                  <div className="text-[10px] text-[#768390] truncate font-mono">
                     {user?.roles?.[0] || 'Operations Lead'}
                   </div>
                 </div>
@@ -110,7 +110,7 @@ export const PortalLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCollapsed(true)}
-                className="p-1.5 text-white/40 hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
+                className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
                 title="Collapse sidebar"
               >
                 <i className="pi pi-chevron-left text-xs" />
@@ -119,11 +119,11 @@ export const PortalLayout: React.FC = () => {
           ) : (
             <div className="flex flex-col items-center gap-2.5">
               <div className="relative">
-                <div className="w-9 h-9 rounded-full bg-[#1e2126] border border-white/10 flex items-center justify-center text-xs font-semibold text-white shadow-inner">
+                <div className="w-9 h-9 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                   {userInitials}
                 </div>
                 <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#101214] rounded-full"
+                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#2d333b] rounded-full"
                   title="Online"
                 />
               </div>
@@ -131,7 +131,7 @@ export const PortalLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCollapsed(false)}
-                className="p-1.5 text-white/40 hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
+                className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
                 title="Expand sidebar"
               >
                 <i className="pi pi-chevron-right text-xs" />
@@ -139,18 +139,18 @@ export const PortalLayout: React.FC = () => {
             </div>
           )}
 
-          {/* Quick Search Box (from DWISON reference) */}
+          {/* Quick Search Box (from reference) */}
           {!collapsed ? (
-            <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white/60 focus-within:border-[#41cc84]/60 focus-within:text-white transition">
-              <i className="pi pi-search text-xs text-white/40" />
+            <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-[#22272e] border border-[#444c56] rounded text-xs text-[#adbac7] focus-within:border-[#41cc84] focus-within:text-white transition">
+              <i className="pi pi-search text-xs text-[#768390]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search..."
-                className="bg-transparent border-none outline-none text-xs text-white placeholder-white/40 w-full"
+                className="bg-transparent border-none outline-none text-xs text-[#cdd9e5] placeholder-[#768390] w-full"
               />
-              <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-white/[0.08] text-white/40 rounded border border-white/[0.08]">
+              <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-[#2d333b] text-[#768390] rounded border border-[#444c56]">
                 ⌘K
               </span>
             </div>
@@ -159,7 +159,7 @@ export const PortalLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCollapsed(false)}
-                className="p-2 text-white/40 hover:text-white hover:bg-white/[0.06] rounded transition"
+                className="p-2 text-[#768390] hover:text-white hover:bg-white/[0.06] rounded transition"
                 title="Search (⌘K)"
               >
                 <i className="pi pi-search text-xs" />
@@ -173,7 +173,7 @@ export const PortalLayout: React.FC = () => {
           {navSections.map((section) => (
             <div key={section.title} className="space-y-1">
               {!collapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#809e8b]">
+                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#768390]">
                   {section.title}
                 </div>
               )}
@@ -190,13 +190,13 @@ export const PortalLayout: React.FC = () => {
                     title={collapsed ? item.label : undefined}
                     className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
                       isActive
-                        ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_14px_rgba(65,204,132,0.3)]'
-                        : 'text-[#e2eee6] hover:text-white hover:bg-white/[0.05]'
+                        ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
+                        : 'text-[#adbac7] hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
                     <i
                       className={`${item.icon} text-sm shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-[#9ab8a4] group-hover:text-white'
+                        isActive ? 'text-white' : 'text-[#768390] group-hover:text-white'
                       }`}
                     />
 
@@ -210,7 +210,7 @@ export const PortalLayout: React.FC = () => {
                           className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             isActive
                               ? 'bg-black/20 text-white'
-                              : 'bg-white/[0.08] text-[#e2eee6]'
+                              : 'bg-[#22272e] text-[#adbac7] border border-[#444c56]'
                           }`}
                         >
                           {item.badge}
@@ -233,11 +233,11 @@ export const PortalLayout: React.FC = () => {
         </nav>
 
         {/* Bottom Sidebar Brand Mark */}
-        <div className="shrink-0 p-3.5 border-t border-white/[0.06] flex items-center justify-between">
+        <div className="shrink-0 p-3.5 border-t border-[#444c56]/60 bg-[#2d333b] flex items-center justify-between">
           {!collapsed ? (
             <>
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded bg-[#1e2126] border border-white/10 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded bg-[#22272e] border border-[#444c56] flex items-center justify-center shrink-0">
                   <img
                     src="/images/prohpharmacy_icon_white.png"
                     alt="ProH Logo"
@@ -258,7 +258,7 @@ export const PortalLayout: React.FC = () => {
                 type="button"
                 onClick={handleLogout}
                 title="Sign Out"
-                className="p-1.5 text-white/40 hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
+                className="p-1.5 text-[#768390] hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
               >
                 <i className="pi pi-sign-out text-xs" />
               </button>
@@ -268,7 +268,7 @@ export const PortalLayout: React.FC = () => {
               type="button"
               onClick={handleLogout}
               title="Sign Out"
-              className="w-full flex justify-center p-2 text-white/40 hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
+              className="w-full flex justify-center p-2 text-[#768390] hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
             >
               <i className="pi pi-sign-out text-xs" />
             </button>
@@ -276,16 +276,16 @@ export const PortalLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area - Fixed Header, Scrollable Main Viewport */}
-      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#101214] overflow-hidden">
-        {/* Fixed Top Header Navbar in DWISON Minimal Dark Theme */}
-        <header className="h-14 bg-[#101214] border-b border-white/[0.06] px-6 flex items-center justify-between shrink-0 z-20">
+      {/* Main Content Area - Fixed Header, Scrollable Main Viewport on #22272e Canvas */}
+      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#22272e] overflow-hidden">
+        {/* Fixed Top Header Navbar on #22272e with #444c56 divider */}
+        <header className="h-14 bg-[#22272e] border-b border-[#444c56]/60 px-6 flex items-center justify-between shrink-0 z-20">
           {/* Breadcrumb with Subtle Icons */}
           <div className="flex items-center gap-2.5 text-xs">
-            <i className="pi pi-th-large text-white/30 text-xs" />
-            <i className="pi pi-star text-white/30 text-xs" />
-            <span className="text-white/40 font-medium">Dashboards</span>
-            <span className="text-white/20">/</span>
+            <i className="pi pi-th-large text-[#768390] text-xs" />
+            <i className="pi pi-star text-[#768390] text-xs" />
+            <span className="text-[#768390] font-medium">Dashboards</span>
+            <span className="text-[#444c56]">/</span>
             <span className="text-white font-semibold capitalize">
               {location.pathname.replace('/portal/', '') || 'Overview'}
             </span>
@@ -295,7 +295,7 @@ export const PortalLayout: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <NavLink
               to="/overlays"
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-white/70 hover:text-white hover:bg-white/10 border border-white/10 rounded transition text-[11px] font-medium"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[#adbac7] hover:text-white hover:bg-white/[0.06] border border-[#444c56] rounded transition text-[11px] font-medium"
               title="Overlay Components Showcase"
             >
               <i className="pi pi-window-maximize text-[10px] text-[#41cc84]" />
@@ -305,7 +305,7 @@ export const PortalLayout: React.FC = () => {
             {/* Dark Mode Icon */}
             <button
               type="button"
-              className="p-1.5 text-white/40 hover:text-white rounded transition cursor-pointer"
+              className="p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
               title="Dark Mode Active"
             >
               <i className="pi pi-moon text-xs" />
@@ -315,7 +315,7 @@ export const PortalLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => toast.success('Feed synced with Ashaiman Hub')}
-              className="p-1.5 text-white/40 hover:text-white rounded transition cursor-pointer"
+              className="p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
               title="Refresh Sync"
             >
               <i className="pi pi-sync text-xs" />
@@ -325,7 +325,7 @@ export const PortalLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => toast.success('3 field teams currently reporting telemetry.')}
-              className="relative p-1.5 text-white/40 hover:text-white rounded transition cursor-pointer"
+              className="relative p-1.5 text-[#768390] hover:text-white rounded transition cursor-pointer"
               title="Notifications"
             >
               <i className="pi pi-bell text-xs" />
@@ -333,14 +333,14 @@ export const PortalLayout: React.FC = () => {
             </button>
 
             {/* Hub Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-white/75 rounded">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#2d333b] border border-[#444c56] text-[11px] font-medium text-[#cdd9e5] rounded">
               <span className="w-1.5 h-1.5 bg-[#41cc84] rounded-full animate-pulse" />
               <span>Ashaiman Regional Hub</span>
             </div>
           </div>
         </header>
 
-        {/* Active Child Page Outlet */}
+        {/* Active Child Page Outlet on #22272e Canvas */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
           <Outlet />
         </main>

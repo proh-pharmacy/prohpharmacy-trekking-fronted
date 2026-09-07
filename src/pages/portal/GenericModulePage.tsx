@@ -25,8 +25,8 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans">
-      {/* Header Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-[#1e2126] border border-white/[0.06] rounded shadow-sm">
+      {/* Header Card in #2d333b with #444c56 border */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-[#2d333b] border border-[#444c56]/60 rounded shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-white tracking-tight">{moduleName}</h1>
@@ -34,7 +34,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
               Ready for Integration
             </span>
           </div>
-          <p className="text-xs text-white/50 mt-1">
+          <p className="text-xs text-[#768390] mt-1">
             {description || `ProH Pharmacy Trekking Operations — ${moduleName} module.`}
           </p>
         </div>
@@ -44,7 +44,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
             variant="outline"
             size="sm"
             onClick={() => toast.success(`Refreshing ${moduleName}...`)}
-            className="!border-white/10 !text-white hover:!bg-white/5 text-xs font-semibold"
+            className="!border-[#444c56] !text-[#adbac7] hover:!bg-white/5 text-xs font-semibold"
             leftIcon="pi pi-refresh"
           >
             Refresh
@@ -61,17 +61,17 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
         </div>
       </div>
 
-      {/* Main Card Surface */}
-      <div className="p-10 bg-[#1e2126] border border-white/[0.06] rounded shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-[#101214] border border-white/10 flex items-center justify-center text-[#41cc84] text-xl shadow-inner">
+      {/* Main Card Surface in #2d333b */}
+      <div className="p-10 bg-[#2d333b] border border-[#444c56]/60 rounded shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-[#41cc84] text-xl shadow-inner">
           <i className={icon} />
         </div>
         <div className="space-y-1 max-w-md">
           <h2 className="text-base font-bold text-white tracking-wide">
             {moduleName} Viewport Ready
           </h2>
-          <p className="text-xs text-white/50 leading-relaxed">
-            This module outlet is structured and mounted within the sleek dark portal layout.
+          <p className="text-xs text-[#768390] leading-relaxed">
+            This module outlet is structured and mounted within the #22272e / #2d333b layout.
             Ready to receive backend API contracts and components.
           </p>
         </div>

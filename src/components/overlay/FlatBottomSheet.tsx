@@ -76,7 +76,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
       {/* Slide-Up Bottom Sheet Panel */}
       <div
         ref={sheetRef}
-        className={`relative w-full ${maxWidth} ${maxHeight} bg-[#1e2126] border-t border-x border-white/[0.08] rounded-t-lg shadow-2xl flex flex-col z-10 text-white select-text animate-slideInBottom overflow-hidden ${className}`}
+        className={`relative w-full ${maxWidth} ${maxHeight} bg-[#2d333b] border-t border-x border-[#444c56]/80 rounded-t-lg shadow-2xl flex flex-col z-10 text-white select-text animate-slideInBottom overflow-hidden ${className}`}
       >
         {/* Drag Handle Indicator */}
         {showHandle && (
@@ -89,7 +89,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
         {header !== undefined ? (
           header
         ) : title ? (
-          <div className="shrink-0 px-6 py-3.5 border-b border-white/[0.08] flex items-center justify-between gap-4">
+          <div className="shrink-0 px-6 py-3.5 border-b border-[#444c56]/60 flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold tracking-tight text-white truncate">
@@ -98,7 +98,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
                 {badge && <span>{badge}</span>}
               </div>
               {subtitle && (
-                <p className="text-xs text-[#e2eee6]/65 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-[#768390] mt-0.5">{subtitle}</p>
               )}
             </div>
 
@@ -106,7 +106,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
               <button
                 type="button"
                 onClick={onHide}
-                className="p-1.5 text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
+                className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
                 title="Close sheet"
               >
                 <i className="pi pi-times text-xs" />
@@ -116,13 +116,13 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
         ) : null}
 
         {/* Scrollable Sheet Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar text-sm text-[#e2eee6]/90 leading-relaxed">
+        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar text-sm text-[#adbac7] leading-relaxed">
           {children}
         </div>
 
         {/* Sheet Footer */}
         {footer && (
-          <div className="shrink-0 px-6 py-3.5 border-t border-white/[0.08] bg-[#16181d] flex items-center justify-end gap-3">
+          <div className="shrink-0 px-6 py-3.5 border-t border-[#444c56]/60 bg-[#22272e] flex items-center justify-end gap-3">
             {footer}
           </div>
         )}
