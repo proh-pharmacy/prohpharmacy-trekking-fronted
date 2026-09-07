@@ -1,0 +1,186 @@
+@import "tailwindcss";
+@import "primereact/resources/themes/lara-light-teal/theme.css";
+@import "primereact/resources/primereact.min.css";
+@import "primeicons/primeicons.css";
+
+/* ==========================================================================
+   ProH Pharmacy Brand Color System
+   ========================================================================== */
+@theme {
+  --color-deep-green: #045E1F;
+  --color-primary-green: #087A2D;
+  --color-bright-green: #01A42F;
+  --color-light-green: #F1FBF4;
+  --color-red-accent: #DE2512;
+  --color-red-accent-hover: #C51F0E;
+  --color-main-text: #102218;
+  --color-muted-text: #5F6F64;
+  --color-light-border: #DDE9E0;
+}
+
+/* ==========================================================================
+   Flat UI Design System (Zero Border-Radius / Crisp Rectilinear Edges)
+   ========================================================================== */
+
+/* 1. Global Zero Border-Radius Override for All PrimeReact & Form Elements */
+*,
+*::before,
+*::after,
+.p-component,
+.p-inputtext,
+.p-inputtextarea,
+.p-inputnumber,
+.p-inputnumber-input,
+.p-inputnumber-button,
+.p-password,
+.p-password-input,
+.p-dropdown,
+.p-dropdown-panel,
+.p-dropdown-items-wrapper,
+.p-dropdown-item,
+.p-multiselect,
+.p-multiselect-panel,
+.p-multiselect-item,
+.p-multiselect-token,
+.p-calendar,
+.p-datepicker,
+.p-datepicker-panel,
+.p-datepicker-header,
+.p-datepicker-calendar,
+.p-datepicker-calendar td,
+.p-datepicker-calendar td span,
+.p-checkbox,
+.p-checkbox-box,
+.p-radiobutton,
+.p-radiobutton-box,
+.p-radiobutton-icon,
+.p-inputswitch,
+.p-inputswitch-slider,
+.p-chips,
+.p-chips-token,
+.p-autocomplete,
+.p-autocomplete-input,
+.p-autocomplete-panel,
+.p-autocomplete-item,
+.p-inputmask,
+.p-inputotp,
+.p-inputotp-input,
+.p-slider,
+.p-slider-range,
+.p-slider-handle,
+.p-rating,
+.p-button,
+.p-badge,
+.p-tag,
+.p-card,
+.p-panel {
+  border-radius: 4px !important;
+}
+
+/* 2. Flat Aesthetic Adjustments */
+.p-inputtext,
+.p-inputtextarea,
+.p-dropdown,
+.p-multiselect,
+.p-calendar,
+.p-chips-multiple-container,
+.p-autocomplete-input {
+  box-shadow: none !important;
+  transition: border-color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+/* 3. Flat Checkbox */
+.p-checkbox .p-checkbox-box {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+/* 4. Flat RadioButton */
+.p-radiobutton .p-radiobutton-box {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.p-radiobutton .p-radiobutton-box .p-radiobutton-icon {
+  border-radius: 4px !important;
+}
+
+/* 5. Flat InputSwitch (Rectilinear Toggle) */
+.p-inputswitch {
+  border-radius: 4px !important;
+  width: 2.75rem;
+  height: 1.5rem;
+}
+
+.p-inputswitch .p-inputswitch-slider {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.p-inputswitch .p-inputswitch-slider:before {
+  border-radius: 4px !important;
+  margin-top: -0.55rem;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* 6. Flat Popups & Dropdown Panels */
+.p-dropdown-panel,
+.p-multiselect-panel,
+.p-datepicker,
+.p-autocomplete-panel {
+  border-radius: 4px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 7. Flat Password Full-Width Support */
+.p-password,
+div.p-password,
+span.p-password,
+.p-password .p-icon-field,
+div.p-icon-field {
+  display: flex !important;
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+.p-password .p-inputtext,
+.p-password input,
+.p-password-input {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+/* 7b. Flat Password Eye Icon Exact Vertical Centering */
+.p-password .p-icon-field>.p-input-icon,
+.p-password .p-input-icon {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 0.85rem !important;
+  height: 100% !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+.p-password .p-password-show-icon,
+.p-password .p-password-hide-icon,
+.p-password .p-input-icon>i,
+.p-password .p-input-icon>svg {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+/* 8. Flat Buttons & Addons */
+.p-button {
+  border-radius: 4px !important;
+}
