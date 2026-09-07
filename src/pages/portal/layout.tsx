@@ -291,8 +291,17 @@ export const PortalLayout: React.FC = () => {
             </span>
           </div>
 
-          {/* Top Right Quick Actions: Moon, Refresh, Notifications, Status */}
+          {/* Top Right Quick Actions: Overlays preview, Dark Mode, Refresh, Notifications, Status */}
           <div className="flex items-center gap-2.5">
+            <NavLink
+              to="/overlays"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-white/70 hover:text-white hover:bg-white/10 border border-white/10 rounded transition text-[11px] font-medium"
+              title="Overlay Components Showcase"
+            >
+              <i className="pi pi-window-maximize text-[10px] text-[#41cc84]" />
+              <span>Overlays</span>
+            </NavLink>
+
             {/* Dark Mode Icon */}
             <button
               type="button"

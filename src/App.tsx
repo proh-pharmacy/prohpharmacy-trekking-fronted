@@ -13,6 +13,7 @@ import { FlatButtonsShowcase } from './pages/preview/FlatButtonsShowcase';
 import { DataTableShowcase } from './pages/preview/DataTableShowcase';
 import { FlatInputsShowcase } from './pages/preview/FlatInputsShowcase';
 import { ToastShowcase } from './pages/preview/ToastShowcase';
+import { OverlayShowcase } from './pages/preview/OverlayShowcase';
 import { ProHToaster } from './components/toast';
 
 export default function App() {
@@ -172,6 +173,8 @@ export default function App() {
               <Route path="/inputs" element={<FlatInputsShowcase />} />
               <Route path="/toasts" element={<ToastShowcase />} />
               <Route path="/toast" element={<Navigate to="/toasts" replace />} />
+              <Route path="/overlays" element={<OverlayShowcase />} />
+              <Route path="/modals" element={<Navigate to="/overlays" replace />} />
 
               {/* Fallback redirects */}
               <Route path="/" element={<Navigate to="/portal/dashboard" replace />} />
