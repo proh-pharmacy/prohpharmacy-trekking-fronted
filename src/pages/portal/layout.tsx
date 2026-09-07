@@ -73,15 +73,15 @@ export const PortalLayout: React.FC = () => {
   const userName = user?.fullName || 'Kwesi Mensah';
 
   return (
-    <div className="min-h-screen flex bg-[#101214] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-white">
-      {/* Sleek Obsidian Sidebar with Primary Green #41cc84 Accent (Matching Login SignIn Button) */}
+    <div className="h-screen w-screen overflow-hidden flex bg-[#101214] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-white">
+      {/* Fixed Sleek Obsidian Sidebar with Primary Green #41cc84 Accent */}
       <aside
-        className={`bg-[#101214] border-r border-white/[0.06] flex flex-col shrink-0 transition-all duration-300 z-30 ${
+        className={`h-full bg-[#101214] border-r border-white/[0.06] flex flex-col shrink-0 transition-all duration-300 z-30 ${
           collapsed ? 'w-[72px]' : 'w-60 lg:w-64'
         }`}
       >
         {/* Top: User Profile & Collapse Toggle */}
-        <div className="p-4 border-b border-white/[0.06]">
+        <div className="shrink-0 p-4 border-b border-white/[0.06]">
           {!collapsed ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -233,7 +233,7 @@ export const PortalLayout: React.FC = () => {
         </nav>
 
         {/* Bottom Sidebar Brand Mark */}
-        <div className="p-3.5 border-t border-white/[0.06] flex items-center justify-between">
+        <div className="shrink-0 p-3.5 border-t border-white/[0.06] flex items-center justify-between">
           {!collapsed ? (
             <>
               <div className="flex items-center gap-2.5 min-w-0">
@@ -276,9 +276,9 @@ export const PortalLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#101214] overflow-hidden">
-        {/* Top Header Navbar in DWISON Minimal Dark Theme */}
+      {/* Main Content Area - Fixed Header, Scrollable Main Viewport */}
+      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#101214] overflow-hidden">
+        {/* Fixed Top Header Navbar in DWISON Minimal Dark Theme */}
         <header className="h-14 bg-[#101214] border-b border-white/[0.06] px-6 flex items-center justify-between shrink-0 z-20">
           {/* Breadcrumb with Subtle Icons */}
           <div className="flex items-center gap-2.5 text-xs">
