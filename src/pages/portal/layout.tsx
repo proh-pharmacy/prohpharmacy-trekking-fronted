@@ -173,7 +173,7 @@ export const PortalLayout: React.FC = () => {
           {navSections.map((section) => (
             <div key={section.title} className="space-y-1">
               {!collapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#5a866b]">
+                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#809e8b]">
                   {section.title}
                 </div>
               )}
@@ -191,12 +191,12 @@ export const PortalLayout: React.FC = () => {
                     className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
                       isActive
                         ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_14px_rgba(65,204,132,0.3)]'
-                        : 'text-[#8ecba5] hover:text-white hover:bg-[#41cc84]/10'
+                        : 'text-[#e2eee6] hover:text-white hover:bg-white/[0.05]'
                     }`}
                   >
                     <i
                       className={`${item.icon} text-sm shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-[#5ea87c] group-hover:text-[#41cc84]'
+                        isActive ? 'text-white' : 'text-[#9ab8a4] group-hover:text-white'
                       }`}
                     />
 
@@ -210,7 +210,7 @@ export const PortalLayout: React.FC = () => {
                           className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             isActive
                               ? 'bg-black/20 text-white'
-                              : 'bg-[#41cc84]/15 text-[#8ecba5]'
+                              : 'bg-white/[0.08] text-[#e2eee6]'
                           }`}
                         >
                           {item.badge}
@@ -220,7 +220,7 @@ export const PortalLayout: React.FC = () => {
                           className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
                             isActive
                               ? 'text-white/70'
-                              : 'text-[#5ea87c]/40 group-hover:text-[#41cc84] opacity-0 group-hover:opacity-100'
+                              : 'text-white/20 group-hover:text-white/60 opacity-0 group-hover:opacity-100'
                           }`}
                         />
                       )
