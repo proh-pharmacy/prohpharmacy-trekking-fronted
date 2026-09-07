@@ -192,12 +192,6 @@ export const OrganisationPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
-          <FlatButton
-            variant="outline"
-            label="Refresh"
-            icon="pi pi-sync"
-            onClick={loadData}
-          />
           {activeTab === 'branches' ? (
             <FlatButton
               variant="primary"
@@ -289,7 +283,7 @@ export const OrganisationPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by tag, description, or user..."
-                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition box-border"
               />
               {searchQuery && (
                 <button
@@ -302,8 +296,8 @@ export const OrganisationPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="w-48">
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+              <div className="w-48 h-[38px]">
                 <FlatDropdown
                   value={selectedRegionFilter}
                   options={[
@@ -318,7 +312,7 @@ export const OrganisationPage: React.FC = () => {
                 type="button"
                 title="Refresh Table"
                 onClick={loadData}
-                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+                className="h-[38px] w-[38px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
               >
                 <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
               </button>
@@ -439,7 +433,7 @@ export const OrganisationPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by tag, description, or user..."
-                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition box-border"
               />
               {searchQuery && (
                 <button
@@ -452,8 +446,8 @@ export const OrganisationPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="w-48">
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+              <div className="w-48 h-[38px]">
                 <FlatDropdown
                   value={selectedRegionFilter}
                   options={[
@@ -468,7 +462,7 @@ export const OrganisationPage: React.FC = () => {
                 type="button"
                 title="Refresh Table"
                 onClick={loadData}
-                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+                className="h-[38px] w-[38px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
               >
                 <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
               </button>

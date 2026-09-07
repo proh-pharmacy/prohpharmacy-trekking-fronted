@@ -611,7 +611,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   onChange={(e) => setGlobalSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleQueryChange(filterable, globalSearch)}
                   placeholder={filterablePlaceholder}
-                  className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition"
+                  className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
                 />
                 {globalSearch && (
                   <button
@@ -634,7 +634,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 type="button"
                 onClick={() => setIsFilterVisible(!isFilterVisible)}
                 className={cn(
-                  'px-3 py-2.5 border text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 transition-colors cursor-pointer shrink-0',
+                  'h-[38px] px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 transition-colors cursor-pointer shrink-0',
                   isFilterVisible
                     ? 'bg-portal-accent border-portal-accent text-portal-canvas'
                     : 'bg-portal-canvas border-portal-border text-white hover:border-portal-border/80'
@@ -655,7 +655,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               type="button"
               title="Refresh Records"
               onClick={() => refetch()}
-              className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              className="h-[38px] w-[38px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
             >
               <RotateCcw className={cn('w-4 h-4', isBusy && 'animate-spin text-portal-accent')} />
             </button>

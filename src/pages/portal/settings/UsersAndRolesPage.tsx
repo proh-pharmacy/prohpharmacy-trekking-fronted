@@ -195,13 +195,6 @@ export const UsersAndRolesPage: React.FC = () => {
 
         <div className="flex items-center gap-2.5 shrink-0">
           <FlatButton
-            variant="outline"
-            label={loading ? 'Refreshing...' : 'Refresh'}
-            icon={loading ? 'pi pi-spin pi-spinner' : 'pi pi-sync'}
-            onClick={loadData}
-            disabled={loading}
-          />
-          <FlatButton
             variant="primary"
             label="Invite User"
             icon="pi pi-user-plus"
@@ -249,7 +242,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by tag, description, or user..."
-                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition box-border"
               />
               {searchQuery && (
                 <button
@@ -262,8 +255,8 @@ export const UsersAndRolesPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="w-40">
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+              <div className="w-40 h-[38px]">
                 <FlatDropdown
                   value={roleFilter}
                   options={[
@@ -277,7 +270,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 />
               </div>
 
-              <div className="w-40">
+              <div className="w-40 h-[38px]">
                 <FlatDropdown
                   value={statusFilter}
                   options={[
@@ -294,7 +287,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 type="button"
                 title="Refresh Table"
                 onClick={loadData}
-                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+                className="h-[38px] w-[38px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
               >
                 <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
               </button>
