@@ -23,6 +23,7 @@ module.exports = {
         'portal-text': '#adbac7',
         'portal-accent': '#41cc84',
         'portal-accent-hover': '#38b273',
+        'portal-orange': '#f0883e',
 
         // Semantic Dark Canvas Aliases
         'dark-canvas': '#22272e',
