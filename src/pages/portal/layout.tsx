@@ -245,11 +245,8 @@ export const PortalLayout: React.FC = () => {
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold tracking-wider text-white uppercase flex items-center gap-1.5">
-                    <span>PROH</span>
-                    <span className="text-[10px] font-medium text-[#41cc84] lowercase tracking-normal">
-                      ops
-                    </span>
+                  <div className="text-xs font-bold tracking-wider text-white uppercase truncate">
+                    PROH PHARMACY
                   </div>
                 </div>
               </div>
@@ -258,9 +255,9 @@ export const PortalLayout: React.FC = () => {
                 type="button"
                 onClick={handleLogout}
                 title="Sign Out"
-                className="p-1.5 text-[#768390] hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
+                className="p-1.5 text-[#DE2512] hover:text-[#ff5c4c] hover:bg-[#DE2512]/10 rounded transition cursor-pointer ml-auto"
               >
-                <i className="pi pi-sign-out text-xs" />
+                <i className="pi pi-sign-out text-sm" />
               </button>
             </>
           ) : (
@@ -268,9 +265,9 @@ export const PortalLayout: React.FC = () => {
               type="button"
               onClick={handleLogout}
               title="Sign Out"
-              className="w-full flex justify-center p-2 text-[#768390] hover:text-red-400 hover:bg-white/10 rounded transition cursor-pointer"
+              className="w-full flex justify-center p-2 text-[#DE2512] hover:text-[#ff5c4c] hover:bg-[#DE2512]/10 rounded transition cursor-pointer"
             >
-              <i className="pi pi-sign-out text-xs" />
+              <i className="pi pi-sign-out text-sm" />
             </button>
           )}
         </div>
