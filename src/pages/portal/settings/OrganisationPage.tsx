@@ -500,7 +500,7 @@ export const OrganisationPage: React.FC = () => {
                             {reg?.name || 'Ghana'}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-portal-canvas border border-portal-border rounded text-[#e6edf3]">
+                            <span className="text-xs font-mono text-[#e6edf3] font-medium">
                               {branchCount} {branchCount === 1 ? 'branch' : 'branches'}
                             </span>
                           </td>

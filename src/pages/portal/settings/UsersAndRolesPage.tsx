@@ -301,7 +301,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 <thead className="bg-portal-canvas border-b border-portal-border text-xs font-bold uppercase tracking-wider text-white">
                   <tr>
                     <th className="py-3.5 px-4">User</th>
-                    <th className="py-3.5 px-4">Roles</th>
+                    <th className="py-3.5 px-4">Role</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4">Last Active</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
@@ -335,26 +335,11 @@ export const UsersAndRolesPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Roles */}
+                        {/* Role - clean unbordered text */}
                         <td className="py-3.5 px-4">
-                          <div className="flex flex-wrap gap-1.5">
-                            {user.roles.map((r) => (
-                              <span
-                                key={r}
-                                className={`px-2 py-0.5 text-[11px] font-semibold rounded border ${
-                                  r === 'Admin'
-                                    ? 'bg-purple-500/15 text-purple-200 border-purple-500/40'
-                                    : r === 'Manager'
-                                    ? 'bg-blue-500/15 text-blue-200 border-blue-500/40'
-                                    : r === 'Driver'
-                                    ? 'bg-amber-500/15 text-amber-200 border-amber-500/40'
-                                    : 'bg-portal-canvas text-light-green border-portal-border'
-                                }`}
-                              >
-                                {r}
-                              </span>
-                            ))}
-                          </div>
+                          <span className="text-xs text-[#e6edf3] font-medium">
+                            {user.roles.join(', ')}
+                          </span>
                         </td>
 
                         {/* Status */}
