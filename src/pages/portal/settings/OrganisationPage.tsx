@@ -98,9 +98,11 @@ export const OrganisationPage: React.FC = () => {
   const [branchModalVisible, setBranchModalVisible] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Load from backend API
   const loadData = async () => {
+    setLoading(true);
     try {
       const [fetchedRegions, fetchedDistricts, fetchedBranches] = await Promise.allSettled([
         organisationApi.getRegions(),
@@ -119,6 +121,8 @@ export const OrganisationPage: React.FC = () => {
       }
     } catch {
       // Keep initial seeded defaults
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -276,46 +280,68 @@ export const OrganisationPage: React.FC = () => {
       {/* Tab 1: Branches */}
       {activeTab === 'branches' && (
         <div className="space-y-4">
-          <div className="p-3.5 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="w-full md:w-80 relative">
-              <i className="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-portal-muted" />
+          {/* Action & Filter Bar matching reference screenshot */}
+          <div className="p-3 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="flex-1 w-full relative">
+              <i className="pi pi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-portal-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search branch name or address..."
-                className="w-full pl-9 pr-3 py-1.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                placeholder="Search by tag, description, or user..."
+                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-portal-muted hover:text-white cursor-pointer"
+                >
+                  <i className="pi pi-times text-xs" />
+                </button>
+              )}
             </div>
 
-            <div className="w-48">
-              <FlatDropdown
-                value={selectedRegionFilter}
-                options={[
-                  { label: 'All Regions', value: 'ALL' },
-                  ...regions.map((r) => ({ label: r.name, value: r.id })),
-                ]}
-                onChange={(e) => setSelectedRegionFilter(e.value)}
-              />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="w-48">
+                <FlatDropdown
+                  value={selectedRegionFilter}
+                  options={[
+                    { label: 'All Regions', value: 'ALL' },
+                    ...regions.map((r) => ({ label: r.name, value: r.id })),
+                  ]}
+                  onChange={(e) => setSelectedRegionFilter(e.value)}
+                />
+              </div>
+
+              <button
+                type="button"
+                title="Refresh Table"
+                onClick={loadData}
+                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              >
+                <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
+              </button>
             </div>
           </div>
 
+          {/* High-Visibility Branches Table */}
           <div className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-portal-canvas border-b border-portal-border text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+                <thead className="bg-portal-canvas border-b border-portal-border text-xs font-bold uppercase tracking-wider text-white">
                   <tr>
-                    <th className="py-3 px-4">Branch / Depot</th>
-                    <th className="py-3 px-4">District & Region</th>
-                    <th className="py-3 px-4">Contact Phone</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3.5 px-4">Branch / Depot</th>
+                    <th className="py-3.5 px-4">District & Region</th>
+                    <th className="py-3.5 px-4">Contact Phone</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-portal-border/40">
                   {filteredBranches.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-portal-muted">
+                      <td colSpan={5} className="py-12 text-center text-portal-muted">
                         No branches match the filter criteria.
                       </td>
                     </tr>
@@ -325,27 +351,35 @@ export const OrganisationPage: React.FC = () => {
                       const reg = regions.find((r) => r.id === dist?.regionId);
 
                       return (
-                        <tr key={branch.id} className="hover:bg-white/[0.02] transition">
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-white">{branch.name}</div>
-                            <div className="text-[11px] text-portal-muted truncate max-w-xs">{branch.address}</div>
+                        <tr key={branch.id} className="hover:bg-white/[0.04] transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div
+                              onClick={() => {
+                                setEditingBranch(branch);
+                                setBranchModalVisible(true);
+                              }}
+                              className="font-bold text-sm text-portal-accent hover:underline cursor-pointer"
+                            >
+                              {branch.name}
+                            </div>
+                            <div className="text-xs text-[#cdd9e5] truncate max-w-xs mt-0.5">{branch.address}</div>
                           </td>
 
-                          <td className="py-3 px-4">
-                            <div className="text-white">{dist?.name || 'Unassigned'}</div>
-                            <div className="text-[11px] text-portal-muted">{reg?.name || 'Ghana'}</div>
+                          <td className="py-3.5 px-4">
+                            <div className="text-white font-medium text-xs">{dist?.name || 'Unassigned'}</div>
+                            <div className="text-xs text-[#cdd9e5]">{reg?.name || 'Ghana'}</div>
                           </td>
 
-                          <td className="py-3 px-4 font-mono text-[11px] text-light-green">
+                          <td className="py-3.5 px-4 font-mono text-xs text-[#e6edf3] font-semibold">
                             {branch.phoneNumber}
                           </td>
 
-                          <td className="py-3 px-4">
+                          <td className="py-3.5 px-4">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-medium rounded border ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded border ${
                                 branch.isActive
-                                  ? 'bg-portal-accent/10 text-portal-accent border-portal-accent/30'
-                                  : 'bg-red-accent/10 text-red-accent border-red-accent/30'
+                                  ? 'bg-portal-accent/15 text-portal-accent border-portal-accent/40'
+                                  : 'bg-red-accent/15 text-red-accent border-red-accent/40'
                               }`}
                             >
                               <span
@@ -357,7 +391,7 @@ export const OrganisationPage: React.FC = () => {
                             </span>
                           </td>
 
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <FlatButton
                                 variant="outline"
@@ -397,44 +431,64 @@ export const OrganisationPage: React.FC = () => {
       {/* Tab 2: Districts */}
       {activeTab === 'districts' && (
         <div className="space-y-4">
-          <div className="p-3.5 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="w-full md:w-80 relative">
-              <i className="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-portal-muted" />
+          <div className="p-3 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="flex-1 w-full relative">
+              <i className="pi pi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-portal-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search district name..."
-                className="w-full pl-9 pr-3 py-1.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                placeholder="Search by tag, description, or user..."
+                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-portal-muted hover:text-white cursor-pointer"
+                >
+                  <i className="pi pi-times text-xs" />
+                </button>
+              )}
             </div>
 
-            <div className="w-48">
-              <FlatDropdown
-                value={selectedRegionFilter}
-                options={[
-                  { label: 'All Regions', value: 'ALL' },
-                  ...regions.map((r) => ({ label: r.name, value: r.id })),
-                ]}
-                onChange={(e) => setSelectedRegionFilter(e.value)}
-              />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="w-48">
+                <FlatDropdown
+                  value={selectedRegionFilter}
+                  options={[
+                    { label: 'All Regions', value: 'ALL' },
+                    ...regions.map((r) => ({ label: r.name, value: r.id })),
+                  ]}
+                  onChange={(e) => setSelectedRegionFilter(e.value)}
+                />
+              </div>
+
+              <button
+                type="button"
+                title="Refresh Table"
+                onClick={loadData}
+                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              >
+                <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
+              </button>
             </div>
           </div>
 
           <div className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-portal-canvas border-b border-portal-border text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+                <thead className="bg-portal-canvas border-b border-portal-border text-xs font-bold uppercase tracking-wider text-white">
                   <tr>
-                    <th className="py-3 px-4">District Name</th>
-                    <th className="py-3 px-4">Parent Region</th>
-                    <th className="py-3 px-4">Branches</th>
+                    <th className="py-3.5 px-4">District Name</th>
+                    <th className="py-3.5 px-4">Parent Region</th>
+                    <th className="py-3.5 px-4">Branches</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-portal-border/40">
                   {filteredDistricts.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-8 text-center text-portal-muted">
+                      <td colSpan={3} className="py-12 text-center text-portal-muted">
                         No districts match the filter criteria.
                       </td>
                     </tr>
@@ -444,15 +498,15 @@ export const OrganisationPage: React.FC = () => {
                       const branchCount = branches.filter((b) => b.districtId === dist.id).length;
 
                       return (
-                        <tr key={dist.id} className="hover:bg-white/[0.02] transition">
-                          <td className="py-3 px-4 font-bold text-white">
+                        <tr key={dist.id} className="hover:bg-white/[0.04] transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-sm text-portal-accent">
                             {dist.name}
                           </td>
-                          <td className="py-3 px-4 text-portal-text">
+                          <td className="py-3.5 px-4 text-white font-medium text-xs">
                             {reg?.name || 'Ghana'}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 text-[10px] font-bold bg-portal-canvas border border-portal-border rounded text-white">
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-portal-canvas border border-portal-border rounded text-[#e6edf3]">
                               {branchCount} {branchCount === 1 ? 'branch' : 'branches'}
                             </span>
                           </td>

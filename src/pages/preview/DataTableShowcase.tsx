@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type FilterParam } from '../../components/data-table';
-import { useAuth } from '../../context';
 
 interface StaffRecord {
   id: string;
@@ -55,14 +54,13 @@ const MOCK_STAFF_DATA: StaffRecord[] = Array.from({ length: 48 }, (_, i) => {
 });
 
 export const DataTableShowcase: React.FC = () => {
-  const { user, logout } = useAuth();
   // Columns definition matching inventory abstraction
   const columns: ColumnDef<StaffRecord>[] = [
     {
       field: 'id',
       header: 'Staff ID',
       body: (row) => (
-        <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 border border-slate-300">
+        <span className="font-mono font-bold text-white bg-portal-canvas px-2 py-0.5 border border-portal-border rounded">
           {row.id}
         </span>
       ),
@@ -73,8 +71,10 @@ export const DataTableShowcase: React.FC = () => {
       header: 'Staff Name & Permit',
       body: (row) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-900">{row.staffName}</span>
-          <span className="text-[11px] font-mono text-slate-500">{row.permitNumber}</span>
+          <span className="font-bold text-white text-sm hover:text-portal-accent cursor-pointer transition">
+            {row.staffName}
+          </span>
+          <span className="text-xs font-mono text-portal-accent font-medium">{row.permitNumber}</span>
         </div>
       ),
     },
@@ -82,7 +82,7 @@ export const DataTableShowcase: React.FC = () => {
       field: 'role',
       header: 'Designation',
       body: (row) => (
-        <span className="text-xs text-slate-700 font-medium">
+        <span className="text-xs text-[#e6edf3] font-medium">
           {row.role}
         </span>
       ),
@@ -91,8 +91,8 @@ export const DataTableShowcase: React.FC = () => {
       field: 'station',
       header: 'Base Station',
       body: (row) => (
-        <div className="flex items-center gap-1.5 text-xs text-slate-700">
-          <i className="pi pi-map-marker text-teal-700 text-[11px]" />
+        <div className="flex items-center gap-1.5 text-xs text-[#e6edf3]">
+          <i className="pi pi-map-marker text-portal-accent text-xs" />
           <span>{row.station}</span>
         </div>
       ),
@@ -102,14 +102,14 @@ export const DataTableShowcase: React.FC = () => {
       header: 'Status',
       body: (row) => {
         const colors: Record<StaffRecord['status'], string> = {
-          Active: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-          'On Trek': 'bg-blue-50 text-blue-800 border-blue-300',
-          Standby: 'bg-amber-50 text-amber-800 border-amber-300',
-          Resting: 'bg-slate-100 text-slate-700 border-slate-300',
+          Active: 'bg-portal-accent/15 text-portal-accent border-portal-accent/40',
+          'On Trek': 'bg-blue-500/15 text-blue-200 border-blue-500/40',
+          Standby: 'bg-amber-500/15 text-amber-200 border-amber-500/40',
+          Resting: 'bg-portal-canvas text-portal-muted border-portal-border',
         };
         return (
           <span
-            className={`inline-block px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider border rounded ${
+            className={`inline-block px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider border rounded ${
               colors[row.status]
             }`}
           >
@@ -127,7 +127,7 @@ export const DataTableShowcase: React.FC = () => {
           {row.assignedRegions.map((region) => (
             <span
               key={region}
-              className="px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 border border-slate-300 text-slate-600 rounded"
+              className="px-2 py-0.5 text-[10px] font-mono bg-portal-canvas border border-portal-border text-light-green rounded"
             >
               {region}
             </span>
@@ -139,7 +139,7 @@ export const DataTableShowcase: React.FC = () => {
       field: 'lastDispatched',
       header: 'Last Dispatched',
       body: (row) => (
-        <span className="font-mono text-xs text-slate-600">
+        <span className="font-mono text-xs text-[#e6edf3] font-medium">
           {row.lastDispatched}
         </span>
       ),
@@ -153,20 +153,20 @@ export const DataTableShowcase: React.FC = () => {
           <button
             type="button"
             onClick={() => alert(`View trekking record: ${row.staffName} (${row.id})`)}
-            className="px-2 py-1 text-[11px] font-semibold uppercase border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 rounded cursor-pointer"
+            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider border border-portal-border bg-portal-canvas hover:bg-white/10 text-white rounded cursor-pointer transition"
           >
             View
           </button>
           <button
             type="button"
             onClick={() => alert(`Dispatch assignment for ${row.staffName}`)}
-            className="px-2 py-1 text-[11px] font-semibold uppercase bg-teal-700 hover:bg-teal-600 text-white rounded cursor-pointer"
+            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas rounded cursor-pointer transition font-bold"
           >
             Dispatch
           </button>
         </div>
       ),
-      style: { width: '160px' },
+      style: { width: '170px' },
     },
   ];
 
@@ -213,9 +213,9 @@ export const DataTableShowcase: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col antialiased">
+    <div className="min-h-screen bg-portal-canvas text-white flex flex-col antialiased">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-300 shadow-xs">
+      <header className="sticky top-0 z-40 bg-portal-surface border-b border-portal-border/60 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -225,15 +225,15 @@ export const DataTableShowcase: React.FC = () => {
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-slate-900 tracking-tight">
+                <h1 className="text-lg font-bold text-white tracking-tight">
                   ProH Pharmacy Trekking Table
                 </h1>
-                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-light-green text-primary-green border border-primary-green/30">
+                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-portal-accent/15 text-portal-accent border border-portal-accent/30 rounded">
                   Flat UI Design
                 </span>
               </div>
-              <p className="text-xs text-muted-text">
-                Self-contained table architecture inspired by <code className="font-mono text-slate-700">inventory/DataTable.tsx</code>
+              <p className="text-xs text-portal-muted">
+                Self-contained table architecture inspired by <code className="font-mono text-white/90">inventory/DataTable.tsx</code>
               </p>
             </div>
           </div>
@@ -241,51 +241,31 @@ export const DataTableShowcase: React.FC = () => {
           <div className="flex items-center gap-3">
             <Link
               to="/buttons"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
             >
               <i className="pi pi-check-square mr-1.5 text-[10px]" />
               Buttons
             </Link>
             <Link
               to="/inputs"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
             >
               <i className="pi pi-sliders-h mr-1.5 text-[10px]" />
               Inputs
             </Link>
             <Link
               to="/toasts"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
             >
               <i className="pi pi-bell mr-1.5 text-[10px]" />
               Toasts
             </Link>
-
-            <div className="px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold uppercase tracking-wider rounded">
-              Route: /table
-            </div>
-
-            {user && (
-              <div className="flex items-center gap-2.5 pl-3 border-l border-slate-300">
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs font-bold text-slate-900 leading-tight">
-                    {user.fullName || user.email}
-                  </div>
-                  <div className="text-[10px] text-primary-green font-semibold uppercase tracking-wider">
-                    {user.roles?.join(', ') || 'Staff'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-red-accent/10 text-red-accent hover:bg-red-accent hover:text-white border border-red-accent/30 rounded transition-colors cursor-pointer flex items-center gap-1.5"
-                  title="Sign Out"
-                >
-                  <i className="pi pi-sign-out text-[11px]" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            )}
+            <Link
+              to="/portal/dashboard"
+              className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas rounded transition-colors"
+            >
+              Portal
+            </Link>
           </div>
         </div>
       </header>
@@ -293,31 +273,31 @@ export const DataTableShowcase: React.FC = () => {
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
         {/* Specification Info Banner */}
-        <div className="p-4 bg-white border border-slate-300 border-l-4 border-l-slate-900 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-4 bg-portal-surface border border-portal-border/60 border-l-4 border-l-portal-accent rounded flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
               Target Paginated Data Structure Implemented
             </h2>
-            <p className="text-xs text-slate-600 mt-0.5">
-              Supports <code className="font-mono text-slate-800 font-semibold">totalCount</code>,{' '}
-              <code className="font-mono text-slate-800 font-semibold">totalPages</code>,{' '}
-              <code className="font-mono text-slate-800 font-semibold">currentPage</code>,{' '}
-              <code className="font-mono text-slate-800 font-semibold">pageSize</code>, and{' '}
-              <code className="font-mono text-slate-800 font-semibold">data</code> with query URL sync and instant mutations.
+            <p className="text-xs text-portal-muted mt-0.5">
+              Supports <code className="font-mono text-portal-accent font-semibold">totalCount</code>,{' '}
+              <code className="font-mono text-portal-accent font-semibold">totalPages</code>,{' '}
+              <code className="font-mono text-portal-accent font-semibold">currentPage</code>,{' '}
+              <code className="font-mono text-portal-accent font-semibold">pageSize</code>, and{' '}
+              <code className="font-mono text-portal-accent font-semibold">data</code> with query URL sync and instant mutations.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 text-[11px] font-mono bg-teal-50 text-teal-800 border border-teal-200">
+            <span className="px-2.5 py-1 text-[11px] font-mono font-bold bg-portal-canvas text-portal-accent border border-portal-border rounded">
               Total Records: 48
             </span>
-            <span className="px-2.5 py-1 text-[11px] font-mono bg-slate-100 text-slate-700 border border-slate-300">
+            <span className="px-2.5 py-1 text-[11px] font-mono font-bold bg-portal-canvas text-white border border-portal-border rounded">
               Pages: 5
             </span>
           </div>
         </div>
 
         {/* The Self-Contained Flat Data Table */}
-        <div className="bg-white p-6 border border-slate-300 shadow-xs">
+        <div className="bg-portal-surface p-6 border border-portal-border/60 rounded shadow-none">
           <FlatDataTable<StaffRecord>
             columns={columns}
             data={MOCK_STAFF_DATA}

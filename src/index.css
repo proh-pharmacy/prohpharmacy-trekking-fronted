@@ -465,3 +465,62 @@ div.p-icon-field {
   background: var(--color-portal-accent) !important;
   color: #ffffff !important;
 }
+
+/* ==========================================================================
+   High-Visibility Dark Flat DataTable (GitHub/Vercel/Linear Style)
+   ========================================================================== */
+.p-datatable {
+  background: var(--color-portal-surface) !important;
+  color: #e6edf3 !important;
+}
+
+.p-datatable .p-datatable-wrapper {
+  background: var(--color-portal-surface) !important;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--color-portal-canvas) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.75rem !important;
+  padding: 0.875rem 1rem !important;
+  border-bottom: 1px solid var(--color-portal-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.p-datatable .p-datatable-tbody > tr {
+  background: var(--color-portal-surface) !important;
+  color: #e6edf3 !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  padding: 0.875rem 1rem !important;
+  border-bottom: 1px solid rgba(68, 76, 86, 0.4) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  font-size: 0.75rem !important;
+  color: #e6edf3 !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight {
+  background: rgba(65, 204, 132, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.p-datatable .p-sortable-column .p-sortable-column-icon {
+  color: #ffffff !important;
+}
+
+.p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon {
+  color: var(--color-portal-accent) !important;
+}

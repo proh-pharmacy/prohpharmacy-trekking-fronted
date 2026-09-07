@@ -240,17 +240,26 @@ export const UsersAndRolesPage: React.FC = () => {
 
       {activeTab === 'users' ? (
         <div className="space-y-4">
-          {/* Action & Filter Bar */}
-          <div className="p-3.5 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="w-full md:w-80 relative">
-              <i className="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-portal-muted" />
+          {/* Action & Filter Bar matching reference screenshot */}
+          <div className="p-3 bg-portal-surface border border-portal-border/60 rounded flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="flex-1 w-full relative">
+              <i className="pi pi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-portal-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search user name or email..."
-                className="w-full pl-9 pr-3 py-1.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
+                placeholder="Search by tag, description, or user..."
+                className="w-full pl-10 pr-10 py-2.5 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted outline-none focus:border-portal-accent transition"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-portal-muted hover:text-white cursor-pointer"
+                >
+                  <i className="pi pi-times text-xs" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
@@ -280,34 +289,43 @@ export const UsersAndRolesPage: React.FC = () => {
                   onChange={(e) => setStatusFilter(e.value)}
                 />
               </div>
+
+              <button
+                type="button"
+                title="Refresh Table"
+                onClick={loadData}
+                className="p-2.5 bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              >
+                <i className={`pi pi-sync text-xs ${loading ? 'animate-spin text-portal-accent' : ''}`} />
+              </button>
             </div>
           </div>
 
-          {/* Users Table */}
+          {/* High-Visibility Users Table */}
           <div className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-portal-canvas border-b border-portal-border text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+                <thead className="bg-portal-canvas border-b border-portal-border text-xs font-bold uppercase tracking-wider text-white">
                   <tr>
-                    <th className="py-3 px-4">User</th>
-                    <th className="py-3 px-4">Roles</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Last Active</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3.5 px-4">User</th>
+                    <th className="py-3.5 px-4">Roles</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Last Active</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-portal-border/40">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-portal-muted">
+                      <td colSpan={5} className="py-12 text-center text-portal-muted">
                         No user accounts match the current filter criteria.
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-white/[0.02] transition">
+                      <tr key={user.id} className="hover:bg-white/[0.04] transition-colors">
                         {/* User info */}
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center font-bold text-white text-xs shrink-0">
                               {user.fullName
@@ -318,25 +336,25 @@ export const UsersAndRolesPage: React.FC = () => {
                                 .toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-bold text-white truncate">{user.fullName}</div>
-                              <div className="text-[11px] text-portal-muted font-mono truncate">{user.email}</div>
+                              <div className="font-bold text-white text-sm truncate">{user.fullName}</div>
+                              <div className="text-xs text-portal-accent font-mono truncate">{user.email}</div>
                             </div>
                           </div>
                         </td>
 
                         {/* Roles */}
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <div className="flex flex-wrap gap-1.5">
                             {user.roles.map((r) => (
                               <span
                                 key={r}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded border ${
+                                className={`px-2 py-0.5 text-[11px] font-semibold rounded border ${
                                   r === 'Admin'
-                                    ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                                    ? 'bg-purple-500/15 text-purple-200 border-purple-500/40'
                                     : r === 'Manager'
-                                    ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                                    ? 'bg-blue-500/15 text-blue-200 border-blue-500/40'
                                     : r === 'Driver'
-                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                    ? 'bg-amber-500/15 text-amber-200 border-amber-500/40'
                                     : 'bg-portal-canvas text-light-green border-portal-border'
                                 }`}
                               >
@@ -347,14 +365,14 @@ export const UsersAndRolesPage: React.FC = () => {
                         </td>
 
                         {/* Status */}
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-medium rounded border ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded border ${
                               user.status === 'Active'
-                                ? 'bg-portal-accent/10 text-portal-accent border-portal-accent/30'
+                                ? 'bg-portal-accent/15 text-portal-accent border-portal-accent/40'
                                 : user.status === 'Pending'
-                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                                : 'bg-red-accent/10 text-red-accent border-red-accent/30'
+                                ? 'bg-amber-500/15 text-amber-200 border-amber-500/40'
+                                : 'bg-red-accent/15 text-red-accent border-red-accent/40'
                             }`}
                           >
                             <span
@@ -370,8 +388,8 @@ export const UsersAndRolesPage: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Last active */}
-                        <td className="py-3 px-4 text-portal-muted font-mono text-[11px]">
+                        {/* Last active - bright legible silver/white */}
+                        <td className="py-3.5 px-4 text-[#e6edf3] font-mono text-xs font-medium">
                           {user.lastLoginAt
                             ? new Date(user.lastLoginAt).toLocaleDateString(undefined, {
                                 month: 'short',
@@ -383,7 +401,7 @@ export const UsersAndRolesPage: React.FC = () => {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {user.status === 'Pending' ? (
                               <FlatButton
