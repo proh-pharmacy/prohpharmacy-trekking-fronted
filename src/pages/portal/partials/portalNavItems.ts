@@ -38,9 +38,8 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
   {
     title: 'Settings',
     items: [
-      { label: 'Access Control', to: '/portal/settings', icon: 'pi pi-shield' },
-      { label: 'Reports & Audits', to: '/portal/reports', icon: 'pi pi-chart-line' },
-      { label: 'Ledger & Payments', to: '/portal/ledger', icon: 'pi pi-wallet' },
+      { label: 'Users & Roles', to: '/portal/settings/users', icon: 'pi pi-users' },
+      { label: 'Organisation', to: '/portal/settings/organisation', icon: 'pi pi-sitemap' },
     ],
   },
 ];
