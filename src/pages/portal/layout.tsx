@@ -73,8 +73,8 @@ export const PortalLayout: React.FC = () => {
   const userName = user?.fullName || 'Kwesi Mensah';
 
   return (
-    <div className="min-h-screen flex bg-[#101214] text-white font-sans antialiased selection:bg-[#b6ff56] selection:text-black">
-      {/* Sleek Obsidian Sidebar with Lime Accent (DWISON Inspired) */}
+    <div className="min-h-screen flex bg-[#101214] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-white">
+      {/* Sleek Obsidian Sidebar with Primary Green #41cc84 Accent (Matching Login SignIn Button) */}
       <aside
         className={`bg-[#101214] border-r border-white/[0.06] flex flex-col shrink-0 transition-all duration-300 z-30 ${
           collapsed ? 'w-[72px]' : 'w-60 lg:w-64'
@@ -85,13 +85,13 @@ export const PortalLayout: React.FC = () => {
           {!collapsed ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                {/* User Avatar with Cyber-Lime Active Dot */}
+                {/* User Avatar with Primary Green #41cc84 Active Dot */}
                 <div className="relative shrink-0">
                   <div className="w-9 h-9 rounded-full bg-[#1e2126] border border-white/10 flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                     {userInitials}
                   </div>
                   <span
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#b6ff56] border-2 border-[#101214] rounded-full"
+                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#101214] rounded-full"
                     title="Online"
                   />
                 </div>
@@ -123,7 +123,7 @@ export const PortalLayout: React.FC = () => {
                   {userInitials}
                 </div>
                 <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#b6ff56] border-2 border-[#101214] rounded-full"
+                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#101214] rounded-full"
                   title="Online"
                 />
               </div>
@@ -141,7 +141,7 @@ export const PortalLayout: React.FC = () => {
 
           {/* Quick Search Box (from DWISON reference) */}
           {!collapsed ? (
-            <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white/60 focus-within:border-[#b6ff56]/60 focus-within:text-white transition">
+            <div className="mt-3.5 flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white/60 focus-within:border-[#41cc84]/60 focus-within:text-white transition">
               <i className="pi pi-search text-xs text-white/40" />
               <input
                 type="text"
@@ -190,13 +190,13 @@ export const PortalLayout: React.FC = () => {
                     title={collapsed ? item.label : undefined}
                     className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
                       isActive
-                        ? 'bg-[#b6ff56] text-[#101214] font-bold shadow-[0_0_16px_rgba(182,255,86,0.25)]'
+                        ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_14px_rgba(65,204,132,0.3)]'
                         : 'text-white/65 hover:bg-white/[0.04] hover:text-white'
                     }`}
                   >
                     <i
                       className={`${item.icon} text-sm shrink-0 transition-colors ${
-                        isActive ? 'text-[#101214]' : 'text-white/40 group-hover:text-white'
+                        isActive ? 'text-white' : 'text-white/40 group-hover:text-white'
                       }`}
                     />
 
@@ -209,7 +209,7 @@ export const PortalLayout: React.FC = () => {
                         <span
                           className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             isActive
-                              ? 'bg-black/15 text-black'
+                              ? 'bg-black/20 text-white'
                               : 'bg-white/10 text-white/70'
                           }`}
                         >
@@ -219,7 +219,7 @@ export const PortalLayout: React.FC = () => {
                         <i
                           className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
                             isActive
-                              ? 'text-[#101214]/60'
+                              ? 'text-white/70'
                               : 'text-white/20 group-hover:text-white/50 opacity-0 group-hover:opacity-100'
                           }`}
                         />
@@ -232,7 +232,7 @@ export const PortalLayout: React.FC = () => {
           ))}
         </nav>
 
-        {/* Bottom Sidebar Brand Mark (DWISON Inspired) */}
+        {/* Bottom Sidebar Brand Mark */}
         <div className="p-3.5 border-t border-white/[0.06] flex items-center justify-between">
           {!collapsed ? (
             <>
@@ -247,7 +247,7 @@ export const PortalLayout: React.FC = () => {
                 <div className="min-w-0">
                   <div className="text-xs font-extrabold tracking-wider text-white uppercase flex items-center gap-1.5">
                     <span>PROH</span>
-                    <span className="text-[10px] font-medium text-[#b6ff56] lowercase tracking-normal">
+                    <span className="text-[10px] font-medium text-[#41cc84] lowercase tracking-normal">
                       ops
                     </span>
                   </div>
@@ -312,7 +312,7 @@ export const PortalLayout: React.FC = () => {
               <i className="pi pi-sync text-xs" />
             </button>
 
-            {/* Notifications Icon with Green Unread Dot */}
+            {/* Notifications Icon with Green #41cc84 Unread Dot */}
             <button
               type="button"
               onClick={() => toast.success('3 field teams currently reporting telemetry.')}
@@ -320,12 +320,12 @@ export const PortalLayout: React.FC = () => {
               title="Notifications"
             >
               <i className="pi pi-bell text-xs" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-[#b6ff56] rounded-full shadow-[0_0_6px_#b6ff56]" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[#41cc84] rounded-full shadow-[0_0_6px_#41cc84]" />
             </button>
 
             {/* Hub Badge */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-white/75 rounded">
-              <span className="w-1.5 h-1.5 bg-[#b6ff56] rounded-full animate-pulse" />
+              <span className="w-1.5 h-1.5 bg-[#41cc84] rounded-full animate-pulse" />
               <span>Ashaiman Regional Hub</span>
             </div>
           </div>

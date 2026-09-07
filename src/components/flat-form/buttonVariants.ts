@@ -5,12 +5,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
  * Enforces zero border-radius, clean 1px borders, and ProH Pharmacy brand colors.
  */
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center font-semibold rounded border transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-green focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:shadow-none shadow-xs hover:shadow-sm active:shadow-none',
+  'inline-flex items-center justify-center font-semibold rounded border transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#41cc84] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:shadow-none shadow-xs hover:shadow-sm active:shadow-none',
   {
     variants: {
       variant: {
         primary:
-          '!bg-primary-green hover:!bg-deep-green active:!bg-bright-green !text-white !border-primary-green hover:!border-deep-green',
+          '!bg-[#41cc84] hover:!bg-[#36ba76] active:!bg-[#2fa367] !text-white !border-transparent',
         secondary:
           '!bg-slate-900 hover:!bg-slate-800 active:!bg-slate-950 !text-white !border-slate-900 hover:!border-slate-800',
         danger:

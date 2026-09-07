@@ -30,7 +30,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-white tracking-tight">{moduleName}</h1>
-            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#b6ff56]/15 text-[#b6ff56] border border-[#b6ff56]/30 rounded">
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#41cc84]/15 text-[#41cc84] border border-[#41cc84]/30 rounded">
               Ready for Integration
             </span>
           </div>
@@ -53,7 +53,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
             variant="primary"
             size="sm"
             onClick={() => toast.success(`Action triggered for ${moduleName}`)}
-            className="!bg-[#b6ff56] hover:!bg-[#a5f341] !text-[#101214] !border-transparent text-xs font-bold"
+            className="!bg-[#41cc84] hover:!bg-[#36ba76] active:!bg-[#2fa367] !text-white !border-transparent text-xs font-bold"
             leftIcon="pi pi-plus"
           >
             Add Record
@@ -63,7 +63,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
 
       {/* Main Card Surface */}
       <div className="p-10 bg-[#1e2126] border border-white/[0.06] rounded shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-[#101214] border border-white/10 flex items-center justify-center text-[#b6ff56] text-xl shadow-inner">
+        <div className="w-14 h-14 rounded-full bg-[#101214] border border-white/10 flex items-center justify-center text-[#41cc84] text-xl shadow-inner">
           <i className={icon} />
         </div>
         <div className="space-y-1 max-w-md">

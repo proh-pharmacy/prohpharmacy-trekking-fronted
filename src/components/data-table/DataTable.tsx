@@ -575,7 +575,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={() => navigate(actionOptions.link)}
-                  className="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-none transition"
+                  className="px-4 py-2 bg-[#41cc84] hover:bg-[#36ba76] active:bg-[#2fa367] text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                 >
                   <Plus className="w-4 h-4" />
                   {actionName}
@@ -584,7 +584,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onAction}
-                  className="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-none transition"
+                  className="px-4 py-2 bg-[#41cc84] hover:bg-[#36ba76] active:bg-[#2fa367] text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                 >
                   <Plus className="w-4 h-4" />
                   {actionName}
