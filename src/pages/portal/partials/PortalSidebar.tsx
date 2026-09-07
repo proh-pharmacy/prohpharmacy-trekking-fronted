@@ -132,7 +132,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         {PORTAL_NAV_SECTIONS.map((section) => (
           <div key={section.title} className="space-y-1">
             {!collapsed && (
-              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-lime-200">
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-light-green/70">
                 {section.title}
               </div>
             )}
