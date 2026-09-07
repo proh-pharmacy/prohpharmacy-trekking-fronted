@@ -123,15 +123,6 @@ export const UsersAndRolesPage: React.FC = () => {
     });
   }, [users, searchQuery, roleFilter, statusFilter]);
 
-  // Status Metrics
-  const metrics = useMemo(() => {
-    const total = users.length;
-    const active = users.filter((u) => u.status === 'Active').length;
-    const pending = users.filter((u) => u.status === 'Pending').length;
-    const suspended = users.filter((u) => u.status === 'Suspended').length;
-    return { total, active, pending, suspended };
-  }, [users]);
-
   // Actions
   const handleToggleStatus = async (user: UserItem) => {
     const isActivating = user.status === 'Suspended';
@@ -219,26 +210,6 @@ export const UsersAndRolesPage: React.FC = () => {
             icon="pi pi-user-plus"
             onClick={() => setInviteModalVisible(true)}
           />
-        </div>
-      </div>
-
-      {/* Metric Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 bg-portal-surface border border-portal-border/60 rounded">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-portal-muted">Total Accounts</div>
-          <div className="text-2xl font-bold text-white mt-1">{metrics.total}</div>
-        </div>
-        <div className="p-4 bg-portal-surface border border-portal-border/60 rounded">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-portal-muted">Active Users</div>
-          <div className="text-2xl font-bold text-portal-accent mt-1">{metrics.active}</div>
-        </div>
-        <div className="p-4 bg-portal-surface border border-portal-border/60 rounded">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-portal-muted">Pending Invites</div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{metrics.pending}</div>
-        </div>
-        <div className="p-4 bg-portal-surface border border-portal-border/60 rounded">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-portal-muted">Suspended</div>
-          <div className="text-2xl font-bold text-red-accent mt-1">{metrics.suspended}</div>
         </div>
       </div>
 
