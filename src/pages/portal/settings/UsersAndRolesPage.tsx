@@ -187,9 +187,6 @@ export const UsersAndRolesPage: React.FC = () => {
             <h1 className="text-xl font-bold text-white tracking-tight">
               Users & Access Control
             </h1>
-            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-portal-accent/15 text-portal-accent border border-portal-accent/30 rounded">
-              RBAC
-            </span>
           </div>
           <p className="text-xs text-portal-muted max-w-2xl leading-relaxed">
             Manage enterprise user accounts, assign role permissions (Admin, Manager, Staff, Driver), handle invitation tokens, and control session security.
