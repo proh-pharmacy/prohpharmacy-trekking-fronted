@@ -27,7 +27,7 @@ const sizeClasses: Record<SideModalSize, string> = {
   md: 'max-w-md',
   lg: 'max-w-xl',
   xl: 'max-w-2xl',
-  2xl: 'max-w-3xl',
+  '2xl': 'max-w-3xl',
   full: 'max-w-full',
 };
 

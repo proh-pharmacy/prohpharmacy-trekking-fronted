@@ -566,7 +566,7 @@ export const OverlayShowcase: React.FC = () => {
             id="cold-chain-checkbox"
             label="Enforce Active Cold-Chain Telemetry (2°C - 8°C)"
             checked={coldChainRequired}
-            onChange={(e) => setColdChainRequired(e.checked || false)}
+            onChange={(val) => setColdChainRequired(val)}
           />
 
           <FlatTextarea
