@@ -131,9 +131,16 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto custom-scrollbar">
         {PORTAL_NAV_SECTIONS.map((section) => (
           <div key={section.title} className="space-y-1">
-            {!collapsed && (
+            {!collapsed ? (
               <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
                 {section.title}
+              </div>
+            ) : (
+              <div
+                className="flex items-center justify-center py-2 text-white/35 hover:text-white/70 transition-colors"
+                title={section.title}
+              >
+                <i className="pi pi-ellipsis-h text-xs" />
               </div>
             )}
 
@@ -147,7 +154,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   key={item.to}
                   to={item.to}
                   title={collapsed ? item.label : undefined}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 text-xs rounded transition-all duration-150 group ${
+                  className={`relative flex items-center ${
+                    collapsed ? 'justify-center px-0' : 'gap-3 px-3'
+                  } py-2.5 text-xs rounded transition-all duration-150 group ${
                     isActive
                       ? 'bg-portal-accent hover:bg-portal-accent-hover text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
                       : 'text-light-green font-normal hover:text-white hover:bg-white/[0.08]'
