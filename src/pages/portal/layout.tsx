@@ -173,7 +173,7 @@ export const PortalLayout: React.FC = () => {
           {navSections.map((section) => (
             <div key={section.title} className="space-y-1">
               {!collapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#768390]">
+                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
                   {section.title}
                 </div>
               )}
@@ -191,12 +191,12 @@ export const PortalLayout: React.FC = () => {
                     className={`relative flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded transition-all duration-150 group ${
                       isActive
                         ? 'bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
-                        : 'text-[#adbac7] hover:text-white hover:bg-white/[0.04]'
+                        : 'text-white/90 hover:text-white hover:bg-white/[0.08]'
                     }`}
                   >
                     <i
                       className={`${item.icon} text-sm shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-[#768390] group-hover:text-white'
+                        isActive ? 'text-white' : 'text-white/70 group-hover:text-white'
                       }`}
                     />
 
@@ -210,7 +210,7 @@ export const PortalLayout: React.FC = () => {
                           className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             isActive
                               ? 'bg-black/20 text-white'
-                              : 'bg-[#22272e] text-[#adbac7] border border-[#444c56]'
+                              : 'bg-[#22272e] text-white/90 border border-[#444c56]'
                           }`}
                         >
                           {item.badge}
@@ -220,7 +220,7 @@ export const PortalLayout: React.FC = () => {
                           className={`pi pi-chevron-right text-[9px] shrink-0 transition-opacity ${
                             isActive
                               ? 'text-white/70'
-                              : 'text-white/20 group-hover:text-white/60 opacity-0 group-hover:opacity-100'
+                              : 'text-white/40 group-hover:text-white/80 opacity-0 group-hover:opacity-100'
                           }`}
                         />
                       )
