@@ -70,26 +70,26 @@ export const PortalLayout: React.FC = () => {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen flex bg-[#141c17] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-black">
-      {/* Sleek Dark Green Sidebar */}
+    <div className="min-h-screen flex bg-[#06140d] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-black">
+      {/* Sleek Rich Deep Forest Green Sidebar */}
       <aside
-        className={`bg-[#18231c] border-r border-white/10 flex flex-col shrink-0 transition-all duration-300 z-30 ${
+        className={`bg-[#071f14] border-r border-white/[0.08] flex flex-col shrink-0 transition-all duration-300 z-30 ${
           collapsed ? 'w-[72px]' : 'w-64'
         }`}
       >
         {/* Sidebar Header with Brand Mark */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-white/10">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.08]">
           <NavLink
             to="/portal/dashboard"
             className="flex items-center gap-3 overflow-hidden group focus:outline-none"
           >
-            <div className="relative shrink-0 flex items-center justify-center w-10 h-10 rounded bg-[#202d24] border border-white/10 group-hover:border-[#41cc84]/40 transition">
+            <div className="relative shrink-0 flex items-center justify-center w-10 h-10 rounded bg-[#0d2f1f] border border-white/10 group-hover:border-[#41cc84]/40 transition">
               <img
                 src="/images/prohpharmacy_icon_white.png"
                 alt="ProH Pharmacy Logo"
                 className="w-6 h-6 object-contain"
               />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#18231c] rounded-full" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#071f14] rounded-full" />
             </div>
 
             {!collapsed && (
@@ -167,16 +167,16 @@ export const PortalLayout: React.FC = () => {
           ))}
         </nav>
 
-        {/* User Profile Pill in Sidebar Bottom (Matching Image 3 active dot style) */}
-        <div className="p-3 border-t border-white/10 bg-[#16201a]">
+        {/* User Profile Pill in Sidebar Bottom */}
+        <div className="p-3 border-t border-white/[0.08] bg-[#04150c]">
           <div className="flex items-center gap-3">
             {/* Avatar with Live Green Status Indicator */}
             <div className="relative shrink-0">
-              <div className="w-9 h-9 rounded bg-[#2a382e] border border-white/15 flex items-center justify-center text-xs font-bold text-[#41cc84] shadow-inner">
+              <div className="w-9 h-9 rounded bg-[#0b2718] border border-white/15 flex items-center justify-center text-xs font-bold text-[#41cc84] shadow-inner">
                 {userInitials}
               </div>
               <span
-                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#16201a] rounded-full"
+                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#41cc84] border-2 border-[#04150c] rounded-full"
                 title="Active"
               />
             </div>
@@ -205,9 +205,9 @@ export const PortalLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#141c17] overflow-hidden">
-        {/* Top Navbar in Dark Theme */}
-        <header className="h-16 bg-[#18231c] border-b border-white/10 px-6 flex items-center justify-between shrink-0 z-20">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#06140d] overflow-hidden">
+        {/* Top Navbar in Rich Deep Dark Green Theme */}
+        <header className="h-16 bg-[#071f14] border-b border-white/[0.08] px-6 flex items-center justify-between shrink-0 z-20">
           {/* Breadcrumb & Regional Hub Badge */}
           <div className="flex items-center gap-3">
             <div className="text-xs font-mono text-white/50">
@@ -216,6 +216,7 @@ export const PortalLayout: React.FC = () => {
                 {location.pathname.replace('/portal/', '').toUpperCase() || 'DASHBOARD'}
               </span>
             </div>
+
 
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 text-[11px] font-medium text-white/80 rounded">
               <span className="w-1.5 h-1.5 bg-[#41cc84] rounded-full animate-pulse" />
