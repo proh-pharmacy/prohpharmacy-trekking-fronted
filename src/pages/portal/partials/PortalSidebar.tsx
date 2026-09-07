@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Tooltip } from 'primereact/tooltip';
 import { useAuth } from '../../../context';
 import { PORTAL_NAV_SECTIONS } from './portalNavItems';
 import toast from 'react-hot-toast';
@@ -39,6 +40,16 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         collapsed ? 'w-[72px]' : 'w-60 lg:w-64'
       }`}
     >
+      {/* Tooltip for Collapsed Sidebar Elements */}
+      <Tooltip
+        target=".portal-tooltip-item"
+        position="right"
+        showDelay={100}
+        hideDelay={40}
+        className="portal-sidebar-tooltip"
+        disabled={!collapsed}
+      />
+
       {/* Top: User Profile & Collapse Toggle */}
       <div className="shrink-0 p-4 border-b border-portal-border/60 bg-portal-surface">
         {!collapsed ? (
@@ -77,7 +88,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2.5">
-            <div className="relative">
+            <div
+              className="relative portal-tooltip-item cursor-pointer"
+              data-pr-tooltip={`${userName} • ${user?.roles?.[0] || 'Operations Lead'}`}
+              data-pr-position="right"
+            >
               <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                 {userInitials}
               </div>
@@ -90,8 +105,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
-              title="Expand sidebar"
+              className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer portal-tooltip-item"
+              data-pr-tooltip="Expand sidebar"
+              data-pr-position="right"
             >
               <i className="pi pi-chevron-right text-xs" />
             </button>
@@ -118,8 +134,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="p-2 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition"
-              title="Search (⌘K)"
+              className="p-2 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition portal-tooltip-item"
+              data-pr-tooltip="Search (⌘K)"
+              data-pr-position="right"
             >
               <i className="pi pi-search text-xs" />
             </button>
@@ -137,8 +154,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               </div>
             ) : (
               <div
-                className="flex items-center justify-center py-2 text-white/35 hover:text-white/70 transition-colors"
-                title={section.title}
+                className="flex items-center justify-center py-2 text-white/35 hover:text-white/70 transition-colors portal-tooltip-item cursor-default"
+                data-pr-tooltip={section.title}
+                data-pr-position="right"
               >
                 <i className="pi pi-ellipsis-h text-xs" />
               </div>
@@ -149,14 +167,19 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 location.pathname === item.to ||
                 (item.to === '/portal/dashboard' && location.pathname === '/portal');
 
+              const tooltipText = item.badge
+                ? `${item.label} (${item.badge})`
+                : item.label;
+
               return (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  title={collapsed ? item.label : undefined}
+                  data-pr-tooltip={collapsed ? tooltipText : undefined}
+                  data-pr-position="right"
                   className={`relative flex items-center ${
                     collapsed ? 'justify-center px-0' : 'gap-3 px-3'
-                  } py-2.5 text-xs rounded transition-all duration-150 group ${
+                  } py-2.5 text-xs rounded transition-all duration-150 group portal-tooltip-item ${
                     isActive
                       ? 'bg-portal-accent hover:bg-portal-accent-hover text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
                       : 'text-light-green font-normal hover:text-white hover:bg-white/[0.08]'
@@ -232,8 +255,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           <button
             type="button"
             onClick={handleLogout}
-            title="Sign Out"
-            className="w-full flex justify-center p-2 text-red-accent hover:text-red-accent-hover hover:bg-red-accent/10 rounded transition cursor-pointer"
+            className="w-full flex justify-center p-2 text-red-accent hover:text-red-accent-hover hover:bg-red-accent/10 rounded transition cursor-pointer portal-tooltip-item"
+            data-pr-tooltip="Sign Out"
+            data-pr-position="right"
           >
             <i className="pi pi-sign-out text-sm" />
           </button>
