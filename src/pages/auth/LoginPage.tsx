@@ -164,6 +164,7 @@ export const LoginPage: React.FC = () => {
               <FlatInputText
                 id="login-email"
                 type="email"
+                size="md"
                 variant="dark"
                 leftIcon="pi pi-envelope"
                 iconClassName="text-[#4fb587]"
@@ -187,6 +188,7 @@ export const LoginPage: React.FC = () => {
             render={({ field }) => (
               <FlatInputPassword
                 id="login-password"
+                size="md"
                 variant="dark"
                 leftIcon="pi pi-lock"
                 iconClassName="text-[#4fb587]"

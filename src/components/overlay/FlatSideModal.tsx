@@ -95,9 +95,9 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
       >
         <div
           ref={panelRef}
-          className={`w-screen ${sizeClasses[size]} bg-[#2d333b] ${
+          className={`w-screen ${sizeClasses[size]} bg-portal-surface ${
             isRight ? 'border-l' : 'border-r'
-          } border-[#444c56]/80 shadow-2xl flex flex-col h-full z-10 text-white select-text ${
+          } border-portal-border/80 shadow-2xl flex flex-col h-full z-10 text-white select-text ${
             isRight ? 'animate-slideInRight' : 'animate-slideInLeft'
           } ${className}`}
         >
@@ -105,10 +105,10 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
           {header !== undefined ? (
             header
           ) : title ? (
-            <div className="shrink-0 px-6 py-4 border-b border-[#444c56]/60 flex items-center justify-between gap-4 bg-[#2d333b]">
+            <div className="shrink-0 px-6 py-4 border-b border-portal-border/60 flex items-center justify-between gap-4 bg-portal-surface">
               <div className="flex items-center gap-3 min-w-0">
                 {icon && (
-                  <div className="w-9 h-9 rounded bg-[#22272e] border border-[#444c56] flex items-center justify-center text-[#41cc84] shrink-0 shadow-inner">
+                  <div className="w-9 h-9 rounded bg-portal-canvas border border-portal-border flex items-center justify-center text-portal-accent shrink-0 shadow-inner">
                     <i className={`${icon} text-base`} />
                   </div>
                 )}
@@ -120,7 +120,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
                     {badge && <span>{badge}</span>}
                   </div>
                   {subtitle && (
-                    <p className="text-xs text-[#768390] mt-0.5 truncate">
+                    <p className="text-xs text-portal-muted mt-0.5 truncate">
                       {subtitle}
                     </p>
                   )}
@@ -131,7 +131,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
                 <button
                   type="button"
                   onClick={onHide}
-                  className="p-1.5 text-[#768390] hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
+                  className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
                   title="Close panel"
                 >
                   <i className="pi pi-times text-xs" />
@@ -141,13 +141,13 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
           ) : null}
 
           {/* Scrollable Drawer Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar text-sm text-[#adbac7] leading-relaxed">
+          <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar text-sm text-portal-text leading-relaxed">
             {children}
           </div>
 
-          {/* Pinned Bottom Action Footer */}
+          {/* Bottom Fixed Footer */}
           {footer && (
-            <div className="shrink-0 px-6 py-3.5 border-t border-[#444c56]/60 bg-[#22272e] flex items-center justify-end gap-3">
+            <div className="shrink-0 px-6 py-3.5 border-t border-portal-border/60 bg-portal-canvas flex items-center justify-end gap-3">
               {footer}
             </div>
           )}

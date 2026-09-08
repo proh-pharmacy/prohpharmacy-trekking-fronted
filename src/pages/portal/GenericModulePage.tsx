@@ -25,16 +25,16 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans">
-      {/* Header Card in #2d333b with #444c56 border */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-[#2d333b] border border-[#444c56]/60 rounded shadow-sm">
+      {/* Header Card in portal-surface with portal-border */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-portal-surface border border-portal-border/60 rounded shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-white tracking-tight">{moduleName}</h1>
-            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#41cc84]/15 text-[#41cc84] border border-[#41cc84]/30 rounded">
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-portal-accent/15 text-portal-accent border border-portal-accent/30 rounded">
               Ready for Integration
             </span>
           </div>
-          <p className="text-xs text-[#768390] mt-1">
+          <p className="text-xs text-portal-muted mt-1">
             {description || `ProH Pharmacy Trekking Operations — ${moduleName} module.`}
           </p>
         </div>
@@ -44,7 +44,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
             variant="outline"
             size="sm"
             onClick={() => toast.success(`Refreshing ${moduleName}...`)}
-            className="!border-[#444c56] !text-[#adbac7] hover:!bg-white/5 text-xs font-semibold"
+            className="!border-portal-border !text-portal-text hover:!bg-white/5 text-xs font-semibold"
             leftIcon="pi pi-refresh"
           >
             Refresh
@@ -53,7 +53,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
             variant="primary"
             size="sm"
             onClick={() => toast.success(`Action triggered for ${moduleName}`)}
-            className="!bg-[#41cc84] hover:!bg-[#36ba76] active:!bg-[#2fa367] !text-white !border-transparent text-xs font-bold"
+            className="!bg-portal-accent hover:!bg-portal-accent-hover active:!bg-portal-accent-hover !text-white !border-transparent text-xs font-bold"
             leftIcon="pi pi-plus"
           >
             Add Record
@@ -61,17 +61,17 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
         </div>
       </div>
 
-      {/* Main Card Surface in #2d333b */}
-      <div className="p-10 bg-[#2d333b] border border-[#444c56]/60 rounded shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-[#22272e] border border-[#444c56] flex items-center justify-center text-[#41cc84] text-xl shadow-inner">
+      {/* Main Card Surface in portal-surface */}
+      <div className="p-10 bg-portal-surface border border-portal-border/60 rounded shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-portal-accent text-xl shadow-inner">
           <i className={icon} />
         </div>
         <div className="space-y-1 max-w-md">
           <h2 className="text-base font-bold text-white tracking-wide">
             {moduleName} Viewport Ready
           </h2>
-          <p className="text-xs text-[#768390] leading-relaxed">
-            This module outlet is structured and mounted within the #22272e / #2d333b layout.
+          <p className="text-xs text-portal-muted leading-relaxed">
+            This module outlet is structured and mounted within the portal layout.
             Ready to receive backend API contracts and components.
           </p>
         </div>

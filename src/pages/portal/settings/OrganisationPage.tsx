@@ -356,15 +356,15 @@ export const OrganisationPage: React.FC = () => {
                             >
                               {branch.name}
                             </div>
-                            <div className="text-xs text-[#cdd9e5] truncate max-w-xs mt-0.5">{branch.address}</div>
+                            <div className="text-xs text-portal-text truncate max-w-xs mt-0.5">{branch.address}</div>
                           </td>
 
                           <td className="py-3.5 px-4">
                             <div className="text-white font-medium text-xs">{dist?.name || 'Unassigned'}</div>
-                            <div className="text-xs text-[#cdd9e5]">{reg?.name || 'Ghana'}</div>
+                            <div className="text-xs text-portal-text">{reg?.name || 'Ghana'}</div>
                           </td>
 
-                          <td className="py-3.5 px-4 font-mono text-xs text-[#e6edf3] font-semibold">
+                          <td className="py-3.5 px-4 font-mono text-xs text-portal-text font-semibold">
                             {branch.phoneNumber}
                           </td>
 
@@ -500,7 +500,7 @@ export const OrganisationPage: React.FC = () => {
                             {reg?.name || 'Ghana'}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="text-xs font-mono text-[#e6edf3] font-medium">
+                            <span className="text-xs font-mono text-portal-text font-medium">
                               {branchCount} {branchCount === 1 ? 'branch' : 'branches'}
                             </span>
                           </td>

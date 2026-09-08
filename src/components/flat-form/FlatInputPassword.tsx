@@ -1,14 +1,17 @@
 import { forwardRef } from 'react';
 import { Password, type PasswordProps } from 'primereact/password';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
 export interface FlatInputPasswordProps
-  extends Omit<PasswordProps, 'variant'> {
+  extends Omit<PasswordProps, 'variant' | 'size'> {
   label?: string;
   helperText?: string;
   errorMessage?: string;
   leftIcon?: string;
   fullWidth?: boolean;
   variant?: 'default' | 'dark' | 'white';
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
   iconClassName?: string;
 }
 
@@ -21,6 +24,8 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
       leftIcon,
       fullWidth = true,
       variant = 'dark',
+      size,
+      inputSize,
       iconClassName = '',
       className = '',
       inputClassName = '',
@@ -37,14 +42,16 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     const isDark = variant === 'dark';
     const isWhite = variant === 'white';
+    const effectiveSize: FlatInputSize = size || inputSize || 'md';
+    const sizeConfig = getInputSizeClasses(effectiveSize, !!leftIcon, true);
 
     return (
-      <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+      <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
         {label && (
           <label
             htmlFor={inputId}
-            className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
-              isDark ? 'text-[#adbac7]' : 'text-slate-700'
+            className={`font-medium tracking-wider uppercase flex items-center gap-1 ${sizeConfig.label} ${
+              isDark ? 'text-portal-muted' : 'text-slate-700'
             }`}
           >
             {label}
@@ -55,9 +62,9 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
         <div className="relative flex items-center w-full">
           {leftIcon && (
             <span
-              className={`absolute left-3.5 top-0 bottom-0 flex items-center justify-center pointer-events-none text-base z-10 ${
-                iconClassName || (isDark ? 'text-portal-muted' : 'text-slate-400')
-              }`}
+              className={`absolute top-0 bottom-0 flex items-center justify-center pointer-events-none z-10 ${
+                sizeConfig.leftIcon
+              } ${iconClassName || (isDark ? 'text-portal-muted' : 'text-slate-400')}`}
             >
               <i className={leftIcon} />
             </span>
@@ -72,7 +79,9 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
             onChange={onChange}
             style={{ width: '100%' }}
             inputStyle={{ width: '100%' }}
-            className={`!w-full flex-1 [&_.p-icon-field]:!w-full [&_.p-icon-field]:!flex-1 [&_.p-icon-field]:!flex [&_.p-icon-field]:!relative [&_.p-input-icon]:!top-0 [&_.p-input-icon]:!bottom-0 [&_.p-input-icon]:!my-auto [&_.p-input-icon]:!h-full [&_.p-input-icon]:!flex [&_.p-input-icon]:!items-center [&_.p-input-icon]:!right-3.5 ${
+            className={`!w-full flex-1 [&_.p-icon-field]:!w-full [&_.p-icon-field]:!flex-1 [&_.p-icon-field]:!flex [&_.p-icon-field]:!relative [&_.p-input-icon]:!top-0 [&_.p-input-icon]:!bottom-0 [&_.p-input-icon]:!my-auto [&_.p-input-icon]:!h-full [&_.p-input-icon]:!flex [&_.p-input-icon]:!items-center [&_.p-input-icon]:!right-3 ${
+              effectiveSize === 'sm' ? 'h-[38px] [&_.p-input-icon]:!text-xs' : ''
+            } ${
               isDark
                 ? '[&_.p-password-show-icon]:!text-portal-muted hover:[&_.p-password-show-icon]:!text-white [&_.p-password-hide-icon]:!text-portal-muted hover:[&_.p-password-hide-icon]:!text-white'
                 : isWhite
@@ -80,7 +89,8 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
                 : ''
             } ${className}`}
             inputClassName={`
-              !w-full border rounded text-sm px-3.5 py-2.5 transition-colors
+              !w-full border rounded transition-colors
+              ${sizeConfig.input}
               ${
                 isWhite
                   ? '!bg-white !text-slate-900 !border-0 placeholder:!text-slate-400 focus:!ring-2 focus:!ring-[#41cc84] focus:!outline-none'
@@ -88,7 +98,6 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
                   ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none'
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed'
               }
-              ${leftIcon ? '!pl-10' : ''}
               ${errorMessage ? '!border-red-500' : ''}
               ${inputClassName}
             `}

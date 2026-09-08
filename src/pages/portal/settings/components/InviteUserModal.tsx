@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatInputText } from '../../../../components/flat-form';
-import { usersApi, type Role } from '../../../../api-client';
+import { FlatButton, FlatDropdown, FlatInputText, FlatMultiSelect } from '../../../../components/flat-form';
+import { usersApi, type Role, type InviteStaffResponse } from '../../../../api-client';
 import toast from 'react-hot-toast';
+
+const DEFAULT_SYSTEM_ROLES: Role[] = [
+  { name: 'SuperAdmin' },
+  { name: 'OperationsManager' },
+  { name: 'BranchManager' },
+  { name: 'FieldStaff' },
+  { name: 'Driver' },
+  { name: 'CreditOfficer' },
+  { name: 'Auditor' },
+];
 
 interface InviteUserModalProps {
   visible: boolean;
@@ -17,24 +27,72 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   availableRoles,
   onSuccess,
 }) => {
-  const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['Staff']);
+  const [staffMemberId, setStaffMemberId] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [initialPassword, setInitialPassword] = useState('');
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [createdResult, setCreatedResult] = useState<InviteStaffResponse | null>(null);
 
-  const toggleRole = (roleName: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(roleName)
-        ? prev.filter((r) => r !== roleName)
-        : [...prev, roleName]
-    );
+  const rolesToDisplay = availableRoles.length > 0 ? availableRoles : DEFAULT_SYSTEM_ROLES;
+  const roleOptions = rolesToDisplay.map((r) => ({
+    label: r.name,
+    value: r.name,
+  }));
+
+  // Load staff members without app access
+  useEffect(() => {
+    if (visible) {
+      let isMounted = true;
+      setLoadingStaff(true);
+      setCreatedResult(null);
+      setStaffMemberId('');
+      setInitialPassword('');
+      setSelectedRoles([]);
+
+      usersApi
+        .getStaffMembers({ hasAppAccess: false })
+        .then((list) => {
+          if (!isMounted) return;
+          const eligible = list.filter(
+            (s) => s.hasAppAccess !== true && s.status !== 'Offboarded'
+          );
+          setStaffList(eligible);
+        })
+        .catch(() => {
+          if (isMounted) setStaffList([]);
+        })
+        .finally(() => {
+          if (isMounted) setLoadingStaff(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [visible]);
+
+  const selectedStaff = staffList.find(
+    (s) => (s.id || s.staffMemberId) === staffMemberId
+  );
+
+  const handleCopyPassword = (pwd: string) => {
+    navigator.clipboard.writeText(pwd);
+    toast.success('Password copied to clipboard!');
+  };
+
+  const handleClose = () => {
+    onHide();
+    if (createdResult) {
+      onSuccess?.();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !firstName || !lastName) {
-      toast.error('Please fill in all required fields.');
+    if (!staffMemberId) {
+      toast.error('Please select a staff member.');
       return;
     }
     if (selectedRoles.length === 0) {
@@ -44,34 +102,115 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
     setSubmitting(true);
     try {
-      await usersApi.inviteUser({
-        email: email.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        roles: selectedRoles,
+      const res = await usersApi.inviteUser({
+        staffMemberId,
+        roleNames: selectedRoles,
+        initialPassword: initialPassword.trim() || undefined,
       });
-      toast.success(`Invitation email sent to ${email}`);
-      setEmail('');
-      setFirstName('');
-      setLastName('');
-      setSelectedRoles(['Staff']);
-      onHide();
-      onSuccess?.();
+
+      toast.success('Staff member invited successfully!');
+      if (res.initialPassword) {
+        setCreatedResult(res);
+      } else {
+        handleClose();
+        onSuccess?.();
+      }
     } catch (err: any) {
-      const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to send invitation.';
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        'Failed to onboard staff member.';
       toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const staffOptions = [
+    { label: 'Select staff member...', value: '' },
+    ...staffList.map((s) => {
+      const name =
+        s.fullName ||
+        `${s.firstName || ''} ${s.lastName || ''}`.trim() ||
+        s.email ||
+        'Staff Member';
+      const empNo = s.employeeNumber ? ` (${s.employeeNumber})` : '';
+      const meta = s.branchName ? ` — ${s.branchName}` : s.jobTitle ? ` — ${s.jobTitle}` : '';
+      return {
+        label: `${name}${empNo}${meta}`,
+        value: s.id || s.staffMemberId,
+      };
+    }),
+  ];
+
+  // Success view when one-time credentials are returned
+  if (createdResult && createdResult.initialPassword) {
+    return (
+      <FlatModal
+        visible={visible}
+        onHide={handleClose}
+        title="Account Created"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end w-full">
+            <FlatButton
+              variant="primary"
+              label="Done"
+              icon="pi pi-check"
+              onClick={handleClose}
+            />
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
+          <div className="bg-portal-canvas border border-portal-border/60 rounded p-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between py-1 border-b border-portal-border/40">
+              <span className="text-portal-muted">Staff Member</span>
+              <span className="font-medium text-white">
+                {createdResult.staffFullName || selectedStaff?.fullName || 'Staff Member'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1 border-b border-portal-border/40">
+              <span className="text-portal-muted">Login Email</span>
+              <span className="font-mono text-white text-xs">
+                {createdResult.staffEmail || selectedStaff?.emailAddress || selectedStaff?.email}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1 border-b border-portal-border/40">
+              <span className="text-portal-muted">Assigned Roles</span>
+              <span className="text-white text-xs">
+                {(createdResult.roles || selectedRoles).join(', ')}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <span className="text-portal-muted block text-[11px]">Initial Password</span>
+                <span className="font-mono text-amber-400 font-bold text-sm">
+                  {createdResult.initialPassword}
+                </span>
+              </div>
+              <FlatButton
+                variant="outline"
+                size="sm"
+                label="Copy"
+                icon="pi pi-copy"
+                onClick={() => handleCopyPassword(createdResult.initialPassword!)}
+              />
+            </div>
+          </div>
+        </div>
+      </FlatModal>
+    );
+  }
+
   return (
     <FlatModal
       visible={visible}
       onHide={onHide}
-      title="Invite New User"
-      subtitle="Send a secure 48-hour invitation link to onboard a new account"
-      badge="Admin"
+      title="Invite User"
       size="md"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
@@ -86,82 +225,95 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             label={submitting ? 'Sending...' : 'Send Invitation'}
             icon="pi pi-send"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !staffMemberId || selectedRoles.length === 0}
           />
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FlatInputText
-            label="First Name"
-            placeholder="e.g. Ama"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-          />
-          <FlatInputText
-            label="Last Name"
-            placeholder="e.g. Owusu"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            required
-          />
-        </div>
-
-        <FlatInputText
-          label="Corporate Email"
-          type="email"
-          placeholder="e.g. a.owusu@prohpharmacy.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          helperText="The user will receive an onboarding link to set their secure password."
+        {/* Step 1: Staff Selection Dropdown (Only field shown initially) */}
+        <FlatDropdown
+          label="Select Staff Member"
           required
+          placeholder={
+            loadingStaff
+              ? 'Loading staff...'
+              : staffList.length === 0
+              ? 'No staff pending app access'
+              : 'Choose a staff member...'
+          }
+          value={staffMemberId}
+          onChange={(val) => setStaffMemberId(val)}
+          size="sm"
+          options={staffOptions}
+          disabled={loadingStaff || staffList.length === 0}
         />
 
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#adbac7] mb-2">
-            Assign Initial Roles <span className="text-red-accent">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-2.5">
-            {availableRoles.map((role) => {
-              const isChecked = selectedRoles.includes(role.name);
-              return (
-                <button
-                  type="button"
-                  key={role.name}
-                  onClick={() => toggleRole(role.name)}
-                  className={`p-3 rounded border text-left flex items-start justify-between transition cursor-pointer ${
-                    isChecked
-                      ? 'bg-portal-accent/10 border-portal-accent text-white'
-                      : 'bg-portal-canvas/70 border-portal-border text-[#adbac7] hover:border-portal-border/80'
-                  }`}
-                >
-                  <div>
-                    <div className="text-xs font-bold">{role.name}</div>
-                    <div className="text-[11px] text-portal-muted mt-0.5">
-                      {role.name === 'Admin'
-                        ? 'Full system & security controls'
-                        : role.name === 'Manager'
-                        ? 'Branch & team operations'
-                        : role.name === 'Driver'
-                        ? 'Dispatch & transit runs'
-                        : 'Standard staff duties'}
-                    </div>
-                  </div>
-                  <div
-                    className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] shrink-0 mt-0.5 ${
-                      isChecked
-                        ? 'bg-portal-accent border-portal-accent text-white'
-                        : 'border-portal-border bg-portal-surface'
-                    }`}
-                  >
-                    {isChecked && <i className="pi pi-check" />}
-                  </div>
-                </button>
-              );
-            })}
+        {/* Step 2: Show details, role selector, and password (kept in DOM with opacity-0 to prevent modal resizing) */}
+        <div
+          className={`space-y-4 pt-1 transition-opacity duration-200 ${
+            selectedStaff ? 'opacity-100' : 'opacity-0 pointer-events-none select-none'
+          }`}
+        >
+          {/* Nice Staff Details Card */}
+          <div className="bg-portal-canvas border border-portal-border/60 rounded p-4 space-y-2.5 text-xs min-h-[96px]">
+            <div className="flex items-center justify-between pb-2 border-b border-portal-border/40">
+              <span className="font-semibold text-white text-sm">
+                {selectedStaff ? (selectedStaff.fullName || `${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim()) : 'Staff Details'}
+              </span>
+              {selectedStaff?.employeeNumber && (
+                <span className="font-mono text-xs text-portal-accent font-semibold">
+                  {selectedStaff.employeeNumber}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-0.5">
+              <div>
+                <span className="text-portal-muted text-[11px] block">Corporate Email</span>
+                <span className="font-mono text-white text-xs">
+                  {selectedStaff ? (selectedStaff.emailAddress || selectedStaff.email || '—') : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-portal-muted text-[11px] block">Branch / Hub</span>
+                <span className="text-white text-xs">
+                  {selectedStaff ? (selectedStaff.branchName || '—') : '—'}
+                </span>
+              </div>
+              {selectedStaff?.jobTitle && (
+                <div className="col-span-2">
+                  <span className="text-portal-muted text-[11px] block">Job Title</span>
+                  <span className="text-white text-xs">
+                    {selectedStaff.jobTitle}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Role Selection Field */}
+          <FlatMultiSelect
+            label="Assigned Roles"
+            required
+            value={selectedRoles}
+            onChange={(val) => setSelectedRoles(val || [])}
+            options={roleOptions}
+            placeholder="Select roles..."
+            size="sm"
+            display="chip"
+            errorMessage={selectedStaff && selectedRoles.length === 0 ? 'At least one role is required.' : undefined}
+          />
+
+          {/* Optional Password Field */}
+          <FlatInputText
+            label="Password (Optional)"
+            type="password"
+            placeholder="Defaults to firstnamelastname if omitted"
+            value={initialPassword}
+            onChange={(e) => setInitialPassword(e.target.value)}
+            size="sm"
+          />
         </div>
       </form>
     </FlatModal>

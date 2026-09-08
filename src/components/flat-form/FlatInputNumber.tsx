@@ -1,7 +1,8 @@
 import React from 'react';
 import { InputNumber, type InputNumberProps, type InputNumberValueChangeEvent } from 'primereact/inputnumber';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
-export interface FlatInputNumberProps extends Omit<InputNumberProps, 'value' | 'onChange' | 'variant'> {
+export interface FlatInputNumberProps extends Omit<InputNumberProps, 'value' | 'onChange' | 'variant' | 'size'> {
   value?: number | null;
   onChange?: (value: number | null) => void;
   label?: string;
@@ -9,6 +10,8 @@ export interface FlatInputNumberProps extends Omit<InputNumberProps, 'value' | '
   errorMessage?: string;
   fullWidth?: boolean;
   variant?: 'default' | 'dark' | 'white';
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
 }
 
 export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
@@ -19,6 +22,8 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
   errorMessage,
   fullWidth = true,
   variant = 'dark',
+  size,
+  inputSize,
   className = '',
   inputClassName = '',
   id,
@@ -27,14 +32,16 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
+  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
-            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          className={`font-medium tracking-wider uppercase flex items-center gap-1 ${sizeConfig.label} ${
+            isDark ? 'text-portal-muted' : 'text-slate-700'
           }`}
         >
           {label}
@@ -48,7 +55,8 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
         onValueChange={(e: InputNumberValueChangeEvent) => onChange?.(e.value ?? null)}
         className={`w-full ${className}`}
         inputClassName={`
-          w-full border rounded text-sm px-3.5 py-2.5 transition-colors
+          w-full border rounded transition-colors
+          ${sizeConfig.input}
           ${
             isDark
               ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'

@@ -1,13 +1,16 @@
 import React from 'react';
 import { InputMask, type InputMaskChangeEvent, type InputMaskProps } from 'primereact/inputmask';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
-export interface FlatInputMaskProps extends Omit<InputMaskProps, 'value' | 'onChange'> {
+export interface FlatInputMaskProps extends Omit<InputMaskProps, 'value' | 'onChange' | 'size'> {
   value?: string;
   onChange?: (value: string) => void;
   label?: string;
   helperText?: string;
   errorMessage?: string;
   fullWidth?: boolean;
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
 }
 
 export const FlatInputMask: React.FC<FlatInputMaskProps> = ({
@@ -17,6 +20,8 @@ export const FlatInputMask: React.FC<FlatInputMaskProps> = ({
   helperText,
   errorMessage,
   fullWidth = true,
+  size,
+  inputSize,
   className = '',
   id,
   required,
@@ -25,13 +30,15 @@ export const FlatInputMask: React.FC<FlatInputMaskProps> = ({
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className="text-xs font-semibold tracking-wide uppercase text-slate-700 flex items-center gap-1"
+          className={`font-semibold tracking-wide uppercase text-slate-700 flex items-center gap-1 ${sizeConfig.label}`}
         >
           {label}
           {required && <span className="text-red-500">*</span>}
@@ -45,7 +52,8 @@ export const FlatInputMask: React.FC<FlatInputMaskProps> = ({
         mask={mask}
         placeholder={placeholder}
         className={`
-          w-full border rounded text-sm px-3 py-2 transition-colors
+          w-full border rounded transition-colors
+          ${sizeConfig.input}
           bg-white border-slate-300 text-slate-900 placeholder-slate-400
           hover:border-slate-400 focus:border-teal-600 focus:ring-0 focus:outline-none
           disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed

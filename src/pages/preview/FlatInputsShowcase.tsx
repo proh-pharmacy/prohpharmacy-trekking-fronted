@@ -263,6 +263,86 @@ export const FlatInputsShowcase: React.FC = () => {
               </div>
             </section>
 
+            {/* Size Variants & Alignment Section */}
+            <section className="bg-white border border-slate-300 p-6 shadow-xs space-y-5">
+              <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                    <i className="pi pi-arrows-v text-teal-700" />
+                    Height Variants (sm: 38px, md: 44px, lg: 50px)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Compact 38px variants match dropdowns (like Linked Staff Member) and toolbar inputs
+                  </p>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400">size="sm" | "md" | "lg"</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded">
+                  <span className="text-xs font-bold text-teal-800 uppercase tracking-wider block mb-2">
+                    Compact Size (38px) - Perfect Equal Height with Dropdown
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <FlatInputText
+                      label="Staff Member ID"
+                      placeholder="e.g. STF-001"
+                      size="sm"
+                      leftIcon="pi pi-user"
+                    />
+                    <FlatDropdown
+                      label="Linked Staff Member"
+                      value={dropdownValue}
+                      options={statusOptions}
+                      onChange={(val) => setDropdownValue(val)}
+                      size="sm"
+                    />
+                    <FlatInputPassword
+                      label="Security PIN"
+                      value="1234"
+                      size="sm"
+                      toggleMask
+                    />
+                    <FlatDatePicker
+                      label="Deployment Date"
+                      value={dateValue}
+                      onChange={(val) => setDateValue(val)}
+                      size="sm"
+                    />
+                    <div className="sm:col-span-2">
+                      <FlatMultiSelect
+                        label="Assigned Duties (Multi-Select)"
+                        value={multiSelectValue}
+                        options={medicationOptions}
+                        onChange={(val) => setMultiSelectValue(val)}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                    Standard Size (44px)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <FlatInputText
+                      label="Standard Input"
+                      placeholder="Default 44px height"
+                      size="md"
+                    />
+                    <FlatDropdown
+                      label="Standard Dropdown"
+                      value={dropdownValue}
+                      options={statusOptions}
+                      onChange={(val) => setDropdownValue(val)}
+                      size="md"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* 2. Password, Numbers & Currency */}
             <section className="bg-white border border-slate-300 p-6 shadow-xs space-y-5">
               <div className="border-b border-slate-200 pb-3 flex items-center justify-between">

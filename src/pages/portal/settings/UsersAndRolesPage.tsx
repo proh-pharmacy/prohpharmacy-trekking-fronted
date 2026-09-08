@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { usersApi, type UserItem, type Role } from '../../../api-client';
 import {
@@ -14,13 +15,17 @@ import { ManageRolesModal } from './components/ManageRolesModal';
 import toast from 'react-hot-toast';
 
 const SEEDED_ROLES: Role[] = [
-  { name: 'Admin', description: 'Complete system, security, user administration & organisation authority.' },
-  { name: 'Manager', description: 'Branch management, duty rosters, vehicle dispatch & mission scheduling.' },
-  { name: 'Staff', description: 'Pharmacy stock, facility management, attendance check-in & order intake.' },
-  { name: 'Driver', description: 'Trekking run dispatch, mobile route delivery & biometric checkpoints.' },
+  { name: 'SuperAdmin', description: 'Complete system, security, user administration & organisation authority.', isSystem: true },
+  { name: 'OperationsManager', description: 'All treks, fleet, customer accounts, and operations reports.', isSystem: true },
+  { name: 'BranchManager', description: 'Staff, vehicles, treks, and customer onboarding for assigned branch.', isSystem: true },
+  { name: 'FieldStaff', description: 'Assigned treks, customer registration, visit capture, and check-ins.', isSystem: true },
+  { name: 'Driver', description: 'Assigned transit runs only, mobile trekking telemetry & delivery logs.', isSystem: true },
+  { name: 'CreditOfficer', description: 'Customer KYC, credit risk assessment, customer approval & ledger.', isSystem: true },
+  { name: 'Auditor', description: 'Read-only analytics, reports export, and system audit event inspection.', isSystem: true },
 ];
 
 export const UsersAndRolesPage: React.FC = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [roles, setRoles] = useState<Role[]>(SEEDED_ROLES);
   const [activeTab, setActiveTab] = useState<'users' | 'matrix'>('users');
@@ -158,12 +163,13 @@ export const UsersAndRolesPage: React.FC = () => {
         : [];
 
     const items: UserItem[] = rawList.map((u: any) => {
-      const resolvedId = u.userId || u.id || '';
+      const resolvedId = String(u.userId || u.id || '');
       let resolvedStatus: 'Active' | 'Pending' | 'Suspended' = 'Active';
-      if (u.status) {
-        const s = String(u.status).toLowerCase();
+      const rawStatus = u.employmentStatus || u.status;
+      if (rawStatus) {
+        const s = String(rawStatus).toLowerCase();
         if (s === 'pending') resolvedStatus = 'Pending';
-        else if (s === 'suspended') resolvedStatus = 'Suspended';
+        else if (s === 'suspended' || s === 'offboarded') resolvedStatus = 'Suspended';
         else resolvedStatus = 'Active';
       } else if (u.isActive === false) {
         resolvedStatus = 'Suspended';
@@ -171,22 +177,48 @@ export const UsersAndRolesPage: React.FC = () => {
         resolvedStatus = 'Active';
       }
 
+      const resolvedEmail = String(u.emailAddress || u.email || '');
+      const resolvedRoles: string[] = Array.isArray(u.systemRoles)
+        ? u.systemRoles
+        : Array.isArray(u.roles)
+        ? u.roles
+        : u.role
+        ? [u.role]
+        : [];
+
       return {
         id: resolvedId,
         userId: resolvedId,
-        email: u.email || '',
+        email: resolvedEmail,
+        emailAddress: resolvedEmail,
         firstName: u.firstName || u.fullName?.split(' ')[0] || '',
         lastName: u.lastName || u.fullName?.split(' ').slice(1).join(' ') || '',
         fullName:
           u.fullName ||
           [u.firstName, u.lastName].filter(Boolean).join(' ') ||
-          u.email ||
+          resolvedEmail ||
           'Unknown User',
-        roles: Array.isArray(u.roles) ? u.roles : [],
+        phoneNumber: u.phoneNumber || '',
+        role: u.role || resolvedRoles[0] || '',
+        roles: resolvedRoles,
+        systemRoles: resolvedRoles,
         status: resolvedStatus,
+        employmentStatus: u.employmentStatus || resolvedStatus,
         isActive: u.isActive ?? (resolvedStatus === 'Active'),
+        hasAppAccess: u.hasAppAccess ?? true,
+        staffMemberId: u.staffMemberId || u.staffId,
+        staffId: u.staffId || u.staffMemberId,
+        employeeNumber: u.employeeNumber,
+        branchName: u.branchName,
+        branchId: u.branchId,
+        permissions: Array.isArray(u.permissions) ? u.permissions : [],
+        profilePhotoUrl: u.profilePhotoUrl,
+        currentDeviceId: u.currentDeviceId,
+        currentDeviceName: u.currentDeviceName,
+        joinedOn: u.joinedOn,
         lastLoginAt: u.lastLoginAt,
         createdAt: u.createdAt || new Date().toISOString(),
+        updatedAt: u.updatedAt ?? null,
       };
     });
 
@@ -256,28 +288,37 @@ export const UsersAndRolesPage: React.FC = () => {
         field: 'fullName',
         header: 'User',
         sortable: true,
-        body: (user) => (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center font-bold text-white text-xs shrink-0">
-              {user.fullName
-                .split(' ')
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()}
+        body: (user) => {
+          const userId = user.id || (user as any).userId;
+          return (
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => navigate(`/portal/settings/users/${userId}`)}
+              title="Click to view & edit user details"
+            >
+              <div className="w-8 h-8 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:border-portal-accent transition-colors">
+                {user.fullName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-white text-sm truncate group-hover:text-portal-accent transition-colors">
+                  {user.fullName}
+                </div>
+                <div className="text-xs text-portal-accent font-mono truncate">{user.email}</div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="font-bold text-white text-sm truncate">{user.fullName}</div>
-              <div className="text-xs text-portal-accent font-mono truncate">{user.email}</div>
-            </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         field: 'roles',
         header: 'Role',
         body: (user) => (
-          <span className="text-xs text-[#e6edf3] font-medium">
+          <span className="text-xs text-portal-text font-medium">
             {Array.isArray(user.roles) && user.roles.length > 0
               ? user.roles.join(', ')
               : 'No Roles Assigned'}
@@ -317,7 +358,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Last Active',
         sortable: true,
         body: (user) => (
-          <span className="text-[#e6edf3] font-mono text-xs font-medium">
+          <span className="text-portal-text font-mono text-xs font-medium">
             {user.lastLoginAt
               ? new Date(user.lastLoginAt).toLocaleDateString(undefined, {
                 month: 'short',
@@ -447,14 +488,21 @@ export const UsersAndRolesPage: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span
-                      className={`px-2 py-0.5 text-xs font-bold rounded border ${role.name === 'Admin'
-                        ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
-                        : role.name === 'Manager'
+                      className={`px-2 py-0.5 text-xs font-bold rounded border ${
+                        role.name === 'SuperAdmin' || role.name === 'Admin'
+                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                          : role.name === 'OperationsManager' || role.name === 'Manager'
                           ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                          : role.name === 'BranchManager'
+                          ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
                           : role.name === 'Driver'
-                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                            : 'bg-portal-canvas text-light-green border-portal-border'
-                        }`}
+                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                          : role.name === 'CreditOfficer'
+                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          : role.name === 'Auditor'
+                          ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30'
+                          : 'bg-portal-canvas text-light-green border-portal-border'
+                      }`}
                     >
                       {role.name}
                     </span>
@@ -472,13 +520,21 @@ export const UsersAndRolesPage: React.FC = () => {
                   <div className="text-light-green flex items-center gap-1.5">
                     <i className="pi pi-check text-[10px] text-portal-accent" />
                     <span>
-                      {role.name === 'Admin'
-                        ? 'Full system, organisation & user admin'
-                        : role.name === 'Manager'
-                          ? 'Branch scheduling & mission dispatch'
-                          : role.name === 'Driver'
-                            ? 'Trekking telemetry & delivery logs'
-                            : 'Attendance logs & inventory viewing'}
+                      {role.name === 'SuperAdmin' || role.name === 'Admin'
+                        ? 'Full system, organisation & user administration'
+                        : role.name === 'OperationsManager'
+                        ? 'All treks, fleet, customers & operational exports'
+                        : role.name === 'BranchManager'
+                        ? 'Branch staff, vehicles, treks & customers'
+                        : role.name === 'FieldStaff' || role.name === 'Staff'
+                        ? 'Customer registration, visit capture & assigned treks'
+                        : role.name === 'Driver'
+                        ? 'Assigned treks, mobile telemetry & delivery capture'
+                        : role.name === 'CreditOfficer'
+                        ? 'Customer KYC, credit assessments & approvals'
+                        : role.name === 'Auditor'
+                        ? 'Read-only reports, analytics & audit trails'
+                        : 'Custom module permissions'}
                     </span>
                   </div>
                 </div>
@@ -534,6 +590,19 @@ export const UsersAndRolesPage: React.FC = () => {
             ) : (
               <>
                 <div className="py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const u = menuState.user;
+                      const userId = u.id || (u as any).userId;
+                      setMenuState(null);
+                      navigate(`/portal/settings/users/${userId}`);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
+                  >
+                    <i className="pi pi-user-edit text-portal-accent text-xs w-4" />
+                    <span>View Details & Roles</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {

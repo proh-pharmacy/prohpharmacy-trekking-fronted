@@ -14,6 +14,44 @@ export interface FlatButtonProps
   children?: React.ReactNode;
 }
 
+const getButtonIconSize = (size?: string | null) => {
+  switch (size) {
+    case 'xs':
+    case 'icon-xs':
+      return {
+        iconClass: '!text-[11px]',
+        spinnerClass: 'w-3 h-3 border-[1.5px]',
+        gapLeft: 'mr-1',
+        gapRight: 'ml-1',
+      };
+    case 'sm':
+    case 'icon-sm':
+      return {
+        iconClass: '!text-xs',
+        spinnerClass: 'w-3.5 h-3.5 border-2',
+        gapLeft: 'mr-1.5',
+        gapRight: 'ml-1.5',
+      };
+    case 'lg':
+    case 'icon-lg':
+      return {
+        iconClass: '!text-base',
+        spinnerClass: 'w-5 h-5 border-2',
+        gapLeft: 'mr-2',
+        gapRight: 'ml-2',
+      };
+    case 'md':
+    case 'icon':
+    default:
+      return {
+        iconClass: '!text-sm',
+        spinnerClass: 'w-4 h-4 border-2',
+        gapLeft: 'mr-1.5',
+        gapRight: 'ml-1.5',
+      };
+  }
+};
+
 export const FlatButton: React.FC<FlatButtonProps> = ({
   variant,
   size,
@@ -31,6 +69,7 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
 }) => {
   const isDisabled = disabled || loading;
   const content = children || label;
+  const iconConfig = getButtonIconSize(size);
 
   return (
     <PrimeButton
@@ -44,21 +83,25 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
     >
       {loading ? (
         <span
-          className="w-4 h-4 border-2 border-current border-t-transparent animate-spin inline-block mr-2 shrink-0"
+          className={cn(
+            iconConfig.spinnerClass,
+            'border-current border-t-transparent animate-spin inline-block shrink-0',
+            content ? iconConfig.gapLeft : ''
+          )}
           style={{ borderRadius: '50%' }}
         />
       ) : typeof leftIcon === 'string' ? (
-        <i className={cn(leftIcon, 'text-sm shrink-0 mr-1.5')} />
+        <i className={cn(leftIcon, iconConfig.iconClass, 'shrink-0', content ? iconConfig.gapLeft : '')} />
       ) : leftIcon ? (
-        <span className="mr-1.5 shrink-0 flex items-center">{leftIcon}</span>
+        <span className={cn('shrink-0 flex items-center', content ? iconConfig.gapLeft : '')}>{leftIcon}</span>
       ) : null}
 
       {content && <span>{content}</span>}
 
       {!loading && typeof rightIcon === 'string' ? (
-        <i className={cn(rightIcon, 'text-sm shrink-0 ml-1.5')} />
+        <i className={cn(rightIcon, iconConfig.iconClass, 'shrink-0', content ? iconConfig.gapRight : '')} />
       ) : !loading && rightIcon ? (
-        <span className="ml-1.5 shrink-0 flex items-center">{rightIcon}</span>
+        <span className={cn('shrink-0 flex items-center', content ? iconConfig.gapRight : '')}>{rightIcon}</span>
       ) : null}
     </PrimeButton>
   );

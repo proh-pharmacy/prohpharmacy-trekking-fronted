@@ -1,7 +1,8 @@
 import React from 'react';
 import { AutoComplete, type AutoCompleteChangeEvent, type AutoCompleteProps } from 'primereact/autocomplete';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
-export interface FlatAutoCompleteProps extends Omit<AutoCompleteProps, 'value' | 'onChange' | 'variant'> {
+export interface FlatAutoCompleteProps extends Omit<AutoCompleteProps, 'value' | 'onChange' | 'variant' | 'size'> {
   value?: any;
   onChange?: (value: any) => void;
   label?: string;
@@ -9,6 +10,8 @@ export interface FlatAutoCompleteProps extends Omit<AutoCompleteProps, 'value' |
   errorMessage?: string;
   fullWidth?: boolean;
   variant?: 'default' | 'dark' | 'white';
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
 }
 
 export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
@@ -19,6 +22,8 @@ export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
   errorMessage,
   fullWidth = true,
   variant = 'dark',
+  size,
+  inputSize,
   className = '',
   inputClassName = '',
   id,
@@ -29,14 +34,16 @@ export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
+  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
-            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          className={`font-medium tracking-wider uppercase flex items-center gap-1 ${sizeConfig.label} ${
+            isDark ? 'text-portal-muted' : 'text-slate-700'
           }`}
         >
           {label}
@@ -51,7 +58,8 @@ export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
         placeholder={placeholder}
         className={`w-full ${className}`}
         inputClassName={`
-          w-full border rounded text-sm px-3.5 py-2.5 transition-colors
+          w-full border rounded transition-colors
+          ${sizeConfig.input}
           ${
             isDark
               ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'
@@ -60,7 +68,7 @@ export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
           ${errorMessage ? '!border-red-500' : ''}
           ${inputClassName}
         `}
-        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white ${panelClassName}`}
+        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white p-autocomplete-panel-${effectiveSize} ${panelClassName}`}
         {...props}
       />
 

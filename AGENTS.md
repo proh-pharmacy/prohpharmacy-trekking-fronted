@@ -28,3 +28,6 @@ Always check this directory for frontend requirements, flows, models, API contra
 - PostCSS + Tailwind CSS for utility styling.
 - Base Axios client at `src/api-client/api.ts` configured with `VITE_API_BASE_URL` (includes `/api/v1`). Component API calls should use relative endpoints directly (e.g. `/auth/login`, `/staff`) without repeating `/api/v1`.
 - Self-contained Flat Data Table at `src/components/data-table/DataTable.tsx` supporting target paginated shape (`totalCount`, `totalPages`, `currentPage`, `pageSize`, `data`).
+- **Form Inputs & Controls Sizing ('sm')**: Always use the compact `'sm'` (`size="sm"`) input size across all forms, inputs, dropdowns, multi-selects, datepickers, and buttons (`FlatInputText`, `FlatDropdown`, `FlatMultiSelect`, `FlatButton`, etc.) throughout the app. All single-line form controls must maintain a uniform compact height of `38px` with crisp, aligned triggers, compact chips (`.p-multiselect-token`), and subtle uppercase labels (`text-[11px] font-medium text-portal-muted`). **Exception**: The Login page credentials inputs (`login-email` and `login-password`) use the standard default `'md'` (`44px`) sizing.
+
+

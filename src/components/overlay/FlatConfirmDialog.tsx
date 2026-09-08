@@ -49,16 +49,16 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
   };
 
   const iconColors: Record<ConfirmVariant, string> = {
-    primary: 'text-[#41cc84] bg-[#41cc84]/15 border-[#41cc84]/30',
-    danger: 'text-[#DE2512] bg-[#DE2512]/15 border-[#DE2512]/30',
+    primary: 'text-portal-accent bg-portal-accent/15 border-portal-accent/30',
+    danger: 'text-red-accent bg-red-accent/15 border-red-accent/30',
     warning: 'text-amber-400 bg-amber-400/15 border-amber-400/30',
   };
 
   const confirmButtonClasses: Record<ConfirmVariant, string> = {
     primary:
-      '!bg-[#41cc84] hover:!bg-[#36ba76] active:!bg-[#2fa367] !text-white !border-transparent font-bold text-xs',
+      '!bg-portal-accent hover:!bg-portal-accent-hover active:!bg-portal-accent-hover !text-white !border-transparent font-bold text-xs',
     danger:
-      '!bg-[#DE2512] hover:!bg-[#C51F0E] active:!bg-red-800 !text-white !border-transparent font-bold text-xs',
+      '!bg-red-accent hover:!bg-red-accent-hover active:!bg-red-800 !text-white !border-transparent font-bold text-xs',
     warning:
       '!bg-amber-500 hover:!bg-amber-600 active:!bg-amber-700 !text-black !border-transparent font-bold text-xs',
   };
@@ -106,7 +106,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
 
         <div className="space-y-1.5 flex-1">
           <h4 className="text-base font-bold text-white tracking-tight">{title}</h4>
-          <div className="text-xs text-[#e2eee6]/80 leading-relaxed">{message}</div>
+          <div className="text-xs text-portal-text leading-relaxed">{message}</div>
         </div>
       </div>
     </FlatModal>

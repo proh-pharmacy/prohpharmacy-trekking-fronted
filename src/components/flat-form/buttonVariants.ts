@@ -5,16 +5,18 @@ import { cva, type VariantProps } from 'class-variance-authority';
  * Enforces zero border-radius, clean 1px borders, and ProH Pharmacy brand colors.
  */
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center font-semibold rounded border transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#41cc84] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:shadow-none shadow-xs hover:shadow-sm active:shadow-none',
+  'inline-flex items-center justify-center font-semibold rounded border transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-portal-accent focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:shadow-none shadow-xs hover:shadow-sm active:shadow-none',
   {
     variants: {
       variant: {
         primary:
-          '!bg-[#41cc84] hover:!bg-[#36ba76] active:!bg-[#2fa367] !text-white !border-transparent',
+          '!bg-portal-accent hover:!bg-portal-accent-hover active:!bg-portal-accent-hover !text-white !border-transparent',
         secondary:
           '!bg-slate-900 hover:!bg-slate-800 active:!bg-slate-950 !text-white !border-slate-900 hover:!border-slate-800',
         danger:
           '!bg-red-accent hover:!bg-red-accent-hover active:!bg-red-700 !text-white !border-red-accent hover:!border-red-accent-hover',
+        warning:
+          '!bg-amber-600 hover:!bg-amber-500 active:!bg-amber-700 !text-white !border-amber-600 hover:!border-amber-500',
         'danger-outline':
           '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
         'outline-danger':
@@ -27,10 +29,14 @@ export const buttonVariants = cva(
           '!bg-transparent !text-primary-green hover:!text-deep-green underline underline-offset-4 !border-transparent !p-0 !h-auto shadow-none hover:shadow-none active:shadow-none',
       },
       size: {
-        sm: 'text-xs py-1.5 px-3 gap-1.5 h-8',
-        md: 'text-sm py-2 px-4 gap-2 h-10',
-        lg: 'text-base py-2.5 px-6 gap-2.5 h-12',
-        icon: 'h-10 w-10 p-0',
+        xs: '!text-[11px] py-1 px-2.5 gap-1 h-7 [&_.p-button-icon]:!text-[11px] [&_.p-button-label]:!text-[11px]',
+        sm: '!text-xs py-1.5 px-3 gap-1.5 h-[38px] [&_.p-button-icon]:!text-xs [&_.p-button-label]:!text-xs',
+        md: '!text-sm py-2 px-4 gap-2 h-[44px] [&_.p-button-icon]:!text-sm [&_.p-button-label]:!text-sm',
+        lg: '!text-base py-2.5 px-6 gap-2.5 h-[50px] [&_.p-button-icon]:!text-base [&_.p-button-label]:!text-base',
+        'icon-xs': 'h-7 w-7 p-0 [&_.p-button-icon]:!text-[11px]',
+        'icon-sm': 'h-[38px] w-[38px] p-0 [&_.p-button-icon]:!text-xs',
+        icon: 'h-[44px] w-[44px] p-0 [&_.p-button-icon]:!text-base',
+        'icon-lg': 'h-[50px] w-[50px] p-0 [&_.p-button-icon]:!text-lg',
       },
       fullWidth: {
         true: 'w-full',

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Dropdown, type DropdownChangeEvent, type DropdownProps } from 'primereact/dropdown';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
-export interface FlatDropdownProps extends Omit<DropdownProps, 'value' | 'onChange' | 'variant'> {
+export interface FlatDropdownProps extends Omit<DropdownProps, 'value' | 'onChange' | 'variant' | 'size'> {
   value?: any;
   onChange?: (value: any) => void;
   label?: string;
@@ -9,6 +10,8 @@ export interface FlatDropdownProps extends Omit<DropdownProps, 'value' | 'onChan
   errorMessage?: string;
   fullWidth?: boolean;
   variant?: 'default' | 'dark' | 'white';
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
 }
 
 export const FlatDropdown: React.FC<FlatDropdownProps> = ({
@@ -19,6 +22,8 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
   errorMessage,
   fullWidth = true,
   variant = 'dark',
+  size = 'sm',
+  inputSize,
   className = '',
   id,
   required,
@@ -28,14 +33,16 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
+  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
+  const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
-            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          className={`font-medium tracking-wider uppercase flex items-center gap-1 ${sizeConfig.label} ${
+            isDark ? 'text-portal-muted' : 'text-slate-700'
           }`}
         >
           {label}
@@ -49,7 +56,8 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
         onChange={(e: DropdownChangeEvent) => onChange?.(e.value)}
         placeholder={placeholder}
         className={`
-          w-full border rounded text-sm transition-colors
+          w-full border rounded transition-colors p-dropdown-${effectiveSize}
+          ${effectiveSize === 'sm' ? '!h-[38px] text-xs' : effectiveSize === 'lg' ? '!h-[50px] text-base' : '!h-[44px] text-sm'}
           ${
             isDark
               ? '!bg-portal-canvas !border-portal-border !text-white hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label]:!text-white [&_.p-dropdown-trigger]:!text-portal-muted'
@@ -58,7 +66,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
           ${errorMessage ? '!border-red-500' : ''}
           ${className}
         `}
-        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white ${panelClassName}`}
+        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white p-dropdown-panel-${effectiveSize} ${panelClassName}`}
         {...props}
       />
 

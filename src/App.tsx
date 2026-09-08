@@ -9,7 +9,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { PortalLayout } from './pages/portal/layout';
 import { DashboardPage } from './pages/portal/dashboard/DashboardPage';
 import { GenericModulePage } from './pages/portal/GenericModulePage';
-import { UsersAndRolesPage, OrganisationPage } from './pages/portal/settings';
+import { UsersAndRolesPage, UserDetailsPage, OrganisationPage } from './pages/portal/settings';
 import { FlatButtonsShowcase } from './pages/preview/FlatButtonsShowcase';
 import { DataTableShowcase } from './pages/preview/DataTableShowcase';
 import { FlatInputsShowcase } from './pages/preview/FlatInputsShowcase';
@@ -148,6 +148,7 @@ export default function App() {
                 />
                 <Route path="settings" element={<Navigate to="/portal/settings/users" replace />} />
                 <Route path="settings/users" element={<UsersAndRolesPage />} />
+                <Route path="settings/users/:userId" element={<UserDetailsPage />} />
                 <Route path="settings/organisation" element={<OrganisationPage />} />
               </Route>
 

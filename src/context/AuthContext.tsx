@@ -65,7 +65,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await logoutMutation.mutateAsync();
   }, [logoutMutation]);
 
-  const roles = useMemo(() => user?.roles || [], [user?.roles]);
+  const roles = useMemo(() => user?.roles || user?.systemRoles || [], [user?.roles, user?.systemRoles]);
+  const permissions = useMemo(() => user?.permissions || [], [user?.permissions]);
 
   const hasRole = useCallback(
     (role: string): boolean => {
@@ -74,13 +75,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     [roles]
   );
 
-  const isAdmin = useMemo(() => hasRole('Admin'), [hasRole]);
-  const isManager = useMemo(() => hasRole('Manager') || isAdmin, [hasRole, isAdmin]);
-  const isStaff = useMemo(() => hasRole('Staff') || isManager, [hasRole, isManager]);
+  const can = useCallback(
+    (permission: string): boolean => {
+      return permissions.includes(permission);
+    },
+    [permissions]
+  );
+
+  const isAdmin = useMemo(
+    () => hasRole('SuperAdmin') || hasRole('Admin'),
+    [hasRole]
+  );
+  const isManager = useMemo(
+    () =>
+      hasRole('BranchManager') ||
+      hasRole('OperationsManager') ||
+      hasRole('Manager') ||
+      isAdmin,
+    [hasRole, isAdmin]
+  );
+  const isStaff = useMemo(
+    () =>
+      hasRole('FieldStaff') ||
+      hasRole('Staff') ||
+      hasRole('Driver') ||
+      hasRole('CreditOfficer') ||
+      hasRole('Auditor') ||
+      isManager,
+    [hasRole, isManager]
+  );
 
   const isAuthenticated = Boolean(user && hasTokens);
   const isLoading = Boolean(hasTokens && (isUserLoading || isUserFetching));
-
 
   const value = useMemo<AuthContextType>(
     () => ({
@@ -88,7 +114,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthenticated,
       isLoading,
       roles,
+      permissions,
       hasRole,
+      can,
       isAdmin,
       isManager,
       isStaff,
@@ -100,7 +128,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthenticated,
       isLoading,
       roles,
+      permissions,
       hasRole,
+      can,
       isAdmin,
       isManager,
       isStaff,

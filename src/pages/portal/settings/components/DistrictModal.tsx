@@ -88,23 +88,22 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#adbac7] mb-1.5">
-            Parent Region <span className="text-red-accent">*</span>
-          </label>
-          <FlatDropdown
-            value={regionId}
-            options={regionOptions}
-            onChange={(e) => setRegionId(e.value)}
-            placeholder="Select Region"
-          />
-        </div>
+        <FlatDropdown
+          label="Parent Region"
+          value={regionId}
+          options={regionOptions}
+          onChange={(e) => setRegionId(e.value)}
+          placeholder="Select Region"
+          size="sm"
+          required
+        />
 
         <FlatInputText
           label="District Name"
           placeholder="e.g. Tema Metropolitan"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          size="sm"
           required
         />
       </form>

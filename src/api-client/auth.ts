@@ -44,8 +44,40 @@ export const loginApi = async (credentials: LoginCredentials): Promise<AuthToken
  * Fetch the currently authenticated user's profile from GET /auth/me.
  */
 export const getCurrentUserApi = async (): Promise<AuthUser> => {
-  const response = await api.get<AuthUser>('/auth/me');
-  return response.data;
+  const response = await api.get<any>('/auth/me');
+  const d = response.data;
+  const resolvedId = String(d.userId || d.id || '');
+  const resolvedRoles: string[] = Array.isArray(d.systemRoles)
+    ? d.systemRoles
+    : Array.isArray(d.roles)
+    ? d.roles
+    : d.role
+    ? [d.role]
+    : [];
+  const resolvedEmail = String(d.emailAddress || d.email || '');
+
+  return {
+    ...d,
+    id: resolvedId,
+    userId: resolvedId,
+    email: resolvedEmail,
+    emailAddress: resolvedEmail,
+    fullName:
+      d.fullName ||
+      [d.firstName, d.lastName].filter(Boolean).join(' ') ||
+      resolvedEmail,
+    roles: resolvedRoles,
+    systemRoles: resolvedRoles,
+    permissions: Array.isArray(d.permissions) ? d.permissions : [],
+    staffMemberId: d.staffMemberId || d.staffId,
+    employeeNumber: d.employeeNumber,
+    branchName: d.branchName,
+    branchId: d.branchId,
+    role: d.role || resolvedRoles[0],
+    isActive:
+      d.isActive ??
+      (d.employmentStatus === 'Active' || d.status === 'Active'),
+  };
 };
 
 /**

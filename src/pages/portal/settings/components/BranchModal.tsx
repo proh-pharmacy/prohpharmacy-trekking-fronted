@@ -140,38 +140,35 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           placeholder="e.g. Ashaiman Regional Hub"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          size="sm"
           required
         />
 
         {!isEditing && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#adbac7] mb-1.5">
-                Region <span className="text-red-accent">*</span>
-              </label>
-              <FlatDropdown
-                value={selectedRegionId}
-                options={regionOptions}
-                onChange={(e) => {
-                  setSelectedRegionId(e.value);
-                  const firstInRegion = districts.find((d) => d.regionId === e.value);
-                  if (firstInRegion) setDistrictId(firstInRegion.id);
-                }}
-                placeholder="Select Region"
-              />
-            </div>
+            <FlatDropdown
+              label="Region"
+              value={selectedRegionId}
+              options={regionOptions}
+              onChange={(e) => {
+                setSelectedRegionId(e.value);
+                const firstInRegion = districts.find((d) => d.regionId === e.value);
+                if (firstInRegion) setDistrictId(firstInRegion.id);
+              }}
+              placeholder="Select Region"
+              size="sm"
+              required
+            />
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#adbac7] mb-1.5">
-                District <span className="text-red-accent">*</span>
-              </label>
-              <FlatDropdown
-                value={districtId}
-                options={districtOptions}
-                onChange={(e) => setDistrictId(e.value)}
-                placeholder="Select District"
-              />
-            </div>
+            <FlatDropdown
+              label="District"
+              value={districtId}
+              options={districtOptions}
+              onChange={(e) => setDistrictId(e.value)}
+              placeholder="Select District"
+              size="sm"
+              required
+            />
           </div>
         )}
 
@@ -180,6 +177,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           placeholder="e.g. 14 Hospital Road, Near Regional Cold Store"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
+          size="sm"
           helperText="Used on mission sheets and fleet delivery manifests."
         />
 
@@ -188,6 +186,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           placeholder="e.g. +233 20 123 4567"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
+          size="sm"
           helperText="Direct line for trek dispatch coordination."
         />
       </form>

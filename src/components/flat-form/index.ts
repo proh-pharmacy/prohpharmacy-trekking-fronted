@@ -16,3 +16,4 @@ export * from './FlatInputMask';
 export * from './FlatInputOtp';
 export * from './FlatButton';
 export * from './buttonVariants';
+export * from './inputVariants';

@@ -25,14 +25,15 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
+  const sizeConfig = { label: 'text-[11px]' };
 
   return (
     <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1 ${
-            isDark ? 'text-[#adbac7]' : 'text-slate-700'
+          className={`font-medium tracking-wider uppercase flex items-center gap-1 ${sizeConfig.label} ${
+            isDark ? 'text-portal-muted' : 'text-slate-700'
           }`}
         >
           {label}

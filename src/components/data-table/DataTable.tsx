@@ -663,17 +663,15 @@ export function FlatDataTable<TData extends Record<string, any>>({
             </button>
           </div>
 
-          {/* Quick Stats or Status */}
-          <div className="flex items-center gap-2 text-xs font-mono text-[#e6edf3] shrink-0">
-            {isBusy ? (
+          {/* Quick Loading Status */}
+          {isBusy && (
+            <div className="flex items-center gap-2 text-xs font-mono text-portal-text shrink-0">
               <span className="flex items-center gap-1.5 text-portal-accent font-semibold">
                 <RotateCcw className="w-3.5 h-3.5 animate-spin" />
                 Loading...
               </span>
-            ) : (
-              <span>{totalCount} total records</span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -744,7 +742,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 },
                 bodyCell: {
                   className:
-                    'py-3.5 px-4 text-xs text-[#e6edf3] border-b border-portal-border/40 font-normal rounded-none',
+                    'py-3.5 px-4 text-xs text-portal-text border-b border-portal-border/40 font-normal rounded-none',
                 },
               },
             }}
@@ -814,7 +812,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       <span className="font-bold text-white uppercase tracking-wider">
                         {col.header}
                       </span>
-                      <div className="col-span-2 text-[#e6edf3] break-words font-medium">
+                      <div className="col-span-2 text-portal-text break-words font-medium">
                         {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
                       </div>
                     </div>

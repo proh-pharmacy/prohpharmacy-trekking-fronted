@@ -6,7 +6,9 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   roles: string[];
+  permissions: string[];
   hasRole: (role: string) => boolean;
+  can: (permission: string) => boolean;
   isAdmin: boolean;
   isManager: boolean;
   isStaff: boolean;
@@ -15,3 +17,4 @@ export interface AuthContextType {
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+

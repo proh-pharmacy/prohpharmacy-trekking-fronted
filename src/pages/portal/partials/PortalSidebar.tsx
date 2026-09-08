@@ -115,7 +115,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="bg-transparent border-none outline-none text-xs text-[#cdd9e5] placeholder-portal-muted w-full"
+              className="bg-transparent border-none outline-none text-xs text-portal-text placeholder-portal-muted w-full"
             />
             <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-portal-surface text-portal-muted rounded border border-portal-border">
               ⌘K

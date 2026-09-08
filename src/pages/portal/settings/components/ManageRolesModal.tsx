@@ -24,7 +24,8 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
 
   useEffect(() => {
     if (user) {
-      setSelectedRoles([...user.roles]);
+      const initialRoles = user.systemRoles || user.roles || [];
+      setSelectedRoles([...initialRoles]);
     }
   }, [user]);
 
@@ -46,16 +47,17 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
 
     setSaving(true);
     try {
-      const currentRoles = user.roles || [];
+      const targetId = String(user.userId || user.id);
+      const currentRoles = user.systemRoles || user.roles || [];
       const rolesToAdd = selectedRoles.filter((r) => !currentRoles.includes(r));
       const rolesToRemove = currentRoles.filter((r) => !selectedRoles.includes(r));
 
       // Execute additions and removals
       for (const role of rolesToAdd) {
-        await usersApi.assignRole(user.id, role);
+        await usersApi.assignRole(targetId, role);
       }
       for (const role of rolesToRemove) {
-        await usersApi.removeRole(user.id, role);
+        await usersApi.removeRole(targetId, role);
       }
 
       toast.success(`Roles updated for ${user.fullName}`);
@@ -108,13 +110,13 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-xs font-bold text-white truncate">{user.fullName}</div>
-            <div className="text-[11px] text-portal-muted truncate font-mono">{user.email}</div>
+            <div className="text-[11px] text-portal-muted truncate font-mono">{user.emailAddress || user.email}</div>
           </div>
         </div>
 
         {/* Roles Selection */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#adbac7] mb-2.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-portal-text mb-2.5">
             System Privileges & Permissions
           </label>
           <div className="space-y-2">
@@ -127,7 +129,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
                   className={`p-3 rounded border flex items-center justify-between transition cursor-pointer ${
                     isChecked
                       ? 'bg-portal-accent/10 border-portal-accent text-white'
-                      : 'bg-portal-canvas/70 border-portal-border text-[#adbac7] hover:border-portal-border/80'
+                      : 'bg-portal-canvas/70 border-portal-border text-portal-text hover:border-portal-border/80'
                   }`}
                 >
                   <div className="flex items-center gap-3">
