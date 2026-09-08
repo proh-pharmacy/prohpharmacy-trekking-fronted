@@ -557,9 +557,9 @@ export function FlatDataTable<TData extends Record<string, any>>({
         </div>
       )}
 
-      {/* 2. Flat Top Bar (Heading + Action + Header Notes) */}
+      {/* 2. Flat Top Bar (Heading + Action + Header Notes) styled as header card */}
       {(heading || hasAction || headerNotes) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-portal-border/60 pb-4">
+        <div className="bg-portal-surface border border-portal-border/60 rounded p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             {typeof heading === 'string' ? (
               <h2 className="text-xl font-bold tracking-tight text-white">{heading}</h2>
@@ -567,12 +567,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
               heading
             )}
             {headerNotes && (
-              <div className="text-xs text-portal-muted mt-1">{headerNotes}</div>
+              <p className="text-xs text-portal-muted max-w-2xl leading-relaxed mt-1">
+                {headerNotes}
+              </p>
             )}
           </div>
 
           {hasAction && (
-            <div>
+            <div className="flex items-center gap-2.5 shrink-0">
               {actionOptions?.asLink ? (
                 <button
                   type="button"

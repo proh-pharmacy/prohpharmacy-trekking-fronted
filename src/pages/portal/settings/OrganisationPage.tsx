@@ -234,7 +234,7 @@ export const OrganisationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('branches')}
-          className={`pb-3 border-b-2 transition cursor-pointer flex items-center gap-2 ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
             activeTab === 'branches'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
@@ -247,7 +247,7 @@ export const OrganisationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('districts')}
-          className={`pb-3 border-b-2 transition cursor-pointer flex items-center gap-2 ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
             activeTab === 'districts'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
@@ -260,7 +260,7 @@ export const OrganisationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('regions')}
-          className={`pb-3 border-b-2 transition cursor-pointer flex items-center gap-2 ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
             activeTab === 'regions'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'

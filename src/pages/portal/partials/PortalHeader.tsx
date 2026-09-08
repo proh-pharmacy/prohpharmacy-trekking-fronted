@@ -53,8 +53,7 @@ export const PortalHeader: React.FC = () => {
         </button>
 
         {/* Hub Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-portal-surface border border-portal-border text-[11px] font-medium text-[#cdd9e5] rounded">
-          <span className="w-1.5 h-1.5 bg-portal-accent rounded-full animate-pulse" />
+        <div className="hidden sm:flex items-center px-2.5 py-1 bg-portal-surface border border-portal-border text-[11px] font-medium text-[#cdd9e5] rounded">
           <span>Ashaiman Regional Hub</span>
         </div>
       </div>

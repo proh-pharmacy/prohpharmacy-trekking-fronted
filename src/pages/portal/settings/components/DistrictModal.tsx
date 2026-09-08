@@ -67,13 +67,12 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
       onHide={onHide}
       title="Create Administrative District"
       subtitle="Define a district zone under a Ghana administrative region"
-      icon="pi pi-map-marker"
       badge="Setup"
       size="sm"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
-            variant="outline"
+            variant="danger-outline"
             label="Cancel"
             onClick={onHide}
             disabled={submitting}

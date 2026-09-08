@@ -71,13 +71,12 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       onHide={onHide}
       title="Invite New User"
       subtitle="Send a secure 48-hour invitation link to onboard a new account"
-      icon="pi pi-user-plus"
       badge="Admin"
       size="md"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
-            variant="outline"
+            variant="danger-outline"
             label="Cancel"
             onClick={onHide}
             disabled={submitting}

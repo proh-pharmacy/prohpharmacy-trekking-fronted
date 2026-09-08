@@ -15,6 +15,10 @@ export const buttonVariants = cva(
           '!bg-slate-900 hover:!bg-slate-800 active:!bg-slate-950 !text-white !border-slate-900 hover:!border-slate-800',
         danger:
           '!bg-red-accent hover:!bg-red-accent-hover active:!bg-red-700 !text-white !border-red-accent hover:!border-red-accent-hover',
+        'danger-outline':
+          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
+        'outline-danger':
+          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
         outline:
           '!bg-transparent hover:!bg-slate-100 active:!bg-slate-200 !text-slate-800 !border-slate-300 hover:!border-slate-400',
         ghost:

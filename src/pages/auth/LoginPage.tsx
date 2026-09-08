@@ -90,8 +90,8 @@ export const LoginPage: React.FC = () => {
       {/* Reduced subtle blur layer over the background */}
       <div className="absolute inset-0 backdrop-blur-[5px] bg-black/5" />
 
-      {/* Main Login Card - Solid Deep Green (#333e38) */}
-      <div className="relative z-10 w-full max-w-[390px] bg-[#333e38] shadow-2xl shadow-black/50 p-8 sm:p-10 text-white rounded">
+      {/* Main Login Card - Solid Deep Green (bg-portal-card / #333e38) */}
+      <div className="relative z-10 w-full max-w-[390px] bg-portal-card shadow-2xl shadow-black/50 p-8 sm:p-10 text-white rounded">
         {/* Maintained ProH Pharmacy Logo & Header */}
         <div className="flex flex-col items-center text-center mb-7">
           <img

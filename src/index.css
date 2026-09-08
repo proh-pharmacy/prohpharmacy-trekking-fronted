@@ -27,6 +27,12 @@
   --color-portal-accent-hover: #38b273;
   --color-portal-orange: #f0883e;
 
+  /* Card & Modal Dark Surface (Matches Login Card & Popups) */
+  --color-portal-card: #333e38;
+  --color-portal-card-border: #48564e;
+  --color-card-dark: #333e38;
+  --color-card-dark-border: #48564e;
+
   /* Semantic Aliases */
   --color-dark-canvas: #22272e;
   --color-dark-surface: #2d333b;
@@ -92,6 +98,17 @@
 .p-card,
 .p-panel {
   border-radius: 4px !important;
+}
+
+/* Tab Navigation Buttons & Zero Border-Radius Overrides (Strictly Rectilinear Indicator Line) */
+.tab-button,
+[role="tab"],
+button[class*="border-b-2"],
+.rounded-none,
+.\!rounded-none {
+  border-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 /* 2. Flat Aesthetic Adjustments */

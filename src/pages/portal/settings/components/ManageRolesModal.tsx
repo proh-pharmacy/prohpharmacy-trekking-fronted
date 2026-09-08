@@ -75,13 +75,12 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
       onHide={onHide}
       title="Manage User Roles"
       subtitle={`Assign or revoke system privileges for ${user.fullName}`}
-      icon="pi pi-shield"
       badge={user.status}
       size="md"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
-            variant="outline"
+            variant="danger-outline"
             label="Cancel"
             onClick={onHide}
             disabled={saving}

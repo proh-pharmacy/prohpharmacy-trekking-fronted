@@ -55,15 +55,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         {!collapsed ? (
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              {/* User Avatar with Primary Green Active Dot */}
-              <div className="relative shrink-0">
+              {/* User Avatar */}
+              <div className="shrink-0">
                 <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                   {userInitials}
                 </div>
-                <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-portal-accent border-2 border-portal-surface rounded-full"
-                  title="Online"
-                />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -89,17 +85,13 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         ) : (
           <div className="flex flex-col items-center gap-2.5">
             <div
-              className="relative portal-tooltip-item cursor-pointer"
+              className="portal-tooltip-item cursor-pointer"
               data-pr-tooltip={`${userName} • ${user?.roles?.[0] || 'Operations Lead'}`}
               data-pr-position="right"
             >
               <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
                 {userInitials}
               </div>
-              <span
-                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-portal-accent border-2 border-portal-surface rounded-full"
-                title="Online"
-              />
             </div>
 
             <button

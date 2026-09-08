@@ -114,13 +114,12 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           ? `Modify details and location contact for ${branch?.name}`
           : 'Establish a new regional dispatch office or physical depot'
       }
-      icon="pi pi-building"
       badge={isEditing ? 'Update' : 'New Hub'}
       size="md"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
-            variant="outline"
+            variant="danger-outline"
             label="Cancel"
             onClick={onHide}
             disabled={submitting}

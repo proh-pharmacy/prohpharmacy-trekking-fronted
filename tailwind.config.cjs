@@ -25,6 +25,12 @@ module.exports = {
         'portal-accent-hover': '#38b273',
         'portal-orange': '#f0883e',
 
+        // Card & Modal Dark Surface (Matches Login Card & Popups)
+        'portal-card': '#333e38',
+        'portal-card-border': '#48564e',
+        'card-dark': '#333e38',
+        'card-dark-border': '#48564e',
+
         // Semantic Dark Canvas Aliases
         'dark-canvas': '#22272e',
         'dark-surface': '#2d333b',
