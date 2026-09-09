@@ -8,9 +8,55 @@ const ACCESS_TOKEN_KEY = 'proh_access_token';
 const LEGACY_ACCESS_TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'proh_refresh_token';
 const LEGACY_REFRESH_TOKEN_KEY = 'refreshToken';
+const LAST_REFRESH_TIME_KEY = 'proh_last_refresh_time';
 
 let inMemoryAccessToken: string | null = null;
 let onAuthExpiredHandler: ((callbackUrl?: string) => void) | null = null;
+
+// Synchronize token across multiple browser tabs
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event: StorageEvent) => {
+    if (event.key === ACCESS_TOKEN_KEY && event.newValue) {
+      inMemoryAccessToken = event.newValue;
+    } else if (event.key === REFRESH_TOKEN_KEY && !event.newValue) {
+      inMemoryAccessToken = null;
+    }
+  });
+}
+
+/**
+ * Checks if a JWT string is expired or expiring within `offsetSeconds`.
+ */
+export const isJwtExpired = (token: string, offsetSeconds: number = 30): boolean => {
+  if (!token || typeof token !== 'string') return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload.exp) return false;
+    // payload.exp is in seconds
+    return Date.now() >= (payload.exp - offsetSeconds) * 1000;
+  } catch {
+    return false;
+  }
+};
+
+export const getLastRefreshTime = (): number | null => {
+  const t = localStorage.getItem(LAST_REFRESH_TIME_KEY);
+  return t ? Number(t) : null;
+};
+
+export const setLastRefreshTime = (timestamp: number): void => {
+  localStorage.setItem(LAST_REFRESH_TIME_KEY, String(timestamp));
+};
 
 export const getAccessToken = (): string | null => {
   return (
@@ -56,6 +102,7 @@ export const clearTokens = (): void => {
   localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+  localStorage.removeItem(LAST_REFRESH_TIME_KEY);
 };
 
 /**

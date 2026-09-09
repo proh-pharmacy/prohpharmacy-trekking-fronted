@@ -65,9 +65,7 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
     <FlatModal
       visible={visible}
       onHide={onHide}
-      title="Create Administrative District"
-      subtitle="Define a district zone under a Ghana administrative region"
-      badge="Setup"
+      title="Add District"
       size="sm"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
@@ -82,6 +80,7 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
             label={submitting ? 'Creating...' : 'Create District'}
             icon="pi pi-plus"
             onClick={handleSubmit}
+            loading={submitting}
             disabled={submitting}
           />
         </div>
@@ -92,8 +91,10 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
           label="Parent Region"
           value={regionId}
           options={regionOptions}
-          onChange={(e) => setRegionId(e.value)}
+          onChange={(val: any) => setRegionId(val?.value !== undefined ? val.value : val)}
           placeholder="Select Region"
+          filter
+          filterPlaceholder="Search region..."
           size="sm"
           required
         />

@@ -59,6 +59,7 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
   uppercase,
   leftIcon,
   rightIcon,
+  icon,
   loading = false,
   disabled = false,
   className = '',
@@ -70,6 +71,7 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
   const isDisabled = disabled || loading;
   const content = children || label;
   const iconConfig = getButtonIconSize(size);
+  const effectiveLeftIcon = leftIcon || icon;
 
   return (
     <PrimeButton
@@ -90,18 +92,24 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
           )}
           style={{ borderRadius: '50%' }}
         />
-      ) : typeof leftIcon === 'string' ? (
-        <i className={cn(leftIcon, iconConfig.iconClass, 'shrink-0', content ? iconConfig.gapLeft : '')} />
-      ) : leftIcon ? (
-        <span className={cn('shrink-0 flex items-center', content ? iconConfig.gapLeft : '')}>{leftIcon}</span>
+      ) : typeof effectiveLeftIcon === 'string' ? (
+        <i className={cn(effectiveLeftIcon, iconConfig.iconClass, 'shrink-0 inline-flex items-center justify-center leading-none', content ? iconConfig.gapLeft : '')} />
+      ) : typeof effectiveLeftIcon === 'function' ? (
+        (effectiveLeftIcon as any)({ iconProps: { className: cn(iconConfig.iconClass, 'shrink-0') } })
+      ) : effectiveLeftIcon ? (
+        <span className={cn('shrink-0 inline-flex items-center justify-center leading-none', content ? iconConfig.gapLeft : '')}>{effectiveLeftIcon as React.ReactNode}</span>
       ) : null}
 
-      {content && <span>{content}</span>}
+      {content && (
+        <span className="inline-flex items-center justify-center gap-2 leading-none">
+          {content}
+        </span>
+      )}
 
       {!loading && typeof rightIcon === 'string' ? (
-        <i className={cn(rightIcon, iconConfig.iconClass, 'shrink-0', content ? iconConfig.gapRight : '')} />
+        <i className={cn(rightIcon, iconConfig.iconClass, 'shrink-0 inline-flex items-center justify-center leading-none', content ? iconConfig.gapRight : '')} />
       ) : !loading && rightIcon ? (
-        <span className={cn('shrink-0 flex items-center', content ? iconConfig.gapRight : '')}>{rightIcon}</span>
+        <span className={cn('shrink-0 inline-flex items-center justify-center leading-none', content ? iconConfig.gapRight : '')}>{rightIcon}</span>
       ) : null}
     </PrimeButton>
   );

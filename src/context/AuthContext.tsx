@@ -1,4 +1,5 @@
 import React, {
+  useState,
   useEffect,
   useMemo,
   useCallback,
@@ -12,6 +13,10 @@ import {
   useLogoutMutation,
   getRefreshToken,
   getAccessToken,
+  setAccessToken,
+  setRefreshToken,
+  refreshTokensApi,
+  isJwtExpired,
   registerAuthExpiredHandler,
   clearTokens,
   AUTH_QUERY_KEY,
@@ -24,6 +29,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
 
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // 1. App Boot Silent Refresh (Section 6 of 01-login-implementation.md)
+  // When booting, if a refresh token exists and access token is missing or expired,
+  // silently refresh before letting query and route guards evaluate.
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      const refreshToken = getRefreshToken();
+      const accessToken = getAccessToken();
+
+      if (refreshToken && (!accessToken || isJwtExpired(accessToken, 60))) {
+        try {
+          const tokenData = await refreshTokensApi(refreshToken);
+          const newAccessToken = tokenData.accessToken;
+          const newRefreshToken = tokenData.refreshToken;
+          if (newAccessToken) setAccessToken(newAccessToken);
+          if (newRefreshToken) setRefreshToken(newRefreshToken);
+        } catch (err) {
+          console.warn('[AuthProvider] App boot silent refresh failed:', err);
+          clearTokens();
+        }
+      }
+
+      if (mounted) {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const hasTokens = Boolean(getAccessToken() || getRefreshToken());
 
   const {
@@ -32,8 +74,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isFetching: isUserFetching,
     refetch: refetchUser,
   } = useCurrentUserQuery({
-    enabled: hasTokens,
+    enabled: !isInitializing && hasTokens,
   });
+
+  // 2. Proactive Refresh Schedule (Section 1 of 01-login-implementation.md)
+  // Schedule a silent refresh 60 seconds before access token expires
+  useEffect(() => {
+    if (isInitializing) return;
+
+    const accessToken = getAccessToken();
+    const refreshToken = getRefreshToken();
+    if (!accessToken || !refreshToken) return;
+
+    let delayMs = 14 * 60 * 1000;
+    try {
+      const parts = accessToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload.exp) {
+          const expiresAtMs = payload.exp * 1000;
+          const msUntilExpiry = expiresAtMs - Date.now();
+          delayMs = Math.max(msUntilExpiry - 60000, 15000);
+        }
+      }
+    } catch {
+      // Fallback delay
+    }
+
+    const timer = setTimeout(async () => {
+      const currentRefresh = getRefreshToken();
+      if (currentRefresh) {
+        try {
+          const tokenData = await refreshTokensApi(currentRefresh);
+          if (tokenData.accessToken) setAccessToken(tokenData.accessToken);
+          if (tokenData.refreshToken) setRefreshToken(tokenData.refreshToken);
+        } catch (err) {
+          console.warn('[AuthProvider] Proactive refresh error:', err);
+        }
+      }
+    }, delayMs);
+
+    return () => clearTimeout(timer);
+  }, [isInitializing, user]);
 
   // Handle silent expiration from axios interceptor
   useEffect(() => {
@@ -106,7 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   const isAuthenticated = Boolean(user && hasTokens);
-  const isLoading = Boolean(hasTokens && (isUserLoading || isUserFetching));
+  const isLoading = isInitializing || Boolean(hasTokens && (isUserLoading || isUserFetching));
 
   const value = useMemo<AuthContextType>(
     () => ({

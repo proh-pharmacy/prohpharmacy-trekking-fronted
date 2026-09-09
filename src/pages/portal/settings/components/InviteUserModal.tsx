@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatDropdown, FlatInputText, FlatMultiSelect } from '../../../../components/flat-form';
+import { FlatButton, FlatInputText, FlatMultiSelect, FlatAsyncSelect } from '../../../../components/flat-form';
 import { usersApi, type Role, type InviteStaffResponse } from '../../../../api-client';
+import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
 
 const DEFAULT_SYSTEM_ROLES: Role[] = [
@@ -28,10 +29,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   onSuccess,
 }) => {
   const [staffMemberId, setStaffMemberId] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [initialPassword, setInitialPassword] = useState('');
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [loadingStaff, setLoadingStaff] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdResult, setCreatedResult] = useState<InviteStaffResponse | null>(null);
 
@@ -41,41 +41,16 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     value: r.name,
   }));
 
-  // Load staff members without app access
+  // Reset form when modal opens
   useEffect(() => {
     if (visible) {
-      let isMounted = true;
-      setLoadingStaff(true);
       setCreatedResult(null);
       setStaffMemberId('');
+      setSelectedStaff(null);
       setInitialPassword('');
       setSelectedRoles([]);
-
-      usersApi
-        .getStaffMembers({ hasAppAccess: false })
-        .then((list) => {
-          if (!isMounted) return;
-          const eligible = list.filter(
-            (s) => s.hasAppAccess !== true && s.status !== 'Offboarded'
-          );
-          setStaffList(eligible);
-        })
-        .catch(() => {
-          if (isMounted) setStaffList([]);
-        })
-        .finally(() => {
-          if (isMounted) setLoadingStaff(false);
-        });
-
-      return () => {
-        isMounted = false;
-      };
     }
   }, [visible]);
-
-  const selectedStaff = staffList.find(
-    (s) => (s.id || s.staffMemberId) === staffMemberId
-  );
 
   const handleCopyPassword = (pwd: string) => {
     navigator.clipboard.writeText(pwd);
@@ -84,6 +59,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
   const handleClose = () => {
     onHide();
+    resetTableData();
     if (createdResult) {
       onSuccess?.();
     }
@@ -109,11 +85,13 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       });
 
       toast.success('Staff member invited successfully!');
+      resetTableData();
+      onSuccess?.();
+
       if (res.initialPassword) {
         setCreatedResult(res);
       } else {
         handleClose();
-        onSuccess?.();
       }
     } catch (err: any) {
       const msg =
@@ -125,23 +103,6 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       setSubmitting(false);
     }
   };
-
-  const staffOptions = [
-    { label: 'Select staff member...', value: '' },
-    ...staffList.map((s) => {
-      const name =
-        s.fullName ||
-        `${s.firstName || ''} ${s.lastName || ''}`.trim() ||
-        s.email ||
-        'Staff Member';
-      const empNo = s.employeeNumber ? ` (${s.employeeNumber})` : '';
-      const meta = s.branchName ? ` — ${s.branchName}` : s.jobTitle ? ` — ${s.jobTitle}` : '';
-      return {
-        label: `${name}${empNo}${meta}`,
-        value: s.id || s.staffMemberId,
-      };
-    }),
-  ];
 
   // Success view when one-time credentials are returned
   if (createdResult && createdResult.initialPassword) {
@@ -196,7 +157,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                 variant="outline"
                 size="sm"
                 label="Copy"
-                icon="pi pi-copy"
+                leftIcon="pi pi-copy"
                 onClick={() => handleCopyPassword(createdResult.initialPassword!)}
               />
             </div>
@@ -225,28 +186,50 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             label={submitting ? 'Sending...' : 'Send Invitation'}
             icon="pi pi-send"
             onClick={handleSubmit}
+            loading={submitting}
             disabled={submitting || !staffMemberId || selectedRoles.length === 0}
           />
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Step 1: Staff Selection Dropdown (Only field shown initially) */}
-        <FlatDropdown
+        {/* Step 1: Staff Selection Dropdown (Asynchronous, Infinite Scroll & Search) */}
+        <FlatAsyncSelect<any>
+          id="invite-staff-select"
           label="Select Staff Member"
           required
-          placeholder={
-            loadingStaff
-              ? 'Loading staff...'
-              : staffList.length === 0
-              ? 'No staff pending app access'
-              : 'Choose a staff member...'
-          }
+          placeholder="Search or choose staff member..."
           value={staffMemberId}
-          onChange={(val) => setStaffMemberId(val)}
+          onChange={(val: any, item: any) => {
+            setStaffMemberId(val || '');
+            setSelectedStaff(item || null);
+          }}
+          endpointUrl="/staff"
+          defaultParams={{ hasAppAccess: false }}
+          pageSize={10}
+          searchParam="search"
+          optionValue="id"
+          optionLabel={(staff: any) =>
+            `${staff?.fullName || `${staff?.firstName || ''} ${staff?.lastName || ''}`.trim()} (${staff?.employeeNumber || '—'})`
+          }
+          itemTemplate={(staff: any) => (
+            <div className="flex items-center justify-between gap-2 w-full">
+              <div className="min-w-0 truncate">
+                <span className="font-semibold text-white text-xs block truncate">
+                  {staff?.fullName || `${staff?.firstName || ''} ${staff?.lastName || ''}`.trim()}
+                </span>
+                <span className="text-[11px] text-portal-muted truncate block">
+                  {staff?.emailAddress || staff?.email || staff?.branchName || 'No email'}
+                </span>
+              </div>
+              {staff?.employeeNumber && (
+                <span className="font-mono text-xs text-portal-accent shrink-0">
+                  {staff.employeeNumber}
+                </span>
+              )}
+            </div>
+          )}
           size="sm"
-          options={staffOptions}
-          disabled={loadingStaff || staffList.length === 0}
         />
 
         {/* Step 2: Show details, role selector, and password (kept in DOM with opacity-0 to prevent modal resizing) */}

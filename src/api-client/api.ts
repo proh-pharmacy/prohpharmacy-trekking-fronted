@@ -11,7 +11,11 @@ import {
   setRefreshToken,
   clearTokens,
   notifyAuthExpired,
+  getLastRefreshTime,
+  setLastRefreshTime,
+  isJwtExpired,
 } from './tokenStorage';
+
 // Resolve and normalize base URL to guarantee /api/v1 prefix
 const rawBaseURL: string = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1')
   .trim()
@@ -23,28 +27,102 @@ export const baseURL: string = rawBaseURL.endsWith('/api/v1')
     ? `${rawBaseURL}/v1`
     : `${rawBaseURL}/api/v1`;
 
+let activeRefreshPromise: Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn?: number;
+  user?: any;
+}> | null = null;
+
 /**
  * Standalone direct call to refresh tokens without triggering interceptor loops.
+ * Coordinated across concurrent in-app calls and multiple browser tabs.
  */
 export const refreshTokensApi = async (
-  refreshToken: string
-): Promise<{ accessToken: string; refreshToken: string; expiresIn?: number }> => {
-  const response = await axios.post<{
-    accessToken: string;
-    refreshToken: string;
-    expiresIn?: number;
-  }>(
-    `${baseURL}/auth/refresh`,
-    { refreshToken },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      timeout: 15000,
+  tokenParam?: string
+): Promise<{ accessToken: string; refreshToken: string; expiresIn?: number; user?: any }> => {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    const refreshToken = tokenParam || getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
     }
-  );
-  return response.data;
+
+    const performRefreshPost = async (tokenToSend: string) => {
+      const response = await axios.post<{
+        accessToken?: string;
+        refreshToken?: string;
+        AccessToken?: string;
+        RefreshToken?: string;
+        expiresIn?: number;
+        user?: any;
+      }>(
+        `${baseURL}/auth/refresh`,
+        { refreshToken: tokenToSend },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          timeout: 15000,
+        }
+      );
+
+      const raw = response.data;
+      const accessToken = raw.accessToken || raw.AccessToken || '';
+      const newRefreshToken = raw.refreshToken || raw.RefreshToken || '';
+
+      if (!accessToken) {
+        throw new Error('No access token returned from refresh endpoint');
+      }
+
+      setAccessToken(accessToken);
+      if (newRefreshToken) {
+        setRefreshToken(newRefreshToken);
+      }
+      setLastRefreshTime(Date.now());
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: raw.expiresIn,
+        user: raw.user,
+      };
+    };
+
+    // Cross-tab coordination: Use Web Locks if supported to prevent token rotation collision
+    if (typeof navigator !== 'undefined' && navigator.locks) {
+      return await navigator.locks.request('proh_auth_refresh_lock', async () => {
+        const lastRefresh = getLastRefreshTime();
+        const currentAccessToken = getAccessToken();
+        const currentRefreshToken = getRefreshToken();
+
+        // If another tab just refreshed the token within the last 6 seconds, reuse it
+        if (
+          lastRefresh &&
+          Date.now() - lastRefresh < 6000 &&
+          currentAccessToken &&
+          !isJwtExpired(currentAccessToken, 30)
+        ) {
+          return {
+            accessToken: currentAccessToken,
+            refreshToken: currentRefreshToken || refreshToken,
+          };
+        }
+
+        return await performRefreshPost(currentRefreshToken || refreshToken);
+      });
+    }
+
+    return await performRefreshPost(refreshToken);
+  })().finally(() => {
+    activeRefreshPromise = null;
+  });
+
+  return activeRefreshPromise;
 };
 
 /**
@@ -73,10 +151,14 @@ api.interceptors.request.use(
       }
     }
 
-    // Attach in-memory access token (fallback to legacy localStorage key if present)
-    const token = getAccessToken() || localStorage.getItem('token');
+    // Attach in-memory access token (fallback to localStorage if present)
+    const token = getAccessToken();
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -116,25 +198,33 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    // Check if error is 401 Unauthorized and not already retried
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/refresh')
-    ) {
+    const url = originalRequest?.url || '';
+    const isAuthEndpoint =
+      url.includes('/auth/login') ||
+      url.includes('auth/login') ||
+      url.includes('/auth/refresh') ||
+      url.includes('auth/refresh');
+
+    // Check if error is 401 Unauthorized, request exists, has not been retried yet, and not an auth endpoint
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       // If a refresh is already in progress, queue this request until completed
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
+              originalRequest._retry = true;
               if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
+                if (typeof originalRequest.headers.set === 'function') {
+                  originalRequest.headers.set('Authorization', `Bearer ${token}`);
+                } else {
+                  originalRequest.headers.Authorization = `Bearer ${token}`;
+                }
               }
               resolve(api(originalRequest));
             },
-            reject,
+            reject: (err: unknown) => {
+              reject(err);
+            },
           });
         });
       }
@@ -159,14 +249,17 @@ api.interceptors.response.use(
 
       try {
         const tokenData = await refreshTokensApi(refreshToken);
-        setAccessToken(tokenData.accessToken);
-        setRefreshToken(tokenData.refreshToken);
+        const newAccessToken = tokenData.accessToken;
 
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${tokenData.accessToken}`;
+          if (typeof originalRequest.headers.set === 'function') {
+            originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
+          } else {
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          }
         }
 
-        processQueue(null, tokenData.accessToken);
+        processQueue(null, newAccessToken);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
@@ -176,7 +269,6 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
-
     }
 
     return Promise.reject(error);

@@ -68,7 +68,7 @@ export const FlatMultiSelect: React.FC<FlatMultiSelectProps> = ({
           }
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-white hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-multiselect-label]:!text-white [&_.p-multiselect-trigger]:!text-portal-muted [&_.p-multiselect-token]:!bg-portal-surface [&_.p-multiselect-token]:!text-white [&_.p-multiselect-token]:!border [&_.p-multiselect-token]:!border-portal-border'
+              ? '!bg-portal-canvas !border-portal-border !text-white hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-multiselect-label.p-placeholder]:!text-portal-muted [&_.p-multiselect-label:not(.p-placeholder)]:!text-white [&_.p-multiselect-trigger]:!text-portal-muted [&_.p-multiselect-token]:!bg-portal-surface [&_.p-multiselect-token]:!text-white [&_.p-multiselect-token]:!border [&_.p-multiselect-token]:!border-portal-border'
               : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400 focus:border-primary-green'
           }
           ${errorMessage ? '!border-red-500' : ''}

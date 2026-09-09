@@ -15,16 +15,25 @@ export interface District {
   branchCount?: number;
 }
 
+export type BranchType = 'Retail' | 'Wholesale' | 'Laboratory';
+
 export interface Branch {
   id: string;
+  code?: string;
   name: string;
+  branchType?: BranchType;
+  regionId: string;
+  regionName?: string;
   districtId: string;
   districtName?: string;
-  regionName?: string;
   address: string;
-  phoneNumber: string;
+  contactNumber: string;
+  phoneNumber?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   isActive: boolean;
   createdAt?: string;
+  updatedAt?: string | null;
 }
 
 export interface CreateDistrictPayload {
@@ -34,27 +43,40 @@ export interface CreateDistrictPayload {
 
 export interface CreateBranchPayload {
   name: string;
+  branchType: BranchType;
+  regionId: string;
   districtId: string;
   address: string;
-  phoneNumber: string;
+  contactNumber: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface UpdateBranchPayload {
   name: string;
+  branchType: BranchType;
+  regionId: string;
+  districtId: string;
   address: string;
-  phoneNumber: string;
+  contactNumber: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const organisationApi = {
   getRegions: async (): Promise<Region[]> => {
-    const res = await apiClient.get<Region[]>('/organisation/regions');
-    return res.data;
+    const res = await apiClient.get<any>('/organisation/regions?pageSize=100');
+    const payload = res.data?.data || res.data;
+    return Array.isArray(payload) ? payload : [];
   },
 
   getDistricts: async (regionId?: string): Promise<District[]> => {
-    const url = regionId ? `/organisation/districts?regionId=${encodeURIComponent(regionId)}` : '/organisation/districts';
-    const res = await apiClient.get<District[]>(url);
-    return res.data;
+    const params = new URLSearchParams();
+    params.set('pageSize', '100');
+    if (regionId) params.set('regionId', regionId);
+    const res = await apiClient.get<any>(`/organisation/districts?${params.toString()}`);
+    const payload = res.data?.data || res.data;
+    return Array.isArray(payload) ? payload : [];
   },
 
   createDistrict: async (payload: CreateDistrictPayload): Promise<District> => {

@@ -60,7 +60,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
           ${effectiveSize === 'sm' ? '!h-[38px] text-xs' : effectiveSize === 'lg' ? '!h-[50px] text-base' : '!h-[44px] text-sm'}
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-white hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label]:!text-white [&_.p-dropdown-trigger]:!text-portal-muted'
+              ? '!bg-portal-canvas !border-portal-border !text-white hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label.p-placeholder]:!text-portal-muted [&_.p-dropdown-label:not(.p-placeholder)]:!text-white [&_.p-dropdown-trigger]:!text-portal-muted'
               : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400 focus:border-primary-green'
           }
           ${errorMessage ? '!border-red-500' : ''}

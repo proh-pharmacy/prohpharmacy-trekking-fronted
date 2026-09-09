@@ -27,6 +27,11 @@ export interface RolePermissionsResponse {
   groups: RolePermissionGroup[];
 }
 
+export interface SystemModulePermissions {
+  module: string;
+  permissions: string[];
+}
+
 export interface CreateRolePayload {
   name: string;
   description?: string;
@@ -107,19 +112,25 @@ export const usersApi = {
     return res.data;
   },
 
+  getAllPermissions: async (): Promise<SystemModulePermissions[]> => {
+    const res = await apiClient.get<any>('/permissions');
+    const payload = res.data?.data || res.data;
+    return Array.isArray(payload) ? payload : [];
+  },
+
   createRole: async (payload: CreateRolePayload): Promise<Role> => {
-    const res = await apiClient.post<Role>('/roles', payload);
-    return res.data;
+    const res = await apiClient.post<any>('/roles', payload);
+    return res.data?.data || res.data;
   },
 
   getRolePermissions: async (roleId: string): Promise<RolePermissionsResponse> => {
-    const res = await apiClient.get<RolePermissionsResponse>(`/roles/${roleId}/permissions`);
-    return res.data;
+    const res = await apiClient.get<any>(`/roles/${roleId}/permissions`);
+    return res.data?.data || res.data;
   },
 
   syncRolePermissions: async (roleId: string, permissions: string[]): Promise<any> => {
     const res = await apiClient.put<any>(`/roles/${roleId}/permissions`, { permissions });
-    return res.data;
+    return res.data?.data || res.data;
   },
 
   getUsers: async (params?: UserQueryParams): Promise<PaginatedUsersResponse> => {
@@ -325,8 +336,14 @@ export const usersApi = {
     await apiClient.post(`/users/${id}/revoke-sessions`);
   },
 
-  adminResetPassword: async (id: string): Promise<{ message?: string }> => {
-    const res = await apiClient.post<{ message?: string }>(`/users/${id}/reset-password`);
+  adminResetPassword: async (
+    id: string,
+    payload?: { newPassword?: string }
+  ): Promise<{ userId?: string; newPassword?: string; message?: string }> => {
+    const res = await apiClient.post<{ userId?: string; newPassword?: string; message?: string }>(
+      `/users/${id}/reset-password`,
+      payload
+    );
     return res.data;
   },
 };

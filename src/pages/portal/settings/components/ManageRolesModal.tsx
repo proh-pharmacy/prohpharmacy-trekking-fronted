@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton } from '../../../../components/flat-form';
+import { FlatButton, FlatMultiSelect } from '../../../../components/flat-form';
 import { usersApi, type Role, type UserItem } from '../../../../api-client';
+import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+
+const DEFAULT_SYSTEM_ROLES: Role[] = [
+  { name: 'SuperAdmin' },
+  { name: 'OperationsManager' },
+  { name: 'BranchManager' },
+  { name: 'FieldStaff' },
+  { name: 'Driver' },
+  { name: 'CreditOfficer' },
+  { name: 'Auditor' },
+];
 
 interface ManageRolesModalProps {
   visible: boolean;
@@ -31,13 +42,16 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
 
   if (!user) return null;
 
-  const handleToggleRole = (roleName: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(roleName)
-        ? prev.filter((r) => r !== roleName)
-        : [...prev, roleName]
-    );
-  };
+  const currentRoles = user.systemRoles || user.roles || [];
+  const rolesToDisplay = availableRoles.length > 0 ? availableRoles : DEFAULT_SYSTEM_ROLES;
+  const roleOptions = rolesToDisplay.map((r) => ({
+    label: r.name,
+    value: r.name,
+  }));
+
+  const hasChanges =
+    selectedRoles.length !== currentRoles.length ||
+    selectedRoles.some((r) => !currentRoles.includes(r));
 
   const handleSave = async () => {
     if (selectedRoles.length === 0) {
@@ -48,7 +62,6 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
     setSaving(true);
     try {
       const targetId = String(user.userId || user.id);
-      const currentRoles = user.systemRoles || user.roles || [];
       const rolesToAdd = selectedRoles.filter((r) => !currentRoles.includes(r));
       const rolesToRemove = currentRoles.filter((r) => !selectedRoles.includes(r));
 
@@ -61,6 +74,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
       }
 
       toast.success(`Roles updated for ${user.fullName}`);
+      resetTableData();
       onHide();
       onSuccess?.();
     } catch (err: any) {
@@ -78,7 +92,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
       title="Manage User Roles"
       subtitle={`Assign or revoke system privileges for ${user.fullName}`}
       badge={user.status}
-      size="md"
+      size="sm"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
@@ -92,74 +106,42 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
             label={saving ? 'Saving...' : 'Save Roles'}
             icon="pi pi-check"
             onClick={handleSave}
-            disabled={saving}
+            loading={saving}
+            disabled={saving || selectedRoles.length === 0 || !hasChanges}
           />
         </div>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-4 py-1">
         {/* User Summary Card */}
-        <div className="p-3 bg-portal-canvas border border-portal-border rounded flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-portal-surface border border-portal-border flex items-center justify-center font-bold text-white text-xs">
-            {user.fullName
-              .split(' ')
-              .map((n) => n[0])
-              .slice(0, 2)
-              .join('')
-              .toUpperCase()}
+        <div className="p-3 bg-portal-canvas border border-portal-border/60 rounded flex items-center justify-between gap-3 text-xs">
+          <div className="min-w-0">
+            <span className="font-semibold text-white block truncate">
+              {user.fullName}
+            </span>
+            <span className="text-[11px] text-portal-muted font-mono block truncate">
+              {user.emailAddress || user.email || '—'}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-white truncate">{user.fullName}</div>
-            <div className="text-[11px] text-portal-muted truncate font-mono">{user.emailAddress || user.email}</div>
-          </div>
+          {user.employeeNumber && (
+            <span className="font-mono text-xs text-portal-accent shrink-0">
+              {user.employeeNumber}
+            </span>
+          )}
         </div>
 
-        {/* Roles Selection */}
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-portal-text mb-2.5">
-            System Privileges & Permissions
-          </label>
-          <div className="space-y-2">
-            {availableRoles.map((role) => {
-              const isChecked = selectedRoles.includes(role.name);
-              return (
-                <div
-                  key={role.name}
-                  onClick={() => handleToggleRole(role.name)}
-                  className={`p-3 rounded border flex items-center justify-between transition cursor-pointer ${
-                    isChecked
-                      ? 'bg-portal-accent/10 border-portal-accent text-white'
-                      : 'bg-portal-canvas/70 border-portal-border text-portal-text hover:border-portal-border/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] shrink-0 ${
-                        isChecked
-                          ? 'bg-portal-accent border-portal-accent text-white'
-                          : 'border-portal-border bg-portal-surface'
-                      }`}
-                    >
-                      {isChecked && <i className="pi pi-check" />}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">{role.name}</div>
-                      <div className="text-[11px] text-portal-muted">
-                        {role.name === 'Admin'
-                          ? 'Full administrative control over settings, users, and branches'
-                          : role.name === 'Manager'
-                          ? 'Operational authority over rosters, staff schedules, and missions'
-                          : role.name === 'Driver'
-                          ? 'Dedicated transit delivery, telemetry, and checkpoint logging'
-                          : 'Standard staff duties, attendance logs, and inventory viewing'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Roles MultiSelect */}
+        <FlatMultiSelect
+          label="Assigned Roles"
+          required
+          value={selectedRoles}
+          onChange={(val) => setSelectedRoles(val || [])}
+          options={roleOptions}
+          placeholder="Select system roles..."
+          size="sm"
+          display="chip"
+          errorMessage={selectedRoles.length === 0 ? 'At least one role is required.' : undefined}
+        />
       </div>
     </FlatModal>
   );

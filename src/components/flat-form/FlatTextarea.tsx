@@ -1,14 +1,29 @@
 import React from 'react';
 import { InputTextarea, type InputTextareaProps } from 'primereact/inputtextarea';
+import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
 
-export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value' | 'variant'> {
+export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value' | 'variant' | 'size'> {
   value?: string;
   label?: string;
   helperText?: string;
   errorMessage?: string;
   fullWidth?: boolean;
   variant?: 'default' | 'dark' | 'white';
+  size?: FlatInputSize;
+  inputSize?: FlatInputSize;
 }
+
+const getTextareaSizeClasses = (size: FlatInputSize): string => {
+  switch (size) {
+    case 'sm':
+      return '!text-xs px-3 py-2 leading-relaxed placeholder:!text-xs';
+    case 'lg':
+      return '!text-base px-4 py-3 leading-normal placeholder:!text-base';
+    case 'md':
+    default:
+      return '!text-sm px-3.5 py-2.5 leading-normal placeholder:!text-sm';
+  }
+};
 
 export const FlatTextarea: React.FC<FlatTextareaProps> = ({
   label,
@@ -17,6 +32,8 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
   autoResize = true,
   fullWidth = true,
   variant = 'dark',
+  size,
+  inputSize,
   className = '',
   id,
   required,
@@ -25,10 +42,12 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
-  const sizeConfig = { label: 'text-[11px]' };
+  const effectiveSize: FlatInputSize = size || inputSize || 'sm';
+  const sizeConfig = getInputSizeClasses(effectiveSize);
+  const textareaSizeClasses = getTextareaSizeClasses(effectiveSize);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`flex flex-col ${sizeConfig.container} ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
@@ -47,7 +66,8 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
         rows={rows}
         autoResize={autoResize}
         className={`
-          w-full border rounded text-sm px-3.5 py-2.5 transition-colors resize-y
+          w-full border rounded transition-colors resize-y
+          ${textareaSizeClasses}
           ${
             isDark
               ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed'

@@ -22,9 +22,9 @@ export const buttonVariants = cva(
         'outline-danger':
           '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
         outline:
-          '!bg-transparent hover:!bg-slate-100 active:!bg-slate-200 !text-slate-800 !border-slate-300 hover:!border-slate-400',
+          '!bg-transparent hover:!bg-white/[0.08] active:!bg-white/[0.12] !text-white !border-portal-border hover:!border-portal-border/80',
         ghost:
-          '!bg-transparent hover:!bg-slate-100 active:!bg-slate-200 !text-slate-700 !border-transparent shadow-none hover:shadow-none active:shadow-none',
+          '!bg-transparent hover:!bg-white/[0.08] active:!bg-white/[0.12] !text-portal-text hover:!text-white !border-transparent shadow-none hover:shadow-none active:shadow-none',
         link:
           '!bg-transparent !text-primary-green hover:!text-deep-green underline underline-offset-4 !border-transparent !p-0 !h-auto shadow-none hover:shadow-none active:shadow-none',
       },

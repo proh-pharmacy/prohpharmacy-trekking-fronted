@@ -31,6 +31,13 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
 }) => {
   const [internalLoading, setInternalLoading] = useState(false);
 
+  // Reset internal loading whenever visibility closes
+  React.useEffect(() => {
+    if (!visible) {
+      setInternalLoading(false);
+    }
+  }, [visible]);
+
   const isBusy = loading || internalLoading;
 
   const handleConfirm = async () => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { DataTable as PrimeDataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Search,
@@ -106,6 +106,46 @@ export interface FlatDataTableProps<TData> {
 import { scrollDataTableToTop } from './tableEvents';
 
 
+// --- Helper to extract all known filter keys and legacy JSON filters from URL ---
+const extractFiltersFromUrl = (
+  params: URLSearchParams,
+  filterDefs?: FilterParam[],
+  initialFilters: Record<string, any> = {}
+): Record<string, any> => {
+  const extracted: Record<string, any> = { ...initialFilters };
+
+  // 1. Support legacy/json "filters" parameter if present
+  const jsonParam = params.get('filters');
+  if (jsonParam) {
+    try {
+      Object.assign(extracted, JSON.parse(jsonParam));
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
+  // 2. Extract individual query parameters based on extended filter accessors
+  if (filterDefs && filterDefs.length > 0) {
+    filterDefs.forEach((filter) => {
+      const accessors = Array.isArray(filter.accessor) ? filter.accessor : [filter.accessor];
+      accessors.forEach((acc) => {
+        const val = params.get(acc);
+        if (val !== null && val !== undefined && val !== '') {
+          if (filter.type === 'MultiSelectFilter') {
+            extracted[acc] = val.includes(',') ? val.split(',') : [val];
+          } else if (filter.type === 'DateRangeFilter' && val.includes(',')) {
+            extracted[acc] = val.split(',').map((s) => new Date(s));
+          } else {
+            extracted[acc] = val;
+          }
+        }
+      });
+    });
+  }
+
+  return extracted;
+};
+
 // --- Main FlatDataTable Component ---
 
 export function FlatDataTable<TData extends Record<string, any>>({
@@ -129,7 +169,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
   isFilterVisibleOnStart = false,
   showErrorAsBanner = true,
   emptyDataText = 'No records found.',
-  persistFiltersInUrl = true,
+  persistFiltersInUrl = false,
   dataMapper,
   parsePayload,
   className,
@@ -140,22 +180,48 @@ export function FlatDataTable<TData extends Record<string, any>>({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { pathname } = useLocation();
-  const queryClient = useQueryClient();
   const tableRootRef = useRef<HTMLDivElement | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Responsive mobile detector
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
 
+  const initialFilters = useMemo(() => {
+    if (persistFiltersInUrl) {
+      return extractFiltersFromUrl(searchParams, extendedFilter?.filters, initialPostData);
+    }
+    return initialPostData || {};
+  }, []);
+
   const singleFilter = (extendedFilter?.filters?.length ?? 0) === 1 && !filterablePlaceholder;
+  const hasActiveFiltersInitially = Object.keys(initialFilters).length > 0;
+
   const [isFilterVisible, setIsFilterVisible] = useState(() => {
     const isCurrentlyMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
-    return isCurrentlyMobile ? false : isFilterVisibleOnStart || singleFilter;
+    return isCurrentlyMobile ? false : isFilterVisibleOnStart || singleFilter || hasActiveFiltersInitially;
   });
 
-  const [globalSearch, setGlobalSearch] = useState(() => {
-    return searchParams.get('search') || '';
+  // 1. Search input state - globalSearch (immediate text) & debouncedSearch (API trigger)
+  const initialSearchVal = persistFiltersInUrl
+    ? searchParams.get('search') || searchParams.get(filterable) || ''
+    : '';
+
+  const [globalSearch, setGlobalSearch] = useState(initialSearchVal);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearchVal);
+
+  // 2. Filter state
+  const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
+
+  // 3. Pagination state
+  const [pagination, setPagination] = useState({
+    pageNumber: persistFiltersInUrl
+      ? Number(searchParams.get('pageNumber')) || Number(searchParams.get('page')) || 1
+      : 1,
+    pageSize: persistFiltersInUrl
+      ? Number(searchParams.get('pageSize')) || Number(searchParams.get('size')) || initialPageSize
+      : initialPageSize,
   });
 
   useEffect(() => {
@@ -174,32 +240,108 @@ export function FlatDataTable<TData extends Record<string, any>>({
     }
   }, []);
 
-  // Filter state
-  const [filters, setFilters] = useState<Record<string, any>>(() => {
-    const baseFilters = initialPostData || {};
-    if (persistFiltersInUrl) {
-      const urlFilters = searchParams.get('filters');
-      if (urlFilters) {
-        try {
-          return { ...baseFilters, ...JSON.parse(urlFilters) };
-        } catch {
-          return baseFilters;
+  // --- Optional URL Sync helper (only used when persistFiltersInUrl is explicitly true) ---
+  const updateUrl = useCallback(
+    (updates: {
+      search?: string | null;
+      pageNumber?: number;
+      pageSize?: number;
+      filterUpdates?: Record<string, any>;
+      clearAllFilters?: boolean;
+    }) => {
+      if (!persistFiltersInUrl) return;
+
+      const params = new URLSearchParams(window.location.search);
+
+      if (updates.search !== undefined) {
+        if (updates.search && updates.search.trim()) {
+          params.set('search', updates.search.trim());
+          if (filterable !== 'search') params.delete(filterable);
+        } else {
+          params.delete('search');
+          params.delete(filterable);
         }
       }
-    }
-    return baseFilters;
-  });
 
-  // Pagination state (matches pageNumber & pageSize)
-  const [pagination, setPagination] = useState({
-    pageNumber: Number(searchParams.get('pageNumber')) || 1,
-    pageSize: Number(searchParams.get('pageSize')) || initialPageSize,
-  });
+      if (updates.pageSize !== undefined) {
+        params.set('pageSize', String(updates.pageSize));
+      }
+
+      if (updates.pageNumber !== undefined) {
+        params.set('pageNumber', String(updates.pageNumber));
+      }
+
+      params.delete('filters');
+
+      if (updates.clearAllFilters) {
+        if (extendedFilter?.filters) {
+          extendedFilter.filters.forEach((f) => {
+            const accs = Array.isArray(f.accessor) ? f.accessor : [f.accessor];
+            accs.forEach((k) => params.delete(k));
+          });
+        }
+      } else if (updates.filterUpdates !== undefined) {
+        Object.entries(updates.filterUpdates).forEach(([k, val]) => {
+          if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
+            params.delete(k);
+          } else if (Array.isArray(val)) {
+            params.set(
+              k,
+              val.map((v) => (v instanceof Date ? v.toISOString() : String(v))).join(',')
+            );
+          } else if (val instanceof Date) {
+            params.set(k, val.toISOString());
+          } else {
+            params.set(k, String(val));
+          }
+        });
+      }
+
+      const newQuery = params.toString();
+      const currentQuery = searchParams.toString();
+      if (newQuery !== currentQuery) {
+        navigate(`${pathname}?${newQuery}`, { replace: true });
+      }
+    },
+    [persistFiltersInUrl, filterable, extendedFilter?.filters, searchParams, pathname, navigate]
+  );
+
+  // --- Two-way URL Sync (only active if persistFiltersInUrl is true) ---
+  useEffect(() => {
+    if (!persistFiltersInUrl) return;
+
+    const urlSearch = searchParams.get('search') || searchParams.get(filterable) || '';
+    setGlobalSearch((prev) => (prev !== urlSearch ? urlSearch : prev));
+    setDebouncedSearch((prev) => (prev !== urlSearch ? urlSearch : prev));
+
+    const urlPage = Number(searchParams.get('pageNumber')) || Number(searchParams.get('page')) || 1;
+    const urlSize = Number(searchParams.get('pageSize')) || Number(searchParams.get('size')) || initialPageSize;
+    setPagination((prev) => {
+      if (prev.pageNumber !== urlPage || prev.pageSize !== urlSize) {
+        return { pageNumber: urlPage, pageSize: urlSize };
+      }
+      return prev;
+    });
+
+    const urlFilters = extractFiltersFromUrl(searchParams, extendedFilter?.filters, initialPostData);
+    setFilters((prev) => {
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(urlFilters);
+      if (
+        prevKeys.length === nextKeys.length &&
+        prevKeys.every((k) => JSON.stringify(prev[k]) === JSON.stringify(urlFilters[k]))
+      ) {
+        return prev;
+      }
+      return urlFilters;
+    });
+  }, [searchParams, filterable, extendedFilter?.filters, persistFiltersInUrl, initialPageSize, initialPostData]);
 
   // --- Data Fetching Logic ---
   const fetchTableData = async (
     currentFilters: Record<string, any>,
-    currentPagination: { pageNumber: number; pageSize: number }
+    currentPagination: { pageNumber: number; pageSize: number },
+    currentSearch: string
   ): Promise<PaginatedDataResponse<TData>> => {
     // 1. If staticData is supplied directly
     if (staticData) {
@@ -238,8 +380,8 @@ export function FlatDataTable<TData extends Record<string, any>>({
       pageSize: currentPagination.pageSize,
     };
 
-    if (globalSearch.trim()) {
-      payload[filterable] = globalSearch.trim();
+    if (currentSearch.trim()) {
+      payload[filterable] = currentSearch.trim();
     }
 
     const finalPayload = parsePayload ? parsePayload(payload) : payload;
@@ -278,8 +420,8 @@ export function FlatDataTable<TData extends Record<string, any>>({
   };
 
   const queryKey = useMemo(
-    () => [dataSourceUrl, filters, pagination, globalSearch, apiCallType],
-    [dataSourceUrl, filters, pagination, globalSearch, apiCallType]
+    () => [dataSourceUrl, filters, pagination, debouncedSearch, apiCallType],
+    [dataSourceUrl, filters, pagination, debouncedSearch, apiCallType]
   );
 
   const {
@@ -290,14 +432,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
     refetch,
   } = useQuery<PaginatedDataResponse<TData>>({
     queryKey,
-    queryFn: () => fetchTableData(filters, pagination),
+    queryFn: () => fetchTableData(filters, pagination, debouncedSearch),
     enabled: Boolean(dataSourceUrl || staticData),
   });
 
   // Client-side filtering when static data is supplied
   const resolvedTableData = useMemo(() => {
-    if (staticData && globalSearch.trim()) {
-      const q = globalSearch.toLowerCase().trim();
+    if (staticData && debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase().trim();
       const filtered = staticData.filter((item) =>
         Object.values(item).some((val) =>
           String(val).toLowerCase().includes(q)
@@ -317,88 +459,109 @@ export function FlatDataTable<TData extends Record<string, any>>({
       };
     }
     return queryResult;
-  }, [staticData, globalSearch, queryResult, pagination]);
+  }, [staticData, debouncedSearch, queryResult, pagination]);
 
-  // Mutation for instant filter/search updates
-  const mutation = useMutation({
-    mutationFn: ({
-      newFilters,
-      newPagination,
-    }: {
-      newFilters: Record<string, any>;
-      newPagination: { pageNumber: number; pageSize: number };
-    }) => fetchTableData(newFilters, newPagination),
-    onSuccess: (updatedData) => {
-      queryClient.setQueryData(queryKey, updatedData);
-    },
-  });
+  // Clean Debounced Search Handler (zero route lag or jitter)
+  const handleSearchChange = (val: string) => {
+    setGlobalSearch(val);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearch(val);
+      setPagination((prev) => ({ ...prev, pageNumber: 1 }));
+      if (persistFiltersInUrl) {
+        updateUrl({ search: val, pageNumber: 1 });
+      }
+    }, 300);
+  };
 
-  // Query parameter handler
-  const handleQueryChange = useCallback(
+  const handleSearchSubmit = (val: string) => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    setDebouncedSearch(val);
+    setPagination((prev) => ({ ...prev, pageNumber: 1 }));
+    if (persistFiltersInUrl) {
+      updateUrl({ search: val, pageNumber: 1 });
+    }
+  };
+
+  const handleSearchClear = () => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    setGlobalSearch('');
+    setDebouncedSearch('');
+    setPagination((prev) => ({ ...prev, pageNumber: 1 }));
+    if (persistFiltersInUrl) {
+      updateUrl({ search: '', pageNumber: 1 });
+    }
+  };
+
+  // Extended Filter Change Handler
+  const handleFilterChange = useCallback(
     (keyOrAccessor: string | string[], value: any) => {
-      // Pagination change
-      if (keyOrAccessor === 'pageNumber' || keyOrAccessor === 'page') {
-        const newPage = Number(value);
-        setPagination((prev) => ({ ...prev, pageNumber: newPage }));
-        return;
-      }
+      const nextFilters = { ...filters };
+      const updatesForUrl: Record<string, any> = {};
 
-      if (keyOrAccessor === 'pageSize' || keyOrAccessor === 'size') {
-        const newSize = Number(value);
-        setPagination({ pageNumber: 1, pageSize: newSize });
-        return;
-      }
-
-      // Filter change: resets to page 1
-      setFilters((prev) => {
-        const next = { ...prev };
-        if (Array.isArray(keyOrAccessor)) {
-          keyOrAccessor.forEach((acc, idx) => {
-            if (value[idx] === null || value[idx] === undefined || value[idx] === '') {
-              delete next[acc];
-            } else {
-              next[acc] = value[idx];
-            }
-          });
-        } else {
-          if (value === null || value === undefined || value === '') {
-            delete next[keyOrAccessor];
+      if (Array.isArray(keyOrAccessor)) {
+        keyOrAccessor.forEach((acc, idx) => {
+          const v = value?.[idx];
+          if (v === null || v === undefined || v === '') {
+            delete nextFilters[acc];
           } else {
-            next[keyOrAccessor] = value;
+            nextFilters[acc] = v;
           }
+          updatesForUrl[acc] = v;
+        });
+      } else {
+        if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+          delete nextFilters[keyOrAccessor];
+        } else {
+          nextFilters[keyOrAccessor] = value;
         }
+        updatesForUrl[keyOrAccessor] = value;
+      }
 
-        const nextPagination = { ...pagination, pageNumber: 1 };
-        setPagination(nextPagination);
-        mutation.mutate({ newFilters: next, newPagination: nextPagination });
-        return next;
-      });
+      setFilters(nextFilters);
+      setPagination((prev) => ({ ...prev, pageNumber: 1 }));
+      if (persistFiltersInUrl) {
+        updateUrl({ filterUpdates: updatesForUrl, pageNumber: 1 });
+      }
     },
-    [pagination, mutation]
+    [filters, persistFiltersInUrl, updateUrl]
   );
 
-  // Sync to URL
-  useEffect(() => {
+  // Pagination Handlers
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setPagination((prev) => ({ ...prev, pageNumber: newPage }));
+      if (persistFiltersInUrl) {
+        updateUrl({ pageNumber: newPage });
+      }
+      scrollRootIntoViewIfNeeded();
+    },
+    [persistFiltersInUrl, updateUrl, scrollRootIntoViewIfNeeded]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (newSize: number) => {
+      setPagination({ pageNumber: 1, pageSize: newSize });
+      if (persistFiltersInUrl) {
+        updateUrl({ pageSize: newSize, pageNumber: 1 });
+      }
+    },
+    [persistFiltersInUrl, updateUrl]
+  );
+
+  const handleResetFilters = useCallback(() => {
+    setFilters({});
+    setPagination((prev) => ({ ...prev, pageNumber: 1 }));
     if (persistFiltersInUrl) {
-      const params = new URLSearchParams(searchParams.toString());
-      if (Object.keys(filters).length > 0) {
-        params.set('filters', JSON.stringify(filters));
-      } else {
-        params.delete('filters');
-      }
-
-      if (globalSearch.trim()) {
-        params.set('search', globalSearch.trim());
-      } else {
-        params.delete('search');
-      }
-
-      params.set('pageNumber', String(pagination.pageNumber));
-      params.set('pageSize', String(pagination.pageSize));
-
-      navigate(`${pathname}?${params.toString()}`, { replace: true });
+      updateUrl({ clearAllFilters: true, pageNumber: 1 });
     }
-  }, [filters, globalSearch, pagination, persistFiltersInUrl, navigate, pathname, searchParams]);
+  }, [persistFiltersInUrl, updateUrl]);
 
   // Global table events
   useEffect(() => {
@@ -407,11 +570,16 @@ export function FlatDataTable<TData extends Record<string, any>>({
       const resetFilters = initialPostData || {};
       setFilters(resetFilters);
       setGlobalSearch('');
+      setDebouncedSearch('');
       setPagination({ pageNumber: 1, pageSize: initialPageSize });
-      mutation.mutate({
-        newFilters: resetFilters,
-        newPagination: { pageNumber: 1, pageSize: initialPageSize },
-      });
+      if (persistFiltersInUrl) {
+        updateUrl({
+          search: '',
+          pageNumber: 1,
+          pageSize: initialPageSize,
+          clearAllFilters: true,
+        });
+      }
     };
 
     document.addEventListener('tableRefreshEvent', handleRefresh);
@@ -420,7 +588,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
       document.removeEventListener('tableRefreshEvent', handleRefresh);
       document.removeEventListener('tableResetEvent', handleReset);
     };
-  }, [refetch, initialPostData, initialPageSize, mutation]);
+  }, [refetch, initialPostData, initialPageSize, persistFiltersInUrl, updateUrl]);
 
   // Active filters count
   const activeFiltersCount =
@@ -441,7 +609,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
           <FlatInputText
             label={filter.label}
             value={value || ''}
-            onChange={(e) => handleQueryChange(filter.accessor, e.target.value)}
+            onChange={(e) => handleFilterChange(filter.accessor, e.target.value)}
             placeholder={`Filter ${filter.label}`}
             {...filter.args}
           />
@@ -451,11 +619,11 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDropdown
             label={filter.label}
-            value={value ?? null}
+            value={value !== undefined ? value : ''}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
             optionValue={filter.args?.optionValue || 'value'}
-            onChange={(val) => handleQueryChange(filter.accessor, val)}
+            onChange={(val) => handleFilterChange(filter.accessor, val)}
             placeholder={`Select ${filter.label}`}
             showClear
             {...filter.args}
@@ -466,11 +634,11 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatMultiSelect
             label={filter.label}
-            value={value ?? []}
+            value={Array.isArray(value) ? value : value ? [value] : []}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
             optionValue={filter.args?.optionValue || 'value'}
-            onChange={(val) => handleQueryChange(filter.accessor, val)}
+            onChange={(val) => handleFilterChange(filter.accessor, val)}
             placeholder={`Select ${filter.label}`}
             display="chip"
             showClear
@@ -483,7 +651,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
           <FlatDatePicker
             label={filter.label}
             value={value ? new Date(value) : null}
-            onChange={(val) => handleQueryChange(filter.accessor, val ? new Date(val).toISOString() : null)}
+            onChange={(val) => handleFilterChange(filter.accessor, val ? new Date(val).toISOString() : null)}
             placeholder={`Pick ${filter.label}`}
             showIcon
             {...filter.args}
@@ -496,7 +664,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
             label={filter.label}
             value={value}
             selectionMode="range"
-            onChange={(val) => handleQueryChange(filter.accessor, val)}
+            onChange={(val) => handleFilterChange(filter.accessor, val)}
             placeholder={`Range for ${filter.label}`}
             showIcon
             {...filter.args}
@@ -510,7 +678,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
             value={value ? new Date(value) : null}
             view="month"
             dateFormat="mm/yy"
-            onChange={(val) => handleQueryChange(filter.accessor, val ? new Date(val).toISOString() : null)}
+            onChange={(val) => handleFilterChange(filter.accessor, val ? new Date(val).toISOString() : null)}
             placeholder={`Select ${filter.label}`}
             showIcon
             {...filter.args}
@@ -526,7 +694,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
   const totalCount = resolvedTableData?.totalCount || 0;
   const totalPages = resolvedTableData?.totalPages || 1;
   const currentPage = resolvedTableData?.currentPage || 1;
-  const isBusy = isLoading || mutation.isPending;
+  const isBusy = isLoading;
 
   return (
     <div
@@ -602,7 +770,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
       {/* 3. Flat Toolbar (Search + Extended Filters Toggle + View Action) */}
       {((enableTableFilter && filterablePlaceholder) || extendedFilter?.enable) && (
         <div className="bg-portal-surface border border-portal-border/60 rounded p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Search Box - matching user screenshot */}
+          {/* Search Box */}
           <div className="flex items-center gap-3 flex-1">
             {filterablePlaceholder && (
               <div className="relative flex-1 flex items-center">
@@ -610,18 +778,15 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <input
                   type="text"
                   value={globalSearch}
-                  onChange={(e) => setGlobalSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleQueryChange(filterable, globalSearch)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(globalSearch)}
                   placeholder={filterablePlaceholder}
                   className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
                 />
                 {globalSearch && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setGlobalSearch('');
-                      handleQueryChange(filterable, '');
-                    }}
+                    onClick={handleSearchClear}
                     className="absolute right-3 text-portal-muted hover:text-white cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -652,7 +817,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               </button>
             )}
 
-            {/* Shortcut / Refresh icon button matching screenshot */}
+            {/* Shortcut / Refresh icon button */}
             <button
               type="button"
               title="Refresh Records"
@@ -685,11 +850,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
             {activeFiltersCount > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  setFilters({});
-                  setPagination({ pageNumber: 1, pageSize: pagination.pageSize });
-                  mutation.mutate({ newFilters: {}, newPagination: { pageNumber: 1, pageSize: pagination.pageSize } });
-                }}
+                onClick={handleResetFilters}
                 className="text-xs text-red-accent hover:underline font-semibold cursor-pointer"
               >
                 Reset Filters
@@ -762,7 +923,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                           if (!conf) return;
                           const currentVal = filters[conf.accessor];
                           const nextVal = currentVal === 'asc' ? 'desc' : 'asc';
-                          handleQueryChange(conf.accessor, nextVal);
+                          handleFilterChange(conf.accessor, nextVal);
                         }}
                         className="text-white/70 hover:text-portal-accent cursor-pointer transition"
                         title="Sort"
@@ -840,13 +1001,17 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <span className="text-portal-muted uppercase font-semibold text-[11px]">Rows:</span>
                 <select
                   value={pagination.pageSize}
-                  onChange={(e) => handleQueryChange('pageSize', Number(e.target.value))}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   className="px-2 py-1 bg-portal-surface border border-portal-border rounded text-xs text-white focus:outline-none focus:border-portal-accent cursor-pointer"
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
+                  {[5, 10, 20, 25, 50, 100].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                  {![5, 10, 20, 25, 50, 100].includes(pagination.pageSize) && (
+                    <option value={pagination.pageSize}>{pagination.pageSize}</option>
+                  )}
                 </select>
               </div>
 
@@ -856,7 +1021,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   type="button"
                   disabled={currentPage <= 1 || isBusy}
                   onClick={() => {
-                    handleQueryChange('pageNumber', currentPage - 1);
+                    handlePageChange(currentPage - 1);
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}
@@ -875,7 +1040,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   type="button"
                   disabled={currentPage >= totalPages || isBusy}
                   onClick={() => {
-                    handleQueryChange('pageNumber', currentPage + 1);
+                    handlePageChange(currentPage + 1);
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}

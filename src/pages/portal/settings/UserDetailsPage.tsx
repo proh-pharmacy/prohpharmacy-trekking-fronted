@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { usersApi, type UserItem } from '../../../api-client';
 import { FlatButton, FlatMultiSelect } from '../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../components/overlay';
+import { PasswordResetResultModal } from './components/PasswordResetResultModal';
 
 const DEFAULT_SYSTEM_ROLES = [
   'SuperAdmin',
@@ -27,18 +28,25 @@ export const UserDetailsPage: React.FC = () => {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>(DEFAULT_SYSTEM_ROLES);
   const [updatingRoles, setUpdatingRoles] = useState(false);
+  const [resetResult, setResetResult] = useState<{
+    user: UserItem | null;
+    newPassword?: string;
+    message?: string;
+  } | null>(null);
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
     title: string;
     message: string;
+    confirmLabel?: string;
     variant: 'primary' | 'danger' | 'warning';
     action: () => Promise<void>;
   }>({
     visible: false,
     title: '',
     message: '',
+    confirmLabel: 'Confirm',
     variant: 'primary',
     action: async () => {},
   });
@@ -91,6 +99,7 @@ export const UserDetailsPage: React.FC = () => {
       message: isCurrentlyActive
         ? `Are you sure you want to suspend ${user.fullName}? They will be immediately blocked from accessing the system.`
         : `Activate ${user.fullName}'s account to restore system access?`,
+      confirmLabel: isCurrentlyActive ? 'Suspend Account' : 'Activate Account',
       variant: isCurrentlyActive ? 'danger' : 'primary',
       action: async () => {
         try {
@@ -119,6 +128,7 @@ export const UserDetailsPage: React.FC = () => {
       visible: true,
       title: 'Revoke Active Sessions',
       message: `Force logout all active sessions for ${user.fullName}? This invalidates all active refresh tokens immediately.`,
+      confirmLabel: 'Revoke Sessions',
       variant: 'danger',
       action: async () => {
         try {
@@ -139,14 +149,23 @@ export const UserDetailsPage: React.FC = () => {
     setConfirmDialog({
       visible: true,
       title: 'Reset User Password',
-      message: `Send a secure password reset email to ${user.email}?`,
+      message: `Reset password for ${user.fullName}? All active sessions will be terminated and new login credentials will be generated.`,
+      confirmLabel: 'Reset Password',
       variant: 'warning',
       action: async () => {
         try {
-          await usersApi.adminResetPassword(user.id);
-          toast.success(`Password reset instructions sent to ${user.email}.`);
+          const res = await usersApi.adminResetPassword(user.id);
+          if (res && res.newPassword) {
+            setResetResult({
+              user,
+              newPassword: res.newPassword,
+              message: res.message,
+            });
+          } else {
+            toast.success(res?.message || `Password reset instructions sent to ${user.email}.`);
+          }
         } catch (err: any) {
-          toast.error(err.response?.data?.message || 'Failed to trigger password reset.');
+          toast.error(err.response?.data?.detail || err.response?.data?.message || 'Failed to trigger password reset.');
         } finally {
           setConfirmDialog((prev) => ({ ...prev, visible: false }));
         }
@@ -154,15 +173,26 @@ export const UserDetailsPage: React.FC = () => {
     });
   };
 
-  // Handle Resend Invitation (for pending accounts)
-  const handleResendInvitation = async () => {
+  // Handle Resend Invitation (for pending accounts) with confirmation
+  const handleResendInvitation = () => {
     if (!user) return;
-    try {
-      await usersApi.resendInvitation(user.id);
-      toast.success(`New invitation email sent to ${user.email}.`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to resend invitation.');
-    }
+    setConfirmDialog({
+      visible: true,
+      title: 'Resend Invitation',
+      message: `Send a new invitation email to ${user.email}?`,
+      confirmLabel: 'Resend Link',
+      variant: 'primary',
+      action: async () => {
+        try {
+          await usersApi.resendInvitation(user.id);
+          toast.success(`New invitation email sent to ${user.email}.`);
+        } catch (err: any) {
+          toast.error(err.response?.data?.message || 'Failed to resend invitation.');
+        } finally {
+          setConfirmDialog((prev) => ({ ...prev, visible: false }));
+        }
+      },
+    });
   };
 
   // Handle updating user roles
@@ -254,13 +284,13 @@ export const UserDetailsPage: React.FC = () => {
           <Link
             to="/portal/settings/users"
             className="w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-white/[0.06] text-portal-muted hover:text-white flex items-center justify-center transition"
-            title="Back to Users & Roles"
+            title="Back to People and Roles"
           >
             <i className="pi pi-arrow-left text-xs" />
           </Link>
           <div className="flex items-center gap-2 text-xs text-portal-muted">
             <Link to="/portal/settings/users" className="hover:text-white transition">
-              Users & Roles
+              People and Roles
             </Link>
             <span>/</span>
             <span className="text-white font-medium">{user.fullName}</span>
@@ -489,6 +519,7 @@ export const UserDetailsPage: React.FC = () => {
                     icon="pi pi-check"
                     size="sm"
                     onClick={handleUpdateRoles}
+                    loading={updatingRoles}
                     disabled={updatingRoles || selectedRoles.length === 0}
                   />
                 )}
@@ -505,7 +536,17 @@ export const UserDetailsPage: React.FC = () => {
         onConfirm={confirmDialog.action}
         title={confirmDialog.title}
         message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
         variant={confirmDialog.variant}
+      />
+
+      {/* Password Reset One-Time Credentials Modal */}
+      <PasswordResetResultModal
+        visible={Boolean(resetResult)}
+        onHide={() => setResetResult(null)}
+        user={resetResult?.user || null}
+        newPassword={resetResult?.newPassword}
+        message={resetResult?.message}
       />
     </div>
   );
