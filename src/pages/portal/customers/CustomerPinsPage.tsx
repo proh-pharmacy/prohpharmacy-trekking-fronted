@@ -21,7 +21,7 @@ function makePin(customer: Customer): L.DivIcon {
 
   if (portrait) {
     return L.divIcon({
-      className: '',
+      className: 'customer-pin-icon',
       html: `<div style="
         width:38px;height:38px;border-radius:50%;overflow:hidden;
         border:2.5px solid #41cc84;
@@ -35,7 +35,7 @@ function makePin(customer: Customer): L.DivIcon {
   }
 
   return L.divIcon({
-    className: '',
+    className: 'customer-pin-icon',
     html: `<div style="
       width:38px;height:38px;border-radius:50%;
       background:#15803d;

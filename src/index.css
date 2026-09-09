@@ -438,6 +438,14 @@ div.p-icon-field {
   animation: map-pin-drop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Customer pin markers — force circular shape against global border-radius override */
+.customer-pin-icon,
+.customer-pin-icon div,
+.customer-pin-icon img {
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
 /* Customer Pins popup — dark theme */
 .customer-pin-popup .leaflet-popup-content-wrapper {
   background: #22272e !important;
