@@ -121,8 +121,15 @@ export const ProductsPage: React.FC = () => {
       pageSize: payload.pageSize || 10,
       search: payload.search || undefined,
       sort: payload.sort || 'createdAt_desc',
+      ...(payload.isActive !== undefined && payload.isActive !== '' ? { isActive: payload.isActive } : {}),
     };
   }, []);
+
+  const ACTIVE_FILTER_OPTIONS = [
+    { label: 'All', value: '' },
+    { label: 'Active', value: 'true' },
+    { label: 'Inactive', value: 'false' },
+  ];
 
   // Columns definitions
   const productColumns: ColumnDef<Product>[] = useMemo(
@@ -321,6 +328,17 @@ export const ProductsPage: React.FC = () => {
           emptyDataText="No products found."
           dataMapper={productDataMapper}
           parsePayload={parsePaginationPayload}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              {
+                type: 'SelectFilter',
+                accessor: 'isActive',
+                label: 'Status',
+                args: { options: ACTIVE_FILTER_OPTIONS },
+              },
+            ],
+          }}
         />
       ) : (
         /* Tab 2: Units */
@@ -342,6 +360,17 @@ export const ProductsPage: React.FC = () => {
           emptyDataText="No packaging units found."
           dataMapper={unitDataMapper}
           parsePayload={parsePaginationPayload}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              {
+                type: 'SelectFilter',
+                accessor: 'isActive',
+                label: 'Status',
+                args: { options: ACTIVE_FILTER_OPTIONS },
+              },
+            ],
+          }}
         />
       )}
 

@@ -148,14 +148,42 @@ export interface AddLocationPayload {
   isPrimary?: boolean;
 }
 
+export interface CustomerMapPin {
+  customerAccountId: string;
+  customerCode: string;
+  businessName: string;
+  tradingName?: string;
+  customerType: CustomerType;
+  registrationStatus: RegistrationStatus;
+  primaryPhoneNumber: string;
+  latitude: number;
+  longitude: number;
+  accuracyMetres?: number;
+  streetAddress?: string;
+  landmarkAndDirections?: string;
+  branchId?: string;
+  branchName?: string;
+  regionId?: string;
+  regionName?: string;
+  primaryContactName?: string;
+  primaryContactPhone?: string;
+  primaryContactPortraitUrl?: string;
+}
+
 // ── API ────────────────────────────────────────────────────────────────
 export const customersApi = {
+  getMapPins: async (params?: { branchId?: string; regionId?: string }): Promise<CustomerMapPin[]> => {
+    const res = await apiClient.get<CustomerMapPin[]>('/customers/map-pins', { params });
+    return res.data;
+  },
+
   getCustomers: async (params?: {
     search?: string;
     sort?: string;
     pageNumber?: number;
     pageSize?: number;
     regionId?: string;
+    districtId?: string;
     branchId?: string;
     customerType?: string;
     status?: string;

@@ -22,8 +22,9 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
   {
     title: 'Operations',
     items: [
+      { label: 'Trekking', to: '/portal/trekking', icon: 'pi pi-map-marker' },
       { label: 'Customer Directory', to: '/portal/customers', icon: 'pi pi-users' },
-      { label: 'Trekking', to: '/portal/trekking', icon: 'pi pi-compass' },
+      { label: 'Traccar', to: '/portal/traccar', icon: 'pi pi-compass' },
     ],
   },
   {

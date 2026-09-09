@@ -1,8 +1,31 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
-import { type Customer } from '../../../api-client';
+import { type Customer, organisationApi } from '../../../api-client';
 import { CustomerModal } from './components/CustomerModal';
+
+// ── Filter options ──────────────────────────────────────────────────
+const CUSTOMER_TYPE_FILTER_OPTIONS = [
+  { label: 'All Types', value: '' },
+  { label: 'Retail Pharmacy', value: 'RetailPharmacy' },
+  { label: 'Wholesale Pharmacy', value: 'WholesalePharmacy' },
+  { label: 'OTC Medicine Seller', value: 'OTCMedicineSeller' },
+  { label: 'Clinic', value: 'Clinic' },
+  { label: 'Hospital', value: 'Hospital' },
+  { label: 'Chemical Shop', value: 'ChemicalShop' },
+  { label: 'Licensed Health Facility', value: 'LicensedHealthFacility' },
+  { label: 'Other', value: 'Other' },
+];
+
+const CUSTOMER_STATUS_FILTER_OPTIONS = [
+  { label: 'All Statuses', value: '' },
+  { label: 'Draft', value: 'Draft' },
+  { label: 'Pending Review', value: 'PendingReview' },
+  { label: 'Active', value: 'Active' },
+  { label: 'Rejected', value: 'Rejected' },
+  { label: 'Suspended', value: 'Suspended' },
+  { label: 'Inactive', value: 'Inactive' },
+];
 
 // ── Friendly label helpers ──────────────────────────────────────────
 const CUSTOMER_TYPE_LABELS: Record<string, string> = {
@@ -37,6 +60,42 @@ const STATUS_LABELS: Record<string, string> = {
 export const CustomersPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Regions', value: '' },
+  ]);
+  const [districtOptions, setDistrictOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Districts', value: '' },
+  ]);
+  const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Branches', value: '' },
+  ]);
+
+  useEffect(() => {
+    Promise.allSettled([
+      organisationApi.getRegions(),
+      organisationApi.getDistricts(),
+      organisationApi.getBranches(),
+    ]).then(([regionsResult, districtsResult, branchesResult]) => {
+      if (regionsResult.status === 'fulfilled') {
+        setRegionOptions([
+          { label: 'All Regions', value: '' },
+          ...regionsResult.value.map((r) => ({ label: r.name, value: r.id })),
+        ]);
+      }
+      if (districtsResult.status === 'fulfilled') {
+        setDistrictOptions([
+          { label: 'All Districts', value: '' },
+          ...districtsResult.value.map((d) => ({ label: d.name, value: d.id })),
+        ]);
+      }
+      if (branchesResult.status === 'fulfilled') {
+        setBranchOptions([
+          { label: 'All Branches', value: '' },
+          ...branchesResult.value.map((b) => ({ label: b.name, value: b.id })),
+        ]);
+      }
+    });
+  }, []);
 
   // ── Data mapper ────────────────────────────────────────────────────
   const dataMapper = useCallback(
@@ -88,6 +147,11 @@ export const CustomersPage: React.FC = () => {
       pageSize: payload.pageSize || 10,
       search: payload.search || undefined,
       sort: payload.sort || 'createdAt_desc',
+      ...(payload.regionId     ? { regionId:     payload.regionId }     : {}),
+      ...(payload.districtId   ? { districtId:   payload.districtId }   : {}),
+      ...(payload.branchId     ? { branchId:     payload.branchId }     : {}),
+      ...(payload.customerType ? { customerType: payload.customerType } : {}),
+      ...(payload.status       ? { status:       payload.status }       : {}),
     };
   }, []);
 
@@ -216,6 +280,41 @@ export const CustomersPage: React.FC = () => {
         emptyDataText="No customers found."
         dataMapper={dataMapper}
         parsePayload={parsePaginationPayload}
+        extendedFilter={{
+          enable: true,
+          filters: [
+            {
+              type: 'SelectFilter',
+              accessor: 'regionId',
+              label: 'Region',
+              args: { options: regionOptions },
+            },
+            {
+              type: 'SelectFilter',
+              accessor: 'districtId',
+              label: 'District',
+              args: { options: districtOptions },
+            },
+            {
+              type: 'SelectFilter',
+              accessor: 'branchId',
+              label: 'Branch',
+              args: { options: branchOptions },
+            },
+            {
+              type: 'SelectFilter',
+              accessor: 'customerType',
+              label: 'Customer Type',
+              args: { options: CUSTOMER_TYPE_FILTER_OPTIONS },
+            },
+            {
+              type: 'SelectFilter',
+              accessor: 'status',
+              label: 'Status',
+              args: { options: CUSTOMER_STATUS_FILTER_OPTIONS },
+            },
+          ],
+        }}
       />
 
       <CustomerModal

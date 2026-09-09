@@ -7,7 +7,7 @@ import {
   resetTableData,
 } from '../../../components/data-table';
 import { FlatConfirmDialog } from '../../../components/overlay';
-import { fleetApi, type Vehicle, type OperationalStatus } from '../../../api-client';
+import { fleetApi, organisationApi, type Vehicle, type OperationalStatus } from '../../../api-client';
 import { VehicleModal } from './components/VehicleModal';
 import { VehicleStatusModal } from './components/VehicleStatusModal';
 import { AssignStaffModal } from './components/AssignStaffModal';
@@ -24,7 +24,27 @@ const VEHICLE_STATUS_LABELS: Record<string, string> = {
   Decommissioned: 'Decommissioned',
 };
 
+const VEHICLE_STATUS_FILTER_OPTIONS = [
+  { label: 'All Statuses', value: '' },
+  { label: 'Active', value: 'Active' },
+  { label: 'Under Maintenance', value: 'UnderMaintenance' },
+  { label: 'Decommissioned', value: 'Decommissioned' },
+];
+
 export const FleetPage: React.FC = () => {
+  const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Branches', value: '' },
+  ]);
+
+  useEffect(() => {
+    organisationApi.getBranches().then((branches) => {
+      setBranchOptions([
+        { label: 'All Branches', value: '' },
+        ...branches.map((b) => ({ label: b.name, value: b.id })),
+      ]);
+    }).catch(() => {});
+  }, []);
+
   // ── Floating menu state ────────────────────────────────────────────
   const [vehicleMenu, setVehicleMenu] = useState<{
     vehicle: Vehicle;
@@ -120,6 +140,8 @@ export const FleetPage: React.FC = () => {
     pageSize: payload.pageSize || 10,
     search: payload.search || undefined,
     sort: payload.sort || 'createdAt_desc',
+    ...(payload.status   ? { status:   payload.status }   : {}),
+    ...(payload.branchId ? { branchId: payload.branchId } : {}),
   }), []);
 
   // ── Vehicle columns ────────────────────────────────────────────────
@@ -220,6 +242,23 @@ export const FleetPage: React.FC = () => {
         emptyDataText="No vehicles found."
         dataMapper={vehicleDataMapper}
         parsePayload={parsePagination}
+        extendedFilter={{
+          enable: true,
+          filters: [
+            {
+              type: 'SelectFilter',
+              accessor: 'status',
+              label: 'Status',
+              args: { options: VEHICLE_STATUS_FILTER_OPTIONS },
+            },
+            {
+              type: 'SelectFilter',
+              accessor: 'branchId',
+              label: 'Branch',
+              args: { options: branchOptions },
+            },
+          ],
+        }}
       />
 
       {/* ── Modals ───────────────────────────────────────────────────── */}

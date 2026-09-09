@@ -38,6 +38,25 @@
   --color-dark-text: #adbac7;
 }
 
+/* Fix PrimeReact dropdown clear button vertical alignment */
+.p-dropdown .p-dropdown-clear-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 2.2rem;
+  margin: 0;
+}
+
+/* Hide number input spinners globally */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* ==========================================================================
    Flat UI Design System (Zero Border-Radius / Crisp Rectilinear Edges)
    ========================================================================== */

@@ -184,14 +184,54 @@ export const OrganisationPage: React.FC = () => {
     []
   );
 
-  const parsePaginationPayload = useCallback((payload: any) => {
+  const parseBranchesPagination = useCallback((payload: any) => {
     return {
       pageNumber: payload.pageNumber || payload.page || 1,
       pageSize: payload.pageSize || 10,
       search: payload.search || undefined,
       sort: payload.sort || 'createdAt_desc',
+      ...(payload.regionId        ? { regionId:        payload.regionId }        : {}),
+      ...(payload.districtId      ? { districtId:      payload.districtId }      : {}),
+      ...(payload.branchType      ? { branchType:      payload.branchType }      : {}),
+      ...(payload.includeInactive !== undefined && payload.includeInactive !== ''
+        ? { includeInactive: payload.includeInactive } : {}),
     };
   }, []);
+
+  const parseDistrictsPagination = useCallback((payload: any) => {
+    return {
+      pageNumber: payload.pageNumber || payload.page || 1,
+      pageSize: payload.pageSize || 10,
+      search: payload.search || undefined,
+      sort: payload.sort || 'createdAt_desc',
+      ...(payload.regionId ? { regionId: payload.regionId } : {}),
+      ...(payload.includeInactive !== undefined && payload.includeInactive !== ''
+        ? { includeInactive: payload.includeInactive } : {}),
+    };
+  }, []);
+
+  const parseRegionsPagination = useCallback((payload: any) => {
+    return {
+      pageNumber: payload.pageNumber || payload.page || 1,
+      pageSize: payload.pageSize || 10,
+      search: payload.search || undefined,
+      sort: payload.sort || 'createdAt_desc',
+      ...(payload.includeInactive !== undefined && payload.includeInactive !== ''
+        ? { includeInactive: payload.includeInactive } : {}),
+    };
+  }, []);
+
+  const BRANCH_TYPE_FILTER_OPTIONS = [
+    { label: 'All Types', value: '' },
+    { label: 'Retail', value: 'Retail' },
+    { label: 'Wholesale', value: 'Wholesale' },
+    { label: 'Laboratory', value: 'Laboratory' },
+  ];
+
+  const INCLUDE_INACTIVE_OPTIONS = [
+    { label: 'Active Only', value: '' },
+    { label: 'Include Inactive', value: 'true' },
+  ];
 
   // --- Column Definitions ---
   const branchColumns: ColumnDef<Branch>[] = useMemo(
@@ -433,7 +473,46 @@ export const OrganisationPage: React.FC = () => {
           initialPageSize={10}
           emptyDataText="No branches found."
           dataMapper={branchDataMapper}
-          parsePayload={parsePaginationPayload}
+          parsePayload={parseBranchesPagination}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              {
+                type: 'SelectFilter',
+                accessor: 'regionId',
+                label: 'Region',
+                args: {
+                  options: [
+                    { label: 'All Regions', value: '' },
+                    ...regions.map((r) => ({ label: r.name, value: r.id })),
+                  ],
+                },
+              },
+              {
+                type: 'SelectFilter',
+                accessor: 'districtId',
+                label: 'District',
+                args: {
+                  options: [
+                    { label: 'All Districts', value: '' },
+                    ...districts.map((d) => ({ label: d.name, value: d.id })),
+                  ],
+                },
+              },
+              {
+                type: 'SelectFilter',
+                accessor: 'branchType',
+                label: 'Branch Type',
+                args: { options: BRANCH_TYPE_FILTER_OPTIONS },
+              },
+              {
+                type: 'SelectFilter',
+                accessor: 'includeInactive',
+                label: 'Inactive',
+                args: { options: INCLUDE_INACTIVE_OPTIONS },
+              },
+            ],
+          }}
         />
       ) : activeTab === 'districts' ? (
         /* Tab 2: Districts */
@@ -452,7 +531,29 @@ export const OrganisationPage: React.FC = () => {
           initialPageSize={10}
           emptyDataText="No districts found."
           dataMapper={districtDataMapper}
-          parsePayload={parsePaginationPayload}
+          parsePayload={parseDistrictsPagination}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              {
+                type: 'SelectFilter',
+                accessor: 'regionId',
+                label: 'Region',
+                args: {
+                  options: [
+                    { label: 'All Regions', value: '' },
+                    ...regions.map((r) => ({ label: r.name, value: r.id })),
+                  ],
+                },
+              },
+              {
+                type: 'SelectFilter',
+                accessor: 'includeInactive',
+                label: 'Inactive',
+                args: { options: INCLUDE_INACTIVE_OPTIONS },
+              },
+            ],
+          }}
         />
       ) : (
         /* Tab 3: Regions */
@@ -469,7 +570,18 @@ export const OrganisationPage: React.FC = () => {
           initialPageSize={16}
           emptyDataText="No regions found."
           dataMapper={regionDataMapper}
-          parsePayload={parsePaginationPayload}
+          parsePayload={parseRegionsPagination}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              {
+                type: 'SelectFilter',
+                accessor: 'includeInactive',
+                label: 'Inactive',
+                args: { options: INCLUDE_INACTIVE_OPTIONS },
+              },
+            ],
+          }}
         />
       )}
 

@@ -275,5 +275,15 @@ api.interceptors.response.use(
   }
 );
 
+/** Anonymous axios instance — no auth interceptors. Use for public endpoints (driver portal). */
+export const publicApi: AxiosInstance = axios.create({
+  baseURL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
 export type { AxiosInstance, AxiosRequestConfig, AxiosResponse };
 export default api;
