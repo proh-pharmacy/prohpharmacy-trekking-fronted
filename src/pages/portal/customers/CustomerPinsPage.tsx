@@ -24,7 +24,7 @@ function makePin(customer: Customer): L.DivIcon {
       className: 'customer-pin-icon',
       html: `<div style="
         width:38px;height:38px;border-radius:50%;overflow:hidden;
-        border:2.5px solid #ffffff;
+        border:2.5px solid #f0883e;
         box-shadow:0 2px 8px rgba(0,0,0,0.5);
         box-sizing:border-box;
       "><img src="${portrait}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`,
@@ -39,7 +39,7 @@ function makePin(customer: Customer): L.DivIcon {
     html: `<div style="
       width:38px;height:38px;border-radius:50%;
       background:#15803d;
-      border:2.5px solid #ffffff;
+      border:2.5px solid #f0883e;
       box-shadow:0 2px 8px rgba(0,0,0,0.5);
       display:flex;align-items:center;justify-content:center;
       box-sizing:border-box;
