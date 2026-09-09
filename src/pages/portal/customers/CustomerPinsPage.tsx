@@ -114,24 +114,24 @@ export const CustomerPinsPage: React.FC = () => {
               position={[customer.primaryLocation!.latitude, customer.primaryLocation!.longitude]}
               icon={makePin(customer)}
             >
-              <Popup>
-                <div style={{ minWidth: 170, fontSize: 13, lineHeight: 1.5 }}>
-                  <p style={{ fontWeight: 700, marginBottom: 4, color: '#111' }}>
+              <Popup className="customer-pin-popup">
+                <div style={{ minWidth: 170, fontSize: 13, lineHeight: 1.6, padding: '10px 12px' }}>
+                  <p style={{ fontWeight: 700, marginBottom: 4, color: '#ffffff' }}>
                     {customer.businessName}
                   </p>
                   {customer.tradingName && (
-                    <p style={{ color: '#666', marginBottom: 4, fontSize: 12 }}>
+                    <p style={{ color: '#adbac7', marginBottom: 4, fontSize: 12 }}>
                       {customer.tradingName}
                     </p>
                   )}
-                  <p style={{ color: '#444', marginBottom: 2 }}>
+                  <p style={{ color: '#adbac7', marginBottom: 2 }}>
                     {formatCustomerType(customer.customerType)}
                   </p>
-                  <p style={{ color: '#444', marginBottom: 2 }}>
+                  <p style={{ color: '#adbac7', marginBottom: 2 }}>
                     {customer.primaryPhoneNumber}
                   </p>
                   {customer.primaryLocation?.districtName && (
-                    <p style={{ color: '#888', fontSize: 12 }}>
+                    <p style={{ color: '#768390', fontSize: 12 }}>
                       {customer.primaryLocation.districtName}
                     </p>
                   )}

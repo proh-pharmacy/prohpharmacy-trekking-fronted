@@ -438,6 +438,23 @@ div.p-icon-field {
   animation: map-pin-drop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Customer Pins popup — dark theme */
+.customer-pin-popup .leaflet-popup-content-wrapper {
+  background: #22272e !important;
+  border: 1px solid #444c56 !important;
+  border-radius: 4px !important;
+  color: #ffffff !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+}
+.customer-pin-popup .leaflet-popup-content {
+  margin: 0 !important;
+  color: #ffffff !important;
+}
+.customer-pin-popup .leaflet-popup-tip {
+  background: #22272e !important;
+}
+
 /* 11. Portal Sidebar Tooltip (PrimeReact) */
 .portal-sidebar-tooltip.p-tooltip {
   z-index: 99999 !important;
