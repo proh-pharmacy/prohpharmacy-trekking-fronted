@@ -16,6 +16,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Overview', to: '/portal/dashboard', icon: 'pi pi-th-large' },
       { label: 'Live Tracking', to: '/portal/tracking', icon: 'pi pi-map' },
+      { label: 'Customer Pins', to: '/portal/customer-pins', icon: 'pi pi-map-marker' },
     ],
   },
   {

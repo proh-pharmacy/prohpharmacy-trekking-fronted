@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/portal/dashboard/DashboardPage';
 import { GenericModulePage } from './pages/portal/GenericModulePage';
 import { ProductsPage } from './pages/portal/products';
 import { CustomersPage } from './pages/portal/customers/CustomersPage';
+import { CustomerPinsPage } from './pages/portal/customers/CustomerPinsPage';
 import { FleetPage } from './pages/portal/fleet';
 import { TrekkingPage } from './pages/portal/trekking';
 import { TrackingPage } from './pages/portal/tracking';
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="trekking" element={<TrekkingPage />} />
                 <Route path="tracking" element={<TrackingPage />} />
+                <Route path="customer-pins" element={<CustomerPinsPage />} />
                 <Route path="customers" element={<CustomersPage />} />
                 <Route path="products" element={<ProductsPage />} />
 
