@@ -168,10 +168,6 @@ export const TrackingPage: React.FC = () => {
       <div className="shrink-0 bg-portal-surface border-b border-portal-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
         {/* Left: Title & Live Connection Status */}
         <div className="flex items-center gap-3">
-          <h1 className="text-xs font-bold uppercase tracking-wider text-white">
-            Live Tracking
-          </h1>
-
           {/* Connection Status - Minimal, unbordered text with green/amber/red tint */}
           <div
             className={`flex items-center gap-1.5 text-[11px] font-semibold ${
