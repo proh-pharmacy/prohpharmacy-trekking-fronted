@@ -495,7 +495,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             <SectionLabel>Representative</SectionLabel>
 
             {/* Portrait upload */}
-            <div className="flex items-center gap-4 mb-1">
+            <div className="flex items-center gap-4 mb-4">
               <button
                 type="button"
                 onClick={() => portraitInputRef.current?.click()}
