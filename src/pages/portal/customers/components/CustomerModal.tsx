@@ -113,6 +113,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   // ── Portrait upload ────────────────────────────────────────────────
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  const [showPortraitViewer, setShowPortraitViewer] = useState(false);
   const portraitInputRef = useRef<HTMLInputElement>(null);
 
   const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -496,9 +497,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
             {/* Portrait upload */}
             <div className="flex items-center gap-4 mb-4">
+              {/* Avatar — click to view if photo exists, else click to upload */}
               <button
                 type="button"
-                onClick={() => portraitInputRef.current?.click()}
+                onClick={() => portraitPreview ? setShowPortraitViewer(true) : portraitInputRef.current?.click()}
                 className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
               >
                 {portraitPreview ? (
@@ -507,26 +509,37 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   <i className="pi pi-camera text-lg text-portal-muted group-hover:text-portal-accent transition-colors" />
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <i className="pi pi-upload text-white text-xs" />
+                  <i className={`pi ${portraitPreview ? 'pi-search-plus' : 'pi-upload'} text-white text-xs`} />
                 </div>
               </button>
-              <div>
+
+              <div className="flex flex-col gap-1">
                 <p className="text-xs text-portal-text font-medium">
                   {portraitFile ? portraitFile.name : 'Representative photo'}
                 </p>
-                <p className="text-[11px] text-portal-muted mt-0.5">
+                <p className="text-[11px] text-portal-muted">
                   JPEG, PNG or WebP · Max 5 MB · Optional
                 </p>
-                {portraitFile && (
+                <div className="flex items-center gap-3 mt-0.5">
                   <button
                     type="button"
-                    onClick={() => { setPortraitFile(null); setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null); }}
-                    className="text-[11px] text-red-400 hover:text-red-300 mt-1"
+                    onClick={() => portraitInputRef.current?.click()}
+                    className="text-[11px] text-portal-accent hover:text-portal-accent-hover"
                   >
-                    Remove
+                    {portraitPreview ? 'Change photo' : 'Upload photo'}
                   </button>
-                )}
+                  {portraitFile && (
+                    <button
+                      type="button"
+                      onClick={() => { setPortraitFile(null); setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null); }}
+                      className="text-[11px] text-red-400 hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
+
               <input
                 ref={portraitInputRef}
                 type="file"
@@ -535,6 +548,25 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 onChange={handlePortraitChange}
               />
             </div>
+
+            {/* Portrait lightbox */}
+            {showPortraitViewer && portraitPreview && (
+              <div
+                className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center"
+                onClick={() => setShowPortraitViewer(false)}
+              >
+                <div className="relative max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                  <img src={portraitPreview} alt="Portrait" className="w-full rounded object-contain max-h-[70vh]" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPortraitViewer(false)}
+                    className="absolute top-2 right-2 w-7 h-7 rounded bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                  >
+                    <i className="pi pi-times text-xs" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FlatInputText
