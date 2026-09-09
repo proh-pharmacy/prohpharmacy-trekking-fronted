@@ -181,9 +181,9 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
       {/* Vehicle List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-portal-border/40">
         {filteredDevices.length === 0 ? (
-          <div className="p-8 text-center text-portal-muted text-xs">
-            <i className="pi pi-inbox text-2xl mb-2 block opacity-40" />
-            {devices.length === 0 ? 'No reported positions yet.' : 'No vehicles match filter.'}
+          <div className="p-8 flex flex-col items-center justify-center gap-2 text-portal-muted text-xs">
+            <i className="pi pi-inbox text-2xl opacity-40" />
+            <span>{devices.length === 0 ? 'No reported positions yet.' : 'No vehicles match filter.'}</span>
           </div>
         ) : (
           filteredDevices.map((device) => {
