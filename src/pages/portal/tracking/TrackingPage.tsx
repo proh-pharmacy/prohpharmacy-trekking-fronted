@@ -272,6 +272,19 @@ export const TrackingPage: React.FC = () => {
             title="Reload last known positions from database"
             className="!h-[38px] px-2.5"
           />
+
+          {import.meta.env.VITE_TRACKING_ENDPOINT && (
+            <a
+              href={import.meta.env.VITE_TRACKING_ENDPOINT}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open Traccar"
+              className="inline-flex items-center gap-1.5 h-[38px] px-2.5 text-xs font-medium text-portal-muted border border-portal-border rounded hover:text-white hover:border-portal-accent hover:bg-white/5 transition-colors"
+            >
+              <i className="pi pi-external-link text-xs" />
+              <span className="hidden md:inline">Traccar</span>
+            </a>
+          )}
         </div>
       </div>
 
