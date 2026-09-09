@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import {
   FlatButton,
@@ -53,6 +53,27 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [createdResult, setCreatedResult] = useState<CreateStaffResponse | null>(null);
 
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Photo must be under 5 MB.');
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
   const autoDefaultPassword =
     `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/\s+/g, '') ||
     'firstnamelastname';
@@ -83,6 +104,8 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       setInitialPassword('');
       setShowPassword(false);
       setCreatedResult(null);
+      setPhotoFile(null);
+      setPhotoPreview(null);
     }
   }, [visible]);
 
@@ -141,6 +164,14 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       };
 
       const res = await staffApi.createStaff(payload);
+
+      if (photoFile && res.id) {
+        try {
+          await staffApi.uploadPhoto(res.id, photoFile);
+        } catch {
+          toast.error('Staff created but photo upload failed.');
+        }
+      }
 
       toast.success(`Staff member ${res.fullName || `${firstName} ${lastName}`} created.`);
       resetTableData();
@@ -285,6 +316,52 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
+        {/* Passport Photo */}
+        <div className="flex items-center gap-4 pb-1">
+          <button
+            type="button"
+            onClick={() => photoPreview ? setShowPhotoViewer(true) : photoInputRef.current?.click()}
+            className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
+          >
+            {photoPreview ? (
+              <img src={photoPreview} alt="Staff photo" className="w-full h-full object-cover" />
+            ) : (
+              <i className="pi pi-camera text-lg text-portal-muted group-hover:text-portal-accent transition-colors" />
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <i className={`pi ${photoPreview ? 'pi-search-plus' : 'pi-upload'} text-white text-xs`} />
+            </div>
+          </button>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-portal-text font-medium">
+              {photoFile ? photoFile.name : 'Passport photo'}
+            </p>
+            <p className="text-[11px] text-portal-muted">JPEG, PNG or WebP · Max 5 MB · Optional</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <button type="button" onClick={() => photoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">
+                {photoPreview ? 'Change photo' : 'Upload photo'}
+              </button>
+              {photoFile && (
+                <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="text-[11px] text-red-400 hover:text-red-300">
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} />
+        </div>
+
+        {showPhotoViewer && photoPreview && (
+          <div className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center" onClick={() => setShowPhotoViewer(false)}>
+            <div className="relative max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <img src={photoPreview} alt="Staff photo" className="w-full rounded object-contain max-h-[70vh]" />
+              <button type="button" onClick={() => setShowPhotoViewer(false)} className="absolute top-2 right-2 w-7 h-7 rounded bg-black/60 text-white flex items-center justify-center hover:bg-black/80">
+                <i className="pi pi-times text-xs" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Name Fields */}
         <div className="grid grid-cols-2 gap-3">
           <FlatInputText
