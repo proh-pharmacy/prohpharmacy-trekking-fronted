@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -110,6 +110,28 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [capturingGps, setCapturingGps] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
+  // ── Portrait upload ────────────────────────────────────────────────
+  const [portraitFile, setPortraitFile] = useState<File | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  const portraitInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Photo must be under 5 MB.');
+      return;
+    }
+    setPortraitFile(file);
+    setPortraitPreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
   // ── GPS capture ────────────────────────────────────────────────────
   const handleCaptureGps = useCallback(() => {
     if (!navigator.geolocation) {
@@ -176,7 +198,15 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     return () => { mounted = false; };
   }, [regionId]);
 
-  useEffect(() => { if (!visible) setShowMap(false); }, [visible]);
+  useEffect(() => {
+    if (!visible) {
+      setShowMap(false);
+      setPortraitFile(null);
+      setPortraitPreview(null);
+    } else {
+      setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null);
+    }
+  }, [visible, customer]);
 
   // Initialize form on open
   useEffect(() => {
@@ -293,6 +323,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             accuracyMetres: accuracy,
           },
         });
+        if (portraitFile && customer.primaryPerson?.id) {
+          try {
+            await customersApi.uploadPortrait(customer.id, customer.primaryPerson.id, portraitFile);
+          } catch {
+            toast.error('Customer updated but portrait upload failed.');
+          }
+        }
         toast.success(`Customer "${businessName.trim()}" updated.`);
       } else {
         if (latitude === null || longitude === null || accuracy === null) {
@@ -300,7 +337,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           setSubmitting(false);
           return;
         }
-        await customersApi.createCustomer({
+        const created = await customersApi.createCustomer({
           businessName: businessName.trim(),
           tradingName: tradingName.trim() || undefined,
           customerType: customerType as CustomerType,
@@ -324,6 +361,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             accuracyMetres: accuracy,
           },
         });
+        if (portraitFile && created.primaryPerson?.id) {
+          try {
+            await customersApi.uploadPortrait(created.id, created.primaryPerson.id, portraitFile);
+          } catch {
+            toast.error('Customer created but portrait upload failed.');
+          }
+        }
         toast.success(`Customer "${businessName.trim()}" created.`);
       }
 
@@ -449,6 +493,48 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         {/* ── Representative ─────────────────────────────────────── */}
         <>
             <SectionLabel>Representative</SectionLabel>
+
+            {/* Portrait upload */}
+            <div className="flex items-center gap-4 mb-1">
+              <button
+                type="button"
+                onClick={() => portraitInputRef.current?.click()}
+                className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
+              >
+                {portraitPreview ? (
+                  <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="pi pi-camera text-lg text-portal-muted group-hover:text-portal-accent transition-colors" />
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <i className="pi pi-upload text-white text-xs" />
+                </div>
+              </button>
+              <div>
+                <p className="text-xs text-portal-text font-medium">
+                  {portraitFile ? portraitFile.name : 'Representative photo'}
+                </p>
+                <p className="text-[11px] text-portal-muted mt-0.5">
+                  JPEG, PNG or WebP · Max 5 MB · Optional
+                </p>
+                {portraitFile && (
+                  <button
+                    type="button"
+                    onClick={() => { setPortraitFile(null); setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null); }}
+                    className="text-[11px] text-red-400 hover:text-red-300 mt-1"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                ref={portraitInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePortraitChange}
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FlatInputText

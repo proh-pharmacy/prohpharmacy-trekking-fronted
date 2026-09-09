@@ -43,6 +43,7 @@ export interface CustomerPerson {
   primaryPhoneNumber: string;
   isPrimaryContact: boolean;
   isCreditResponsiblePerson: boolean;
+  portraitUrl?: string;
 }
 
 export interface CustomerLocation {
