@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
 import {
   FlatButton,
@@ -10,6 +11,17 @@ import {
 import { staffApi, type Branch, type Role, type CreateStaffResponse } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+
+const createStaffSchema = z.object({
+  firstName:    z.string().min(1, 'First name is required'),
+  lastName:     z.string().min(1, 'Last name is required'),
+  emailAddress: z.string().min(1, 'Email is required').email('Enter a valid email address'),
+  phoneNumber:  z.string().min(1, 'Phone number is required'),
+  branchId:     z.string().min(1, 'Assign a branch / hub'),
+  joinedOn:     z.string().min(1, 'Joined date is required'),
+});
+
+type CreateStaffErrors = Partial<Record<keyof z.infer<typeof createStaffSchema>, string>>;
 
 interface CreateStaffModalProps {
   visible: boolean;
@@ -52,6 +64,9 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [createdResult, setCreatedResult] = useState<CreateStaffResponse | null>(null);
+  const [errors, setErrors] = useState<CreateStaffErrors>({});
+  const clearError = (field: keyof CreateStaffErrors) =>
+    setErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -106,6 +121,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       setCreatedResult(null);
       setPhotoFile(null);
       setPhotoPreview(null);
+      setErrors({});
     }
   }, [visible]);
 
@@ -123,22 +139,26 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      toast.error('First and last name are required.');
+
+    const result = createStaffSchema.safeParse({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      emailAddress: emailAddress.trim(),
+      phoneNumber: phoneNumber.trim(),
+      branchId,
+      joinedOn,
+    });
+
+    if (!result.success) {
+      const fieldErrors: CreateStaffErrors = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as keyof CreateStaffErrors;
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
-    if (!emailAddress.trim()) {
-      toast.error('Corporate email address is required.');
-      return;
-    }
-    if (!phoneNumber.trim()) {
-      toast.error('Phone number is required.');
-      return;
-    }
-    if (!branchId) {
-      toast.error('Please assign a branch/hub.');
-      return;
-    }
+
     if (grantAppAccess && selectedRoles.length === 0) {
       toast.error('Please assign at least one platform system role.');
       return;
@@ -369,16 +389,18 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             placeholder="e.g. Kwame"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => { setFirstName(e.target.value); clearError('firstName'); }}
             size="sm"
+            errorMessage={errors.firstName}
           />
           <FlatInputText
             label="Last Name"
             required
             placeholder="e.g. Asante"
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => { setLastName(e.target.value); clearError('lastName'); }}
             size="sm"
+            errorMessage={errors.lastName}
           />
         </div>
 
@@ -390,16 +412,18 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             type="email"
             placeholder="k.asante@prohpharmacy.com"
             value={emailAddress}
-            onChange={(e) => setEmailAddress(e.target.value)}
+            onChange={(e) => { setEmailAddress(e.target.value); clearError('emailAddress'); }}
             size="sm"
+            errorMessage={errors.emailAddress}
           />
           <FlatInputText
             label="Phone Number"
             required
             placeholder="+233 20 123 4567"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
             size="sm"
+            errorMessage={errors.phoneNumber}
           />
         </div>
 
@@ -410,16 +434,18 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             options={branchOptions}
             value={branchId}
-            onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
+            onChange={(val: any) => { setBranchId(val?.value !== undefined ? val.value : val); clearError('branchId'); }}
             size="sm"
+            errorMessage={errors.branchId}
           />
           <FlatInputText
             label="Joined Date"
             type="date"
             required
             value={joinedOn}
-            onChange={(e) => setJoinedOn(e.target.value)}
+            onChange={(e) => { setJoinedOn(e.target.value); clearError('joinedOn'); }}
             size="sm"
+            errorMessage={errors.joinedOn}
           />
         </div>
 

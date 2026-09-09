@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatInputText, FlatDropdown } from '../../../../components/flat-form';
 import { staffApi, type StaffItem, type Branch, type Role } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+
+const editStaffSchema = z.object({
+  firstName:   z.string().min(1, 'First name is required'),
+  lastName:    z.string().min(1, 'Last name is required'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
+  branchId:    z.string().min(1, 'Assign a branch / hub'),
+});
+
+type EditStaffErrors = Partial<Record<keyof z.infer<typeof editStaffSchema>, string>>;
 
 interface EditStaffModalProps {
   visible: boolean;
@@ -38,6 +48,9 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
   const [branchId, setBranchId] = useState('');
   const [role, setRole] = useState('');
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<EditStaffErrors>({});
+  const clearError = (field: keyof EditStaffErrors) =>
+    setErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -81,6 +94,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
       setRole(staff.role || staff.jobTitle || '');
       setPhotoFile(null);
       setPhotoPreview(staff.profilePhotoUrl ?? null);
+      setErrors({});
     }
   }, [staff]);
 
@@ -88,16 +102,21 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      toast.error('First and last name are required.');
-      return;
-    }
-    if (!phoneNumber.trim()) {
-      toast.error('Phone number is required.');
-      return;
-    }
-    if (!branchId) {
-      toast.error('Branch is required.');
+
+    const result = editStaffSchema.safeParse({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      branchId,
+    });
+
+    if (!result.success) {
+      const fieldErrors: EditStaffErrors = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as keyof EditStaffErrors;
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
 
@@ -218,15 +237,17 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             label="First Name"
             required
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => { setFirstName(e.target.value); clearError('firstName'); }}
             size="sm"
+            errorMessage={errors.firstName}
           />
           <FlatInputText
             label="Last Name"
             required
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => { setLastName(e.target.value); clearError('lastName'); }}
             size="sm"
+            errorMessage={errors.lastName}
           />
         </div>
 
@@ -236,16 +257,18 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             label="Phone Number"
             required
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
             size="sm"
+            errorMessage={errors.phoneNumber}
           />
           <FlatDropdown
             label="Assigned Branch / Hub"
             required
             options={branchOptions}
             value={branchId}
-            onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
+            onChange={(val: any) => { setBranchId(val?.value !== undefined ? val.value : val); clearError('branchId'); }}
             size="sm"
+            errorMessage={errors.branchId}
           />
         </div>
 
