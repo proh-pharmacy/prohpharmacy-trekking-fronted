@@ -219,11 +219,13 @@ export const TrekDetailPage: React.FC = () => {
     if (!trek || !removingStop) return;
     try {
       await treksApi.removeStop(trek.id, removingStop.stopId);
+      resetTableData();
       setRemovingStop(null);
       await loadTrek(true);
-      toast.success('Stop removed.');
-    } catch {
-      toast.error('Failed to remove stop.');
+      toast.success('Stop removed successfully.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.response?.data?.detail || 'Failed to remove stop.';
+      toast.error(msg);
     }
   };
 
@@ -416,9 +418,15 @@ export const TrekDetailPage: React.FC = () => {
         visible={!!removingStop}
         onHide={() => setRemovingStop(null)}
         onConfirm={handleRemoveStop}
-        title="Remove Stop"
-        message={`Remove stop for ${removingStop?.customerName}? This cannot be undone.`}
-        confirmLabel="Remove"
+        title="Remove Delivery Stop"
+        message={
+          <span>
+            Are you sure you want to remove Stop #{removingStop?.sequence} (
+            <strong className="text-white">{removingStop?.customerName}</strong>)? Any delivery
+            items planned for this stop will also be removed. This action cannot be undone.
+          </span>
+        }
+        confirmLabel="Remove Stop"
         variant="danger"
       />
 
@@ -488,7 +496,12 @@ const StopCard: React.FC<StopCardProps> = ({
           )}
         </div>
         {!isLocked && (
-          <button type="button" onClick={onRemove} className="text-portal-muted hover:text-red-400 transition-colors p-1 shrink-0" title="Remove stop">
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-red-accent hover:text-red-accent-hover transition-colors p-1 shrink-0 cursor-pointer"
+            title="Remove stop"
+          >
             <i className="pi pi-trash text-xs" />
           </button>
         )}

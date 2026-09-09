@@ -86,11 +86,13 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
     if (!trek || !removingStop) return;
     try {
       await treksApi.removeStop(trek.id, removingStop.stopId);
+      resetTableData();
       setRemovingStop(null);
       await loadTrek();
       toast.success('Stop removed.');
-    } catch {
-      toast.error('Failed to remove stop.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.response?.data?.detail || 'Failed to remove stop.';
+      toast.error(msg);
     }
   };
 
@@ -293,7 +295,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                           <button
                             type="button"
                             onClick={() => setRemovingStop(stop)}
-                            className="shrink-0 text-portal-muted hover:text-red-400 transition-colors p-1"
+                            className="shrink-0 text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
                             title="Remove stop"
                           >
                             <i className="pi pi-trash text-xs" />
@@ -332,9 +334,15 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
         visible={!!removingStop}
         onHide={() => setRemovingStop(null)}
         onConfirm={handleRemoveStop}
-        title="Remove Stop"
-        message={`Remove stop for ${removingStop?.customerName}? This cannot be undone.`}
-        confirmLabel="Remove"
+        title="Remove Delivery Stop"
+        message={
+          <span>
+            Are you sure you want to remove Stop #{removingStop?.sequence} (
+            <strong className="text-white">{removingStop?.customerName}</strong>)? Any delivery
+            items planned for this stop will also be removed. This action cannot be undone.
+          </span>
+        }
+        confirmLabel="Remove Stop"
         variant="danger"
       />
     </>
