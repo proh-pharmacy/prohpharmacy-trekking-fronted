@@ -410,7 +410,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             options={branchOptions}
             value={branchId}
-            onChange={(val) => setBranchId(val)}
+            onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
             size="sm"
           />
           <FlatInputText

@@ -244,7 +244,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             required
             options={branchOptions}
             value={branchId}
-            onChange={(val) => setBranchId(val)}
+            onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
             size="sm"
           />
         </div>
@@ -255,7 +255,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             label="Position / Role"
             options={roleOptions}
             value={role}
-            onChange={(val) => setRole(val)}
+            onChange={(val: any) => setRole(val?.value !== undefined ? val.value : val)}
             size="sm"
           />
         </div>
