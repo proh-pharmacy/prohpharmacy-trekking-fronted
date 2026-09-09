@@ -527,17 +527,17 @@ const StopCard: React.FC<StopCardProps> = ({
 
       {/* Products table */}
       {stop.products.length > 0 && (
-        <div className="overflow-x-auto ml-10">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-portal-border/60">
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 pr-4">Product</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-3 w-16">Planned</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-3 w-20">Qty Delivered</th>
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 px-3 w-36">Payment</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-3 w-24">Amt Paid</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-3 w-24">Balance</th>
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 pl-3">Notes</th>
+        <div className="overflow-x-auto ml-0 sm:ml-10 border border-portal-border/60 bg-portal-canvas/30 rounded">
+          <table className="min-w-[760px] w-full text-xs">
+            <thead className="bg-portal-canvas border-b border-portal-border/60">
+              <tr>
+                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
+                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Planned</th>
+                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Qty Delivered</th>
+                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
+                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
+                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
+                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-portal-border/30">

@@ -40,7 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed', Cancelled: 'Cancelled',
 };
 
-const INPUT_CLS = 'w-full h-7 px-2 text-xs bg-portal-canvas border border-portal-border text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed';
+const INPUT_CLS = 'w-full h-8 px-2.5 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed';
 
 function initRows(trek: DriverTrek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
@@ -84,27 +84,34 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
   const isRecorded  = hasProducts && stop.products.every((p) => p.qtyDelivered != null);
 
   return (
-    <div className="px-5 py-4 space-y-4">
+    <div className="px-4 sm:px-5 py-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="shrink-0 text-[11px] font-bold text-portal-muted">
-          {stop.sequence}.
-        </span>
+      <div className="flex items-start justify-between gap-3 min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+          <span className="shrink-0 text-[11px] font-bold text-portal-muted">
+            {stop.sequence}.
+          </span>
           <span className="text-sm font-semibold text-white">{stop.customerName}</span>
           <span className="w-px h-3.5 bg-portal-border shrink-0" />
           <span className="font-mono text-[11px] text-portal-muted">{stop.customerCode}</span>
           {isRecorded && (
             <>
               <span className="w-px h-3.5 bg-portal-border shrink-0" />
-              <span className="text-[11px] text-portal-accent">Recorded</span>
+              <span className="text-[11px] text-portal-accent flex items-center gap-1">
+                <i className="pi pi-check text-[10px]" />
+                <span>Recorded</span>
+              </span>
             </>
           )}
           {stop.primaryPhoneNumber && (
             <>
               <span className="w-px h-3.5 bg-portal-border shrink-0" />
-              <a href={`tel:${stop.primaryPhoneNumber}`} className="text-[11px] text-portal-muted hover:text-white transition-colors">
-                {stop.primaryPhoneNumber}
+              <a
+                href={`tel:${stop.primaryPhoneNumber}`}
+                className="text-[11px] text-portal-muted hover:text-white transition-colors flex items-center gap-1"
+              >
+                <i className="pi pi-phone text-[9px]" />
+                <span>{stop.primaryPhoneNumber}</span>
               </a>
             </>
           )}
@@ -112,7 +119,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
       </div>
 
       {/* Info grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-3.5 sm:px-4 py-2">
         <div>
           <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
           <InfoRow label="Region"   value={stop.regionName} />
@@ -132,85 +139,211 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
         </div>
       </div>
 
-      {/* Products table */}
+      {/* Products listing */}
       {hasProducts && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-portal-border/60">
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 pr-4">Product</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-2 w-14">Planned</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-2 w-20">Delivered</th>
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 px-2 w-36">Payment</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-2 w-24">Amt Paid</th>
-                <th className="text-center text-[10px] font-medium text-portal-muted pb-2 px-2 w-24">Balance</th>
-                <th className="text-left text-[10px] font-medium text-portal-muted pb-2 pl-2">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-portal-border/30">
-              {stop.products.map((product) => {
-                const row  = rows[product.stopProductId] ?? {};
-                const spId = product.stopProductId;
-                return (
-                  <tr key={spId}>
-                    <td className="py-2 pr-4">
-                      <span className="font-medium text-white">{product.productName}</span>
-                      {product.unit && <span className="text-portal-muted ml-1.5">({product.unit})</span>}
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      <span className="font-mono text-portal-accent">{product.plannedQuantity}</span>
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="number" min={0} max={product.plannedQuantity} step="0.01"
-                        value={row.qtyDelivered ?? ''} disabled={locked} placeholder="0"
-                        onChange={(e) => onRowChange(spId, 'qtyDelivered', e.target.value)}
-                        className={`${INPUT_CLS} text-center`}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <select
-                        value={row.paymentMethod ?? ''} disabled={locked}
-                        onChange={(e) => onRowChange(spId, 'paymentMethod', e.target.value)}
-                        className={`${INPUT_CLS} appearance-none`}
-                      >
-                        {PAYMENT_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="number" min={0} step="0.01"
-                        value={row.amtPaid ?? ''} disabled={locked} placeholder="0.00"
-                        onChange={(e) => onRowChange(spId, 'amtPaid', e.target.value)}
-                        className={`${INPUT_CLS} text-center`}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="number" min={0} step="0.01"
-                        value={row.balance ?? ''} disabled={locked} placeholder="0.00"
-                        onChange={(e) => onRowChange(spId, 'balance', e.target.value)}
-                        className={`${INPUT_CLS} text-center`}
-                      />
-                    </td>
-                    <td className="py-2 pl-2">
-                      <input
-                        type="text"
-                        value={row.notes ?? ''} disabled={locked} placeholder="Optional..."
-                        onChange={(e) => onRowChange(spId, 'notes', e.target.value)}
-                        className={INPUT_CLS}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {/* Desktop Table View (hidden on small screens) */}
+          <div className="hidden md:block border border-portal-border/60 bg-portal-canvas/30 rounded overflow-x-auto">
+            <table className="min-w-[760px] w-full text-xs">
+              <thead className="bg-portal-canvas border-b border-portal-border/60">
+                <tr>
+                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Planned</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Delivered</th>
+                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
+                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 min-w-[140px] whitespace-nowrap">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-portal-border/30">
+                {stop.products.map((product) => {
+                  const row  = rows[product.stopProductId] ?? {};
+                  const spId = product.stopProductId;
+                  return (
+                    <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="font-medium text-white">{product.productName}</span>
+                        {product.unit && <span className="text-portal-muted ml-1.5 text-[11px]">({product.unit})</span>}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                        <span className="font-mono text-portal-accent font-semibold">{product.plannedQuantity}</span>
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <input
+                          type="number" min={0} max={product.plannedQuantity} step="0.01"
+                          value={row.qtyDelivered ?? ''} disabled={locked} placeholder="0"
+                          onChange={(e) => onRowChange(spId, 'qtyDelivered', e.target.value)}
+                          className={`${INPUT_CLS} text-center`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <select
+                          value={row.paymentMethod ?? ''} disabled={locked}
+                          onChange={(e) => onRowChange(spId, 'paymentMethod', e.target.value)}
+                          className={`${INPUT_CLS} appearance-none cursor-pointer`}
+                        >
+                          {PAYMENT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <input
+                          type="number" min={0} step="0.01"
+                          value={row.amtPaid ?? ''} disabled={locked} placeholder="0.00"
+                          onChange={(e) => onRowChange(spId, 'amtPaid', e.target.value)}
+                          className={`${INPUT_CLS} text-center`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <input
+                          type="number" min={0} step="0.01"
+                          value={row.balance ?? ''} disabled={locked} placeholder="0.00"
+                          onChange={(e) => onRowChange(spId, 'balance', e.target.value)}
+                          className={`${INPUT_CLS} text-center`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <input
+                          type="text"
+                          value={row.notes ?? ''} disabled={locked} placeholder="Optional notes..."
+                          onChange={(e) => onRowChange(spId, 'notes', e.target.value)}
+                          className={INPUT_CLS}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View (just as we have for the data table) */}
+          <div className="md:hidden space-y-3">
+            {stop.products.map((product) => {
+              const row  = rows[product.stopProductId] ?? {};
+              const spId = product.stopProductId;
+              return (
+                <div
+                  key={spId}
+                  className="p-3.5 space-y-2.5 bg-portal-canvas/50 border border-portal-border/60 rounded hover:bg-white/[0.02] transition-colors"
+                >
+                  {/* Product title & planned quantity */}
+                  <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white break-words">{product.productName}</p>
+                      {product.unit && <p className="text-[11px] text-portal-muted">{product.unit}</p>}
+                    </div>
+                    <div className="shrink-0 flex items-baseline gap-1 text-[11px] bg-portal-surface border border-portal-border/60 px-2 py-0.5 rounded">
+                      <span className="text-portal-muted text-[10px] uppercase font-bold">Planned</span>
+                      <span className="font-mono text-portal-accent font-bold">{product.plannedQuantity}</span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal entry rows just as DataTable mobile layout */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                        Delivered
+                      </span>
+                      <div className="col-span-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={product.plannedQuantity}
+                          step="0.01"
+                          value={row.qtyDelivered ?? ''}
+                          disabled={locked}
+                          placeholder={`Max ${product.plannedQuantity}`}
+                          onChange={(e) => onRowChange(spId, 'qtyDelivered', e.target.value)}
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                        Payment
+                      </span>
+                      <div className="col-span-2">
+                        <select
+                          value={row.paymentMethod ?? ''}
+                          disabled={locked}
+                          onChange={(e) => onRowChange(spId, 'paymentMethod', e.target.value)}
+                          className={`${INPUT_CLS} appearance-none cursor-pointer`}
+                        >
+                          {PAYMENT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                        Amt Paid
+                      </span>
+                      <div className="col-span-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={row.amtPaid ?? ''}
+                          disabled={locked}
+                          placeholder="0.00"
+                          onChange={(e) => onRowChange(spId, 'amtPaid', e.target.value)}
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                        Balance
+                      </span>
+                      <div className="col-span-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={row.balance ?? ''}
+                          disabled={locked}
+                          placeholder="0.00"
+                          onChange={(e) => onRowChange(spId, 'balance', e.target.value)}
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                        Notes
+                      </span>
+                      <div className="col-span-2">
+                        <input
+                          type="text"
+                          value={row.notes ?? ''}
+                          disabled={locked}
+                          placeholder="Optional notes..."
+                          onChange={(e) => onRowChange(spId, 'notes', e.target.value)}
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {!locked && (
-            <div className="flex justify-end mt-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3 mt-3 pt-1">
+              <span className="text-[11px] text-portal-muted md:hidden">
+                {isRecorded ? 'Recorded' : 'Pending'}
+              </span>
               <FlatButton
                 variant={isRecorded ? 'outline' : 'primary'}
                 size="sm"
@@ -218,6 +351,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                 onClick={() => onRecord(stop)}
                 loading={recording}
                 disabled={recording}
+                className="w-full sm:w-auto"
               >
                 {recording ? 'Saving...' : isRecorded ? 'Update Deliveries' : 'Record Deliveries'}
               </FlatButton>
@@ -338,28 +472,28 @@ export const DriverPage: React.FC = () => {
     <div className="min-h-screen bg-portal-canvas">
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-portal-surface border-b border-portal-border">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between gap-3">
+        <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-base font-bold text-white leading-none">{trek.trekNumber}</p>
             <p className="text-[11px] text-portal-muted mt-0.5">{trek.scheduledDate} · {trek.branchName}</p>
           </div>
-          <span className={`text-xs font-semibold ${STATUS_STYLES[trek.status] ?? 'text-portal-muted'}`}>
+          <span className={`text-xs font-semibold shrink-0 ${STATUS_STYLES[trek.status] ?? 'text-portal-muted'}`}>
             {STATUS_LABELS[trek.status] ?? trek.status}
           </span>
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-5 space-y-5">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
         {/* Trek info tiles */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
             { label: 'Driver',  value: trek.driverName },
             { label: 'Vehicle', value: trek.vehicleDisplayName },
             { label: 'Branch',  value: trek.branchName },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-portal-surface border border-portal-border/60 rounded p-3">
-              <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">{label}</p>
-              <p className="text-xs font-medium text-white">{value}</p>
+            <div key={label} className="bg-portal-surface border border-portal-border/60 rounded p-2.5 sm:p-3 min-w-0">
+              <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-0.5 truncate">{label}</p>
+              <p className="text-xs font-medium text-white truncate" title={value}>{value}</p>
             </div>
           ))}
         </div>
@@ -374,7 +508,7 @@ export const DriverPage: React.FC = () => {
 
         {/* Stops */}
         <div className="bg-portal-surface border border-portal-border/60 rounded">
-          <div className="px-5 py-3 border-b border-portal-border/60">
+          <div className="px-4 sm:px-5 py-3 border-b border-portal-border/60">
             <span className="text-sm font-bold text-white">
               Stops
               <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
