@@ -5,6 +5,7 @@ import { FlatButton } from '../../../components/flat-form';
 import { productsApi, type Product, type Unit } from '../../../api-client';
 import { ProductModal } from './components/ProductModal';
 import { UnitModal } from './components/UnitModal';
+import { ImportProductsModal } from './components/ImportProductsModal';
 import toast from 'react-hot-toast';
 
 export const ProductsPage: React.FC = () => {
@@ -24,6 +25,8 @@ export const ProductsPage: React.FC = () => {
 
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+
+  const [importModalVisible, setImportModalVisible] = useState(false);
 
   // Status toggles with immediate table refresh
   const handleToggleProductStatus = async (product: Product) => {
@@ -314,6 +317,10 @@ export const ProductsPage: React.FC = () => {
           dataSourceUrl="/products"
           columns={productColumns}
           heading="Products List"
+          secondaryAction
+          secondaryActionName="Import"
+          secondaryActionIcon="pi pi-upload"
+          onSecondaryAction={() => setImportModalVisible(true)}
           hasAction
           actionName="Add Product"
           onAction={() => {
@@ -391,6 +398,11 @@ export const ProductsPage: React.FC = () => {
           setEditingUnit(null);
         }}
         unit={editingUnit}
+      />
+
+      <ImportProductsModal
+        visible={importModalVisible}
+        onHide={() => setImportModalVisible(false)}
       />
     </div>
   );

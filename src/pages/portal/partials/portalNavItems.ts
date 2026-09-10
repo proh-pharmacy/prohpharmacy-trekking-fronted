@@ -35,6 +35,12 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: 'Reports',
+    items: [
+      { label: 'Ledger Summary', to: '/portal/reports/ledger-summary', icon: 'pi pi-wallet' },
+    ],
+  },
+  {
     title: 'Settings',
     items: [
       { label: 'People and Roles', to: '/portal/settings/users', icon: 'pi pi-users' },

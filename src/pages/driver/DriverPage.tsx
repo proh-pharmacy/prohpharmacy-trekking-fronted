@@ -9,6 +9,7 @@ import {
   type PaymentMethod,
   type RecordDeliveryPayload,
 } from '../../api-client';
+import { baseURL } from '../../api-client/api';
 
 type DeliveryRow = {
   qtyDelivered: string;
@@ -477,9 +478,19 @@ export const DriverPage: React.FC = () => {
             <p className="text-base font-bold text-white leading-none">{trek.trekNumber}</p>
             <p className="text-[11px] text-portal-muted mt-0.5">{trek.scheduledDate} · {trek.branchName}</p>
           </div>
-          <span className={`text-xs font-semibold shrink-0 ${STATUS_STYLES[trek.status] ?? 'text-portal-muted'}`}>
-            {STATUS_LABELS[trek.status] ?? trek.status}
-          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className={`text-xs font-semibold ${STATUS_STYLES[trek.status] ?? 'text-portal-muted'}`}>
+              {STATUS_LABELS[trek.status] ?? trek.status}
+            </span>
+            <FlatButton
+              variant="outline"
+              size="sm"
+              leftIcon="pi pi-download"
+              onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
+            >
+              PDF
+            </FlatButton>
+          </div>
         </div>
       </div>
 

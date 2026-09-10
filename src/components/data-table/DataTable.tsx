@@ -88,6 +88,10 @@ export interface FlatDataTableProps<TData> {
   actionName?: string;
   onAction?: () => void;
   actionOptions?: { asLink: boolean; link: string };
+  secondaryAction?: boolean;
+  secondaryActionName?: string;
+  secondaryActionIcon?: string;
+  onSecondaryAction?: () => void;
   heading?: string | React.ReactNode;
   headerNotes?: React.ReactNode;
   isFilterVisibleOnStart?: boolean;
@@ -164,6 +168,10 @@ export function FlatDataTable<TData extends Record<string, any>>({
   actionName = 'Add Record',
   onAction,
   actionOptions,
+  secondaryAction,
+  secondaryActionName = 'Import',
+  secondaryActionIcon,
+  onSecondaryAction,
   heading,
   headerNotes,
   isFilterVisibleOnStart = false,
@@ -726,7 +734,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
       )}
 
       {/* 2. Flat Top Bar (Heading + Action + Header Notes) styled as header card */}
-      {(heading || hasAction || headerNotes) && (
+      {(heading || hasAction || secondaryAction || headerNotes) && (
         <div className="bg-portal-surface border border-portal-border/60 rounded p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             {typeof heading === 'string' ? (
@@ -741,26 +749,40 @@ export function FlatDataTable<TData extends Record<string, any>>({
             )}
           </div>
 
-          {hasAction && (
+          {(hasAction || secondaryAction) && (
             <div className="flex items-center gap-2.5 shrink-0">
-              {actionOptions?.asLink ? (
+              {secondaryAction && (
                 <button
                   type="button"
-                  onClick={() => navigate(actionOptions.link)}
-                  className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                  onClick={onSecondaryAction}
+                  className="px-4 py-2 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
                 >
-                  <Plus className="w-4 h-4" />
-                  {actionName}
+                  {secondaryActionIcon && <i className={`${secondaryActionIcon} text-xs`} />}
+                  {secondaryActionName}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onAction}
-                  className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  {actionName}
-                </button>
+              )}
+              {hasAction && (
+                <>
+                  {actionOptions?.asLink ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(actionOptions.link)}
+                      className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {actionName}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onAction}
+                      className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {actionName}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

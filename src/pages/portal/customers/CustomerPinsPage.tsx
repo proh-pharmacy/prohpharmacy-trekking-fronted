@@ -22,6 +22,14 @@ const FitBounds: React.FC<{ pins: CustomerMapPin[]; trigger: number }> = ({ pins
 };
 
 // ── Pin helpers ────────────────────────────────────────────────────────
+export type PinSize = 'xs' | 'sm' | 'normal';
+
+const PIN_SIZES: Record<PinSize, { size: number; anchor: number; popupY: number; border: number; font: number; label: string }> = {
+  xs: { size: 18, anchor: 9, popupY: -12, border: 1.5, font: 7, label: 'Extra Small' },
+  sm: { size: 28, anchor: 14, popupY: -17, border: 2, font: 10, label: 'Small' },
+  normal: { size: 38, anchor: 19, popupY: -22, border: 2.5, font: 12, label: 'Normal' },
+};
+
 function getInitials(businessName: string): string {
   const words = businessName.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return '?';
@@ -29,7 +37,8 @@ function getInitials(businessName: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-function makePin(pin: CustomerMapPin): L.DivIcon {
+function makePin(pin: CustomerMapPin, pinSize: PinSize = 'normal'): L.DivIcon {
+  const conf = PIN_SIZES[pinSize] || PIN_SIZES.normal;
   const portrait = pin.primaryContactPortraitUrl;
   const initials = getInitials(pin.businessName);
 
@@ -37,30 +46,30 @@ function makePin(pin: CustomerMapPin): L.DivIcon {
     return L.divIcon({
       className: 'customer-pin-icon',
       html: `<div style="
-        width:38px;height:38px;border-radius:50%;overflow:hidden;
-        border:2.5px solid #f0883e;
+        width:${conf.size}px;height:${conf.size}px;border-radius:50%;overflow:hidden;
+        border:${conf.border}px solid #f0883e;
         box-shadow:0 2px 8px rgba(0,0,0,0.5);
         box-sizing:border-box;
       "><img src="${portrait}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      popupAnchor: [0, -22],
+      iconSize: [conf.size, conf.size],
+      iconAnchor: [conf.anchor, conf.anchor],
+      popupAnchor: [0, conf.popupY],
     });
   }
 
   return L.divIcon({
     className: 'customer-pin-icon',
     html: `<div style="
-      width:38px;height:38px;border-radius:50%;
+      width:${conf.size}px;height:${conf.size}px;border-radius:50%;
       background:#15803d;
-      border:2.5px solid #f0883e;
+      border:${conf.border}px solid #f0883e;
       box-shadow:0 2px 8px rgba(0,0,0,0.5);
       display:flex;align-items:center;justify-content:center;
       box-sizing:border-box;
-    "><span style="font-size:12px;font-weight:700;color:#fff;font-family:system-ui,sans-serif;letter-spacing:0.03em;line-height:1;">${initials}</span></div>`,
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
-    popupAnchor: [0, -22],
+    "><span style="font-size:${conf.font}px;font-weight:700;color:#fff;font-family:system-ui,sans-serif;letter-spacing:0.02em;line-height:1;">${initials}</span></div>`,
+    iconSize: [conf.size, conf.size],
+    iconAnchor: [conf.anchor, conf.anchor],
+    popupAnchor: [0, conf.popupY],
   });
 }
 
@@ -76,6 +85,7 @@ export const CustomerPinsPage: React.FC = () => {
 
   const [regions, setRegions]             = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('');
+  const [pinSize, setPinSize]             = useState<PinSize>('normal');
 
   useEffect(() => {
     organisationApi.getRegions()
@@ -124,17 +134,53 @@ export const CustomerPinsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="w-44">
-          <FlatDropdown
-            value={selectedRegion}
-            options={regionOptions}
-            onChange={(val: any) => {
-              const v = val?.value !== undefined ? val.value : val;
-              setSelectedRegion(v);
-            }}
-            placeholder="All Regions"
-            size="sm"
-          />
+        <div className="flex items-center flex-wrap gap-3">
+          {/* Pin size toggle */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-portal-muted">
+              PIN SIZE:
+            </span>
+            <div className="inline-flex rounded border border-portal-border bg-portal-canvas p-0.5">
+              {(
+                [
+                  { id: 'xs', label: 'Extra Small', shortLabel: 'XS' },
+                  { id: 'sm', label: 'Small', shortLabel: 'Small' },
+                  { id: 'normal', label: 'Normal', shortLabel: 'Normal' },
+                ] as const
+              ).map((s) => {
+                const isActive = pinSize === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPinSize(s.id)}
+                    title={`Set pin size to ${s.label}`}
+                    className={`px-2 py-1 text-xs font-medium rounded transition cursor-pointer ${
+                      isActive
+                        ? 'bg-portal-accent/20 text-portal-accent font-semibold border border-portal-accent/50'
+                        : 'text-portal-muted hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">{s.label}</span>
+                    <span className="inline sm:hidden">{s.shortLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="w-44">
+            <FlatDropdown
+              value={selectedRegion}
+              options={regionOptions}
+              onChange={(val: any) => {
+                const v = val?.value !== undefined ? val.value : val;
+                setSelectedRegion(v);
+              }}
+              placeholder="All Regions"
+              size="sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -157,12 +203,17 @@ export const CustomerPinsPage: React.FC = () => {
           <FitBounds pins={pins} trigger={fitTrigger} />
           {pins.map((pin) => (
             <Marker
-              key={pin.customerAccountId}
+              key={`${pin.customerAccountId}-${pinSize}`}
               position={[pin.latitude, pin.longitude]}
-              icon={makePin(pin)}
+              icon={makePin(pin, pinSize)}
+              eventHandlers={{
+                mouseover: (e) => {
+                  e.target.openPopup();
+                },
+              }}
             >
               <Popup className="customer-pin-popup">
-                <div style={{ minWidth: 170, fontSize: 13, lineHeight: 1.6, padding: '10px 12px' }}>
+                <div style={{ minWidth: 180, fontSize: 13, lineHeight: 1.5, padding: '10px 12px' }}>
                   <p style={{ fontWeight: 700, marginBottom: 4, color: '#ffffff' }}>
                     {pin.businessName}
                   </p>
@@ -171,17 +222,29 @@ export const CustomerPinsPage: React.FC = () => {
                       {pin.tradingName}
                     </p>
                   )}
-                  <p style={{ color: '#adbac7', marginBottom: 2 }}>
+                  <p style={{ color: '#adbac7', marginBottom: 2, fontSize: 12 }}>
                     {formatCustomerType(pin.customerType)}
                   </p>
-                  <p style={{ color: '#adbac7', marginBottom: 2 }}>
-                    {pin.primaryPhoneNumber}
-                  </p>
+                  {pin.primaryPhoneNumber && (
+                    <p style={{ color: '#adbac7', marginBottom: 2, fontSize: 12 }}>
+                      {pin.primaryPhoneNumber}
+                    </p>
+                  )}
                   {pin.regionName && (
-                    <p style={{ color: '#768390', fontSize: 12 }}>
+                    <p style={{ color: '#768390', fontSize: 11, marginBottom: 6 }}>
                       {pin.regionName}
                     </p>
                   )}
+                  <a
+                    href={`https://www.google.com/maps?q=${pin.latitude},${pin.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2.5 flex items-center justify-center gap-1.5 w-full py-1.5 px-2 text-[11px] font-semibold text-portal-accent hover:text-white bg-portal-accent/15 hover:bg-portal-accent/30 border border-portal-accent/40 rounded transition no-underline cursor-pointer"
+                  >
+                    <i className="pi pi-map-marker text-xs" />
+                    <span>Open in Google Maps</span>
+                    <i className="pi pi-external-link text-[10px] ml-0.5 opacity-80" />
+                  </a>
                 </div>
               </Popup>
             </Marker>

@@ -547,7 +547,7 @@ const StopCard: React.FC<StopCardProps> = ({
 
                 return (
                   <tr key={product.productId} className="group">
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pl-3 pr-4">
                       <span className="font-medium text-white">{product.productName}</span>
                       {product.unit && <span className="text-portal-muted ml-1.5">({product.unit})</span>}
                     </td>
@@ -603,7 +603,7 @@ const StopCard: React.FC<StopCardProps> = ({
                         className="w-full h-7 px-2 text-xs text-center bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       />
                     </td>
-                    <td className="py-2 pl-3">
+                    <td className="py-2 pl-3 pr-3">
                       <input
                         type="text"
                         value={row.notes ?? ''}
@@ -620,7 +620,7 @@ const StopCard: React.FC<StopCardProps> = ({
           </table>
 
           {hasProducts && (
-            <div className="flex items-center justify-end mt-3">
+            <div className="flex items-center justify-end px-3 py-3">
               {!isDeliveryLocked && (
                 <FlatButton
                   variant={isRecorded ? 'outline' : 'primary'}

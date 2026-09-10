@@ -38,6 +38,19 @@ export interface UpdateProductPayload {
   description?: string;
 }
 
+export interface ImportProductsPayload {
+  file: File;
+  productNameColumn: string;
+  unitColumn: string;
+}
+
+export interface ImportProductsResult {
+  imported: number;
+  skipped: number;
+  unitsCreated: number;
+  skippedNames: string[];
+}
+
 export const productsApi = {
   // Units endpoints
   getUnits: async (params?: {
@@ -97,6 +110,17 @@ export const productsApi = {
 
   toggleProductStatus: async (id: string): Promise<Product> => {
     const res = await apiClient.patch<Product>(`/products/${id}/status`);
+    return res.data;
+  },
+
+  importProducts: async (payload: ImportProductsPayload): Promise<ImportProductsResult> => {
+    const formData = new FormData();
+    formData.append('file', payload.file);
+    formData.append('productNameColumn', payload.productNameColumn);
+    formData.append('unitColumn', payload.unitColumn);
+    const res = await apiClient.post<ImportProductsResult>('/products/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   },
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
 import { type Customer, organisationApi } from '../../../api-client';
@@ -58,6 +59,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const CustomersPage: React.FC = () => {
+  const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
@@ -165,10 +167,7 @@ export const CustomersPage: React.FC = () => {
           <div>
             <button
               type="button"
-              onClick={() => {
-                setEditingCustomer(row);
-                setModalVisible(true);
-              }}
+              onClick={() => navigate(`/portal/customers/${row.id}`)}
               className="font-bold text-xs text-white hover:text-portal-accent text-left transition cursor-pointer"
             >
               {row.businessName}
@@ -239,7 +238,7 @@ export const CustomersPage: React.FC = () => {
         field: 'actions',
         header: 'Actions',
         headerStyle: { textAlign: 'right' },
-        style: { width: '80px', textAlign: 'right' },
+        style: { width: '140px', textAlign: 'right' },
         body: (row) => (
           <div className="flex items-center justify-end gap-2">
             <FlatButton
@@ -252,6 +251,14 @@ export const CustomersPage: React.FC = () => {
               }}
             >
               Edit
+            </FlatButton>
+            <FlatButton
+              variant="outline"
+              size="sm"
+              leftIcon="pi pi-wallet"
+              onClick={() => navigate(`/portal/customers/${row.id}`)}
+            >
+              Ledger
             </FlatButton>
           </div>
         ),

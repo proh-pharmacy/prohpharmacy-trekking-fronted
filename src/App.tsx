@@ -8,9 +8,9 @@ import { GuestGuard } from './components/auth/GuestGuard';
 import { LoginPage } from './pages/auth/LoginPage';
 import { PortalLayout } from './pages/portal/layout';
 import { DashboardPage } from './pages/portal/dashboard/DashboardPage';
-import { GenericModulePage } from './pages/portal/GenericModulePage';
 import { ProductsPage } from './pages/portal/products';
 import { CustomersPage } from './pages/portal/customers/CustomersPage';
+import { CustomerDetailPage } from './pages/portal/customers/CustomerDetailPage';
 import { CustomerPinsPage } from './pages/portal/customers/CustomerPinsPage';
 import { FleetPage } from './pages/portal/fleet';
 import { TraccarPage } from './pages/portal/traccar';
@@ -18,6 +18,7 @@ import { TrekkingPage, TrekDetailPage } from './pages/portal/trekking';
 import { DriverPage } from './pages/driver/DriverPage';
 import { TrackingPage } from './pages/portal/tracking';
 import { UsersAndRolesPage, UserDetailsPage, OrganisationPage } from './pages/portal/settings';
+import { LedgerSummaryPage } from './pages/portal/reports/LedgerSummaryPage';
 import { FlatButtonsShowcase } from './pages/preview/FlatButtonsShowcase';
 import { DataTableShowcase } from './pages/preview/DataTableShowcase';
 import { FlatInputsShowcase } from './pages/preview/FlatInputsShowcase';
@@ -60,29 +61,11 @@ export default function App() {
                 <Route path="tracking" element={<TrackingPage />} />
                 <Route path="customer-pins" element={<CustomerPinsPage />} />
                 <Route path="customers" element={<CustomersPage />} />
+                <Route path="customers/:customerId" element={<CustomerDetailPage />} />
                 <Route path="products" element={<ProductsPage />} />
 
                 <Route path="fleet" element={<FleetPage />} />
-                <Route
-                  path="ledger"
-                  element={
-                    <GenericModulePage
-                      title="Financial Ledger & Collections"
-                      description="Cash and digital delivery settlements, invoice payments, and audit logs."
-                      icon="pi pi-wallet"
-                    />
-                  }
-                />
-                <Route
-                  path="reports"
-                  element={
-                    <GenericModulePage
-                      title="Operational Reports & Audits"
-                      description="Performance analytics, incident reports, and system change logs."
-                      icon="pi pi-chart-line"
-                    />
-                  }
-                />
+                <Route path="reports/ledger-summary" element={<LedgerSummaryPage />} />
                 <Route path="settings" element={<Navigate to="/portal/settings/users" replace />} />
                 <Route path="settings/users" element={<UsersAndRolesPage />} />
                 <Route path="settings/users/:userId" element={<UserDetailsPage />} />
