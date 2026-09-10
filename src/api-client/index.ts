@@ -9,5 +9,7 @@ export * from './products';
 export * from './customers';
 export * from './fleet';
 export * from './treks';
+export * from './reports';
+export * from './dashboard';
 export { default } from './api';
 

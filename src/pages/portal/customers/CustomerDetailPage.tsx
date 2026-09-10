@@ -13,6 +13,7 @@ import {
   type AddLedgerEntryPayload,
 } from '../../../api-client';
 import { CustomerModal } from './components/CustomerModal';
+import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -255,7 +256,7 @@ export const CustomerDetailPage: React.FC = () => {
         style: { width: '120px', textAlign: 'right' },
         headerStyle: { textAlign: 'right' },
         body: (row) => (
-          <span className="font-mono text-xs text-white">GHS {row.amount.toFixed(2)}</span>
+          <span className="font-mono text-xs text-white">{fmtGhs(row.amount)}</span>
         ),
       },
       {
@@ -405,17 +406,17 @@ export const CustomerDetailPage: React.FC = () => {
 
       {/* ── Balance summary tiles ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-portal-surface border border-portal-border/60 p-3">
+        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Debits</p>
-          <p className="text-xs font-medium text-red-400">GHS {totals.totalDebits.toFixed(2)}</p>
+          <p className="text-xs font-medium text-red-400 truncate" title={fmtGhs(totals.totalDebits)}>{fmtGhsShort(totals.totalDebits)}</p>
         </div>
-        <div className="bg-portal-surface border border-portal-border/60 p-3">
+        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Credits</p>
-          <p className="text-xs font-medium text-portal-accent">GHS {totals.totalCredits.toFixed(2)}</p>
+          <p className="text-xs font-medium text-portal-accent truncate" title={fmtGhs(totals.totalCredits)}>{fmtGhsShort(totals.totalCredits)}</p>
         </div>
-        <div className="bg-portal-surface border border-portal-border/60 p-3">
+        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Balance</p>
-          <p className={`text-xs font-medium ${balanceColor}`}>GHS {totals.currentBalance.toFixed(2)}</p>
+          <p className={`text-xs font-medium truncate ${balanceColor}`} title={fmtGhs(totals.currentBalance)}>{fmtGhsShort(totals.currentBalance)}</p>
         </div>
       </div>
 

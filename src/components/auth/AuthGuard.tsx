@@ -13,16 +13,12 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRoles })
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#102218] text-white">
+      <div className="min-h-screen w-full flex items-center justify-center bg-portal-canvas">
         <img
           src="/images/prohpharmacy_icon_white.png"
-          alt="ProH Pharmacy Logo"
-          className="w-12 h-12 object-contain animate-pulse mb-4"
+          alt="ProH Pharmacy"
+          className="w-12 h-12 object-contain animate-pulse"
         />
-        <div className="flex items-center gap-2 text-sm text-[#4fb587]">
-          <i className="pi pi-spin pi-spinner text-base" />
-          <span>Verifying authentication session...</span>
-        </div>
       </div>
     );
   }

@@ -22,6 +22,7 @@ import {
   FlatDropdown,
   FlatMultiSelect,
   FlatDatePicker,
+  FlatAsyncSelect,
 } from '../flat-form';
 
 // --- Types ---
@@ -32,7 +33,8 @@ export type FilterType =
   | 'MultiSelectFilter'
   | 'TextFilter'
   | 'DateRangeFilter'
-  | 'MonthYearFilter';
+  | 'MonthYearFilter'
+  | 'AsyncSelectFilter';
 
 export interface FilterParam {
   type: FilterType;
@@ -690,6 +692,23 @@ export function FlatDataTable<TData extends Record<string, any>>({
             placeholder={`Select ${filter.label}`}
             showIcon
             {...filter.args}
+          />
+        );
+
+      case 'AsyncSelectFilter':
+        return (
+          <FlatAsyncSelect
+            label={filter.label}
+            value={value || undefined}
+            placeholder={filter.args?.placeholder || `Search ${filter.label}...`}
+            endpointUrl={filter.args?.endpointUrl}
+            fetchFn={filter.args?.fetchFn}
+            optionValue={filter.args?.optionValue || 'id'}
+            optionLabel={filter.args?.optionLabel || 'name'}
+            pageSize={filter.args?.pageSize || 20}
+            clearable
+            size="sm"
+            onChange={(val) => handleFilterChange(filter.accessor, val ?? '')}
           />
         );
 

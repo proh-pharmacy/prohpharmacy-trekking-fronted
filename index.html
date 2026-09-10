@@ -6,11 +6,48 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3fb950" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ProH Pharmacy" />
+    <meta name="description" content="Trekking operations management for ProH Pharmacy" />
     <title>ProH Pharmacy - Trekking Operations</title>
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #22272e;
+        z-index: 99999;
+        opacity: 1;
+        transition: opacity 0.4s ease-out;
+      }
+      #app-splash.hiding {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #app-splash img {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        animation: splash-pulse 1.8s ease-in-out infinite;
+      }
+      @keyframes splash-pulse {
+        0%, 100% { transform: scale(1);    opacity: 0.75; }
+        50%       { transform: scale(1.07); opacity: 1;    }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="app-splash">
+      <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" />
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -11,3 +11,9 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+const splash = document.getElementById('app-splash');
+if (splash) {
+  splash.classList.add('hiding');
+  setTimeout(() => splash.remove(), 450);
+}

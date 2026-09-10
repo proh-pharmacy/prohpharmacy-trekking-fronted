@@ -6,6 +6,7 @@ import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../..
 import { FlatButton, FlatDropdown } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay';
 import { type LedgerSummaryCustomer, customersApi, organisationApi } from '../../../api-client';
+import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
 
 // ── Filter options ──────────────────────────────────────────────────────
 const HAS_BALANCE_OPTIONS = [
@@ -191,9 +192,7 @@ export const LedgerSummaryPage: React.FC = () => {
         style: { width: '110px', textAlign: 'right' },
         headerStyle: { textAlign: 'right' },
         body: (row) => (
-          <span className="font-mono text-xs text-red-400">
-            GHS {row.totalDebits.toFixed(2)}
-          </span>
+          <span className="font-mono text-xs text-red-400">{fmtGhs(row.totalDebits)}</span>
         ),
       },
       {
@@ -202,9 +201,7 @@ export const LedgerSummaryPage: React.FC = () => {
         style: { width: '110px', textAlign: 'right' },
         headerStyle: { textAlign: 'right' },
         body: (row) => (
-          <span className="font-mono text-xs text-portal-accent">
-            GHS {row.totalCredits.toFixed(2)}
-          </span>
+          <span className="font-mono text-xs text-portal-accent">{fmtGhs(row.totalCredits)}</span>
         ),
       },
       {
@@ -218,7 +215,7 @@ export const LedgerSummaryPage: React.FC = () => {
               row.currentBalance > 0 ? 'text-orange-400' : 'text-portal-accent'
             }`}
           >
-            GHS {row.currentBalance.toFixed(2)}
+            {fmtGhs(row.currentBalance)}
           </span>
         ),
       },
@@ -231,13 +228,13 @@ export const LedgerSummaryPage: React.FC = () => {
 
       {/* ── Summary stats ── */}
       <div className="flex gap-3">
-        <div className="flex-1 bg-portal-surface border border-portal-border/60 p-3">
+        <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Outstanding</p>
-          <p className="text-xs font-semibold text-orange-400">GHS {stats.totalOutstanding.toFixed(2)}</p>
+          <p className="text-xs font-semibold text-orange-400 truncate" title={fmtGhs(stats.totalOutstanding)}>{fmtGhsShort(stats.totalOutstanding)}</p>
         </div>
-        <div className="flex-1 bg-portal-surface border border-portal-border/60 p-3">
+        <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Customers with Balance</p>
-          <p className="text-xs font-semibold text-white">{stats.customersWithBalance}</p>
+          <p className="text-xs font-semibold text-white truncate">{stats.customersWithBalance.toLocaleString()}</p>
         </div>
       </div>
 

@@ -38,6 +38,9 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
     title: 'Reports',
     items: [
       { label: 'Ledger Summary', to: '/portal/reports/ledger-summary', icon: 'pi pi-wallet' },
+      { label: 'Trek Performance', to: '/portal/reports/treks', icon: 'pi pi-map-marker' },
+      { label: 'Collections', to: '/portal/reports/collections', icon: 'pi pi-credit-card' },
+      { label: 'Product Delivery', to: '/portal/reports/products', icon: 'pi pi-box' },
     ],
   },
   {
