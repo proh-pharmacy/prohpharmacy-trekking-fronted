@@ -71,12 +71,7 @@ export const ProductsReportPage: React.FC = () => {
         totalAmountCollected: payload.totalAmountCollected ?? 0,
         totalOutstanding: payload.totalOutstanding ?? 0,
       });
-      const products: ProductReportItem[] = Array.isArray(payload.products)
-        ? payload.products.map((product: ProductReportItem & { unit?: string }) => ({
-            ...product,
-            basicUnitName: product.basicUnitName ?? product.unit ?? '',
-          }))
-        : [];
+      const products: ProductReportItem[] = Array.isArray(payload.products) ? payload.products : [];
       return {
         data: products,
         totalCount: payload.totalCount ?? products.length,
@@ -102,15 +97,17 @@ export const ProductsReportPage: React.FC = () => {
       field: 'productName',
       header: 'Product',
       body: (row) => (
-        <div>
-          <span className="font-bold text-xs text-white">{row.productName}</span>
-          {row.basicUnitName && <span className="text-[11px] text-portal-muted ml-2">{row.basicUnitName}</span>}
-        </div>
+        <span className="font-bold text-xs text-white">{row.productName}</span>
       ),
     },
     {
+      field: 'basicUnitName',
+      header: 'Basic Unit',
+      body: (row) => <span className="text-xs text-portal-text">{row.basicUnitName || '—'}</span>,
+    },
+    {
       field: 'totalQtyDelivered',
-      header: 'Qty Delivered',
+      header: 'Basic Qty',
       style: { width: '120px', textAlign: 'right' },
       headerStyle: { textAlign: 'right' },
       body: (row) => (
@@ -118,11 +115,16 @@ export const ProductsReportPage: React.FC = () => {
       ),
     },
     {
-      field: 'treksCount',
-      header: 'Treks',
-      style: { width: '80px', textAlign: 'center' },
-      headerStyle: { textAlign: 'center' },
-      body: (row) => <span className="text-xs text-portal-muted text-center block">{row.treksCount}</span>,
+      field: 'packagingUnitName',
+      header: 'Pkg Unit',
+      body: (row) => <span className="text-xs text-portal-text">{row.packagingUnitName || '—'}</span>,
+    },
+    {
+      field: 'totalPackagingQtyDelivered',
+      header: 'Pkg Qty',
+      style: { width: '120px', textAlign: 'right' },
+      headerStyle: { textAlign: 'right' },
+      body: (row) => <span className="font-mono text-xs text-portal-text">{Number(row.totalPackagingQtyDelivered ?? 0).toLocaleString()}</span>,
     },
     {
       field: 'totalCollected',
@@ -143,6 +145,13 @@ export const ProductsReportPage: React.FC = () => {
           {fmtGhs(row.totalOutstanding)}
         </span>
       ),
+    },
+    {
+      field: 'treksCount',
+      header: 'Treks',
+      style: { width: '80px', textAlign: 'center' },
+      headerStyle: { textAlign: 'center' },
+      body: (row) => <span className="text-xs text-portal-muted text-center block">{row.treksCount}</span>,
     },
   ], []);
 

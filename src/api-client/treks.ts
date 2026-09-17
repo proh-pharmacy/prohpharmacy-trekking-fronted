@@ -8,8 +8,13 @@ export interface TrekStopProduct {
   productId: string;
   productName: string;
   basicUnitName?: string | null;
-  plannedQuantity: number;
-  qtyDelivered?: number | null;
+  packagingUnitName: string | null;
+  basicUnitPrice: number;
+  packagingUnitPrice: number | null;
+  plannedBasicQuantity: number;
+  plannedPackagingQuantity: number | null;
+  basicQtyDelivered?: number | null;
+  packagingQtyDelivered?: number | null;
   paymentMethod?: PaymentMethod | null;
   amtPaid?: number | null;
   balance?: number | null;
@@ -78,13 +83,20 @@ export interface AddStopPayload {
   customerAccountId: string;
   sequence: number;
   notes?: string;
-  products: { productId: string; plannedQuantity: number }[];
+  products: { productId: string; plannedBasicQuantity?: number; plannedPackagingQuantity?: number }[];
+}
+
+export interface UpdateStopPayload {
+  sequence?: number;
+  notes?: string;
+  products?: AddStopPayload['products'];
 }
 
 export interface RecordDeliveryPayload {
   products: {
     stopProductId: string;
-    qtyDelivered?: number;
+    basicQtyDelivered?: number;
+    packagingQtyDelivered?: number;
     paymentMethod?: PaymentMethod;
     amtPaid?: number;
     balance?: number;
@@ -96,8 +108,13 @@ export interface DriverStopProduct {
   stopProductId: string;
   productName: string;
   basicUnitName?: string | null;
-  plannedQuantity: number;
-  qtyDelivered?: number | null;
+  packagingUnitName: string | null;
+  basicUnitPrice: number;
+  packagingUnitPrice: number | null;
+  plannedBasicQuantity: number;
+  plannedPackagingQuantity: number | null;
+  basicQtyDelivered?: number | null;
+  packagingQtyDelivered?: number | null;
   paymentMethod?: PaymentMethod | null;
   amtPaid?: number | null;
   balance?: number | null;
@@ -187,6 +204,11 @@ export const treksApi = {
 
   addStop: async (trekId: string, payload: AddStopPayload): Promise<TrekStop> => {
     const res = await apiClient.post<TrekStop>(`/treks/${trekId}/stops`, payload);
+    return { ...res.data, products: res.data.products.map(normalizeStopProduct) };
+  },
+
+  updateStop: async (trekId: string, stopId: string, payload: UpdateStopPayload): Promise<TrekStop> => {
+    const res = await apiClient.patch<TrekStop>(`/treks/${trekId}/stops/${stopId}`, payload);
     return { ...res.data, products: res.data.products.map(normalizeStopProduct) };
   },
 

@@ -42,6 +42,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
   const [trek, setTrek]             = useState<Trek | null>(null);
   const [loading, setLoading]       = useState(false);
   const [addStopVisible, setAddStopVisible]   = useState(false);
+  const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
   const [editVisible, setEditVisible]         = useState(false);
   const [removingStop, setRemovingStop]     = useState<TrekStop | null>(null);
   const [changingStatus, setChangingStatus] = useState<TrekStatus | null>(null);
@@ -279,13 +280,19 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                             {stop.products.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {stop.products.map((p) => (
-                                  <div key={p.productId} className="flex items-center gap-2 text-[11px]">
+                                  <div key={p.productId} className="flex flex-wrap items-center gap-2 text-[11px]">
                                     <i className="pi pi-box text-[10px] text-portal-muted" />
                                     <span className="text-portal-text">{p.productName}</span>
-                                    <span className="text-portal-accent font-mono">×{p.plannedQuantity}</span>
-                                    {p.basicUnitName && <span className="text-portal-muted">{p.basicUnitName}</span>}
-                                    {p.qtyDelivered != null && (
-                                      <span className="text-portal-accent ml-1">({p.qtyDelivered} delivered)</span>
+                                    <span className="text-portal-muted">GHS {Number(p.basicUnitPrice).toFixed(2)} / {p.basicUnitName || 'basic unit'}</span>
+                                    {p.packagingUnitName && p.packagingUnitPrice != null &&
+                                      <span className="text-portal-muted">· GHS {Number(p.packagingUnitPrice).toFixed(2)} / {p.packagingUnitName}</span>}
+                                    <span className="text-portal-accent font-mono">{p.plannedBasicQuantity} {p.basicUnitName || 'basic units'} planned</span>
+                                    {p.packagingUnitName && <span className="text-portal-accent font-mono">· {p.plannedPackagingQuantity ?? 0} {p.packagingUnitName} planned</span>}
+                                    {(p.basicQtyDelivered != null || p.packagingQtyDelivered != null) && (
+                                      <span className="text-portal-muted ml-1">
+                                        ({p.basicQtyDelivered ?? 0} {p.basicUnitName || 'basic units'}
+                                        {p.packagingUnitName ? `, ${p.packagingQtyDelivered ?? 0} ${p.packagingUnitName}` : ''} delivered)
+                                      </span>
                                     )}
                                   </div>
                                 ))}
@@ -294,14 +301,18 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                           </div>
                         </div>
                         {!isLocked && (
-                          <button
-                            type="button"
-                            onClick={() => setRemovingStop(stop)}
-                            className="shrink-0 text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
-                            title="Remove stop"
-                          >
-                            <i className="pi pi-trash text-xs" />
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button type="button" onClick={() => setEditingStop(stop)}
+                              className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
+                              title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
+                              <i className="pi pi-pencil text-xs" />
+                            </button>
+                            <button type="button" onClick={() => setRemovingStop(stop)}
+                              className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
+                              title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
+                              <i className="pi pi-trash text-xs" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -330,6 +341,19 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           trekRegionId={trek.regionId}
           trekRegionName={trek.regionName}
           nextSequence={trek.stops.length + 1}
+          onSuccess={loadTrek}
+        />
+      )}
+
+      {trek && editingStop && (
+        <AddStopModal
+          visible
+          onHide={() => setEditingStop(null)}
+          trekId={trek.id}
+          trekRegionId={trek.regionId}
+          trekRegionName={trek.regionName}
+          nextSequence={editingStop.sequence}
+          stop={editingStop}
           onSuccess={loadTrek}
         />
       )}

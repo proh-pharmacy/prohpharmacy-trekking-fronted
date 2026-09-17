@@ -55,7 +55,9 @@ export interface ProductReportItem {
   productId: string;
   productName: string;
   basicUnitName: string;
+  packagingUnitName: string | null;
   totalQtyDelivered: number;
+  totalPackagingQtyDelivered: number;
   totalCollected: number;
   totalOutstanding: number;
   treksCount: number;

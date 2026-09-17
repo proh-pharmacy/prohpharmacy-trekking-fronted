@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { treksApi, type Trek, type TrekStop, type TrekStatus, type PaymentMethod } from '../../../api-client';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../components/overlay';
 import { resetTableData } from '../../../components/data-table';
 import { EditTrekModal } from './components/EditTrekModal';
@@ -42,9 +42,13 @@ const PAYMENT_OPTIONS = [
   { label: 'Bank Transfer', value: 'BankTransfer' },
 ];
 
+const numberInputValue = (value?: string) => value ? Number(value) : null;
+const numberRowValue = (value: number | null) => value == null ? '' : String(value);
+
 // ── Delivery row state ─────────────────────────────────────────────────
 interface DeliveryRow {
-  qtyDelivered: string;
+  basicQtyDelivered: string;
+  packagingQtyDelivered: string;
   paymentMethod: string;
   amtPaid: string;
   balance: string;
@@ -56,7 +60,8 @@ function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
   trek.stops.forEach((stop) => {
     stop.products.forEach((p) => {
       rows[p.stopProductId] = {
-        qtyDelivered:  p.qtyDelivered != null ? String(p.qtyDelivered) : '',
+        basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
+        packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
         paymentMethod: p.paymentMethod ?? '',
         amtPaid:       p.amtPaid != null ? String(p.amtPaid) : '',
         balance:       p.balance != null ? String(p.balance) : '',
@@ -83,6 +88,7 @@ export const TrekDetailPage: React.FC = () => {
   const shareRef                      = useRef<HTMLDivElement>(null);
   const [editVisible, setEditVisible] = useState(false);
   const [addStopVisible, setAddStopVisible] = useState(false);
+  const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
   const [removingStop, setRemovingStop] = useState<TrekStop | null>(null);
   const [confirmComplete, setConfirmComplete] = useState(false);
 
@@ -125,12 +131,15 @@ export const TrekDetailPage: React.FC = () => {
     for (const p of stop.products) {
       const row = deliveryRows[p.stopProductId] ?? {};
       const name = `"${p.productName}"`;
-      if (!row.qtyDelivered || parseFloat(row.qtyDelivered) <= 0) {
-        toast.error(`Qty delivered is required for ${name}.`);
+      const basic = row.basicQtyDelivered === '' ? null : Number(row.basicQtyDelivered);
+      const packaging = row.packagingQtyDelivered === '' ? null : Number(row.packagingQtyDelivered);
+      if (basic === null && packaging === null) {
+        toast.error(`Enter a delivered quantity for ${name}.`);
         return;
       }
-      if (parseFloat(row.qtyDelivered) > p.plannedQuantity) {
-        toast.error(`Qty delivered for ${name} cannot exceed planned quantity of ${p.plannedQuantity}.`);
+      if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) ||
+          (packaging !== null && (!p.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) {
+        toast.error(`Enter valid delivered quantities for ${name}.`);
         return;
       }
       if (!row.paymentMethod) {
@@ -149,7 +158,8 @@ export const TrekDetailPage: React.FC = () => {
           const row = deliveryRows[p.stopProductId] ?? {};
           return {
             stopProductId: p.stopProductId,
-            qtyDelivered:  row.qtyDelivered  ? parseFloat(row.qtyDelivered)  : undefined,
+            basicQtyDelivered: row.basicQtyDelivered !== '' ? Number(row.basicQtyDelivered) : undefined,
+            packagingQtyDelivered: p.packagingUnitName && row.packagingQtyDelivered !== '' ? Number(row.packagingQtyDelivered) : undefined,
             paymentMethod: row.paymentMethod  ? row.paymentMethod as PaymentMethod : undefined,
             amtPaid:       row.amtPaid        ? parseFloat(row.amtPaid)        : undefined,
             balance:       row.balance        ? parseFloat(row.balance)        : undefined,
@@ -157,6 +167,7 @@ export const TrekDetailPage: React.FC = () => {
           };
         });
       await treksApi.recordDelivery(trek.id, { products });
+      resetTableData();
       toast.success(`Stop ${stop.sequence} recorded.`);
       await loadTrek(true);
     } catch (err: any) {
@@ -393,6 +404,7 @@ export const TrekDetailPage: React.FC = () => {
                 updateRow={updateRow}
                 onRecord={() => handleRecordStop(stop)}
                 recording={recordingStop === stop.stopId}
+                onEdit={() => setEditingStop(stop)}
                 onRemove={() => setRemovingStop(stop)}
               />
             ))}
@@ -417,6 +429,17 @@ export const TrekDetailPage: React.FC = () => {
         nextSequence={sortedStops.length + 1}
         onSuccess={loadTrek}
       />
+
+      {editingStop && <AddStopModal
+        visible
+        onHide={() => setEditingStop(null)}
+        trekId={trek.id}
+        trekRegionId={trek.regionId}
+        trekRegionName={trek.regionName}
+        nextSequence={editingStop.sequence}
+        stop={editingStop}
+        onSuccess={() => loadTrek(true)}
+      />}
 
       <FlatConfirmDialog
         visible={!!removingStop}
@@ -456,6 +479,7 @@ interface StopCardProps {
   updateRow: (stopProductId: string, field: keyof DeliveryRow, value: string) => void;
   onRecord: () => void;
   recording: boolean;
+  onEdit: () => void;
   onRemove: () => void;
 }
 
@@ -470,10 +494,10 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = ({
-  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecord, recording, onRemove,
+  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecord, recording, onEdit, onRemove,
 }) => {
   const hasProducts  = stop.products.length > 0;
-  const isRecorded   = hasProducts && stop.products.every((p) => p.qtyDelivered != null);
+  const isRecorded   = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
   const landmark     = stop.primaryLocationLandmark?.trim() || null;
   const street       = stop.primaryLocationStreet?.trim() || null;
 
@@ -500,14 +524,18 @@ const StopCard: React.FC<StopCardProps> = ({
           )}
         </div>
         {!isLocked && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-red-accent hover:text-red-accent-hover transition-colors p-1 shrink-0 cursor-pointer"
-            title="Remove stop"
-          >
-            <i className="pi pi-trash text-xs" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button type="button" onClick={onEdit}
+              className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
+              title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
+              <i className="pi pi-pencil text-xs" />
+            </button>
+            <button type="button" onClick={onRemove}
+              className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
+              title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
+              <i className="pi pi-trash text-xs" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -536,8 +564,8 @@ const StopCard: React.FC<StopCardProps> = ({
             <thead className="bg-portal-canvas border-b border-portal-border/60">
               <tr>
                 <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
-                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Planned</th>
-                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Qty Delivered</th>
+                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
+                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Qty Delivered</th>
                 <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
                 <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
                 <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
@@ -552,70 +580,47 @@ const StopCard: React.FC<StopCardProps> = ({
                 return (
                   <tr key={product.productId} className="group">
                     <td className="py-2 pl-3 pr-4">
-                      <span className="font-medium text-white">{product.productName}</span>
-                      {product.basicUnitName && <span className="text-portal-muted ml-1.5">({product.basicUnitName})</span>}
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      <span className="font-mono text-portal-accent">{product.plannedQuantity}</span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <input
-                        type="number"
-                        min={0}
-                        max={product.plannedQuantity}
-                        step="0.01"
-                        value={row.qtyDelivered ?? ''}
-                        onChange={(e) => updateRow(spId, 'qtyDelivered', e.target.value)}
-                        disabled={isDeliveryLocked}
-                        placeholder="0"
-                        className="w-full h-7 px-2 text-xs text-center bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                      />
+                      <span className="block font-medium text-white">{product.productName}</span>
+                      <span className="block text-[11px] text-portal-muted">
+                        GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
+                        {product.packagingUnitName && product.packagingUnitPrice != null &&
+                          ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
+                      </span>
                     </td>
                     <td className="py-2 px-3">
-                      <select
-                        value={row.paymentMethod ?? ''}
-                        onChange={(e) => updateRow(spId, 'paymentMethod', e.target.value)}
-                        disabled={isDeliveryLocked}
-                        className="w-full h-7 px-2 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed appearance-none"
-                      >
-                        {PAYMENT_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
+                      <span className="block font-mono text-portal-accent">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                      {product.packagingUnitName && <span className="block font-mono text-portal-accent">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
                     </td>
                     <td className="py-2 px-3">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={row.amtPaid ?? ''}
-                        onChange={(e) => updateRow(spId, 'amtPaid', e.target.value)}
-                        disabled={isDeliveryLocked}
-                        placeholder="0.00"
-                        className="w-full h-7 px-2 text-xs text-center bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                      />
+                      <div className="space-y-1">
+                        <FlatInputNumber id={`${spId}-basic`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => updateRow(spId, 'basicQtyDelivered', numberRowValue(value))}
+                          disabled={isDeliveryLocked} placeholder={`Basic (${product.basicUnitName || 'units'})`} />
+                        {product.packagingUnitName && (
+                          <FlatInputNumber id={`${spId}-packaging`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                            value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => updateRow(spId, 'packagingQtyDelivered', numberRowValue(value))}
+                            disabled={isDeliveryLocked} placeholder={`Packaging (${product.packagingUnitName})`} />
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 px-3">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={row.balance ?? ''}
-                        onChange={(e) => updateRow(spId, 'balance', e.target.value)}
-                        disabled={isDeliveryLocked}
-                        placeholder="0.00"
-                        className="w-full h-7 px-2 text-xs text-center bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                      />
+                      <FlatDropdown id={`${spId}-payment`} options={PAYMENT_OPTIONS} value={row.paymentMethod ?? ''}
+                        onChange={(value) => updateRow(spId, 'paymentMethod', value ?? '')} disabled={isDeliveryLocked} size="sm" />
+                    </td>
+                    <td className="py-2 px-3">
+                      <FlatInputNumber id={`${spId}-amt-paid`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                        value={numberInputValue(row.amtPaid)} onChange={(value) => updateRow(spId, 'amtPaid', numberRowValue(value))}
+                        disabled={isDeliveryLocked} placeholder="0.00" />
+                    </td>
+                    <td className="py-2 px-3">
+                      <FlatInputNumber id={`${spId}-balance`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                        value={numberInputValue(row.balance)} onChange={(value) => updateRow(spId, 'balance', numberRowValue(value))}
+                        disabled={isDeliveryLocked} placeholder="0.00" />
                     </td>
                     <td className="py-2 pl-3 pr-3">
-                      <input
-                        type="text"
-                        value={row.notes ?? ''}
+                      <FlatInputText id={`${spId}-notes`} value={row.notes ?? ''}
                         onChange={(e) => updateRow(spId, 'notes', e.target.value)}
-                        disabled={isDeliveryLocked}
-                        placeholder="Optional note..."
-                        className="w-full h-7 px-2 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                      />
+                        disabled={isDeliveryLocked} placeholder="Optional note..." size="sm" />
                     </td>
                   </tr>
                 );

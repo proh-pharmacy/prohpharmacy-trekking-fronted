@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FlatButton } from '../../components/flat-form';
+import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../components/flat-form';
+import { resetTableData } from '../../components/data-table';
 import {
   treksApi,
   type DriverTrek,
@@ -12,7 +13,8 @@ import {
 import { baseURL } from '../../api-client/api';
 
 type DeliveryRow = {
-  qtyDelivered: string;
+  basicQtyDelivered: string;
+  packagingQtyDelivered: string;
   paymentMethod: string;
   amtPaid: string;
   balance: string;
@@ -41,14 +43,16 @@ const STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed', Cancelled: 'Cancelled',
 };
 
-const INPUT_CLS = 'w-full h-8 px-2.5 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent disabled:opacity-40 disabled:cursor-not-allowed';
+const numberInputValue = (value?: string) => value ? Number(value) : null;
+const numberRowValue = (value: number | null) => value == null ? '' : String(value);
 
 function initRows(trek: DriverTrek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
   trek.stops.forEach((stop) =>
     stop.products.forEach((p) => {
       rows[p.stopProductId] = {
-        qtyDelivered:  p.qtyDelivered != null ? String(p.qtyDelivered) : '',
+        basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
+        packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
         paymentMethod: p.paymentMethod ?? '',
         amtPaid:       p.amtPaid != null ? String(p.amtPaid) : '',
         balance:       p.balance != null ? String(p.balance) : '',
@@ -82,7 +86,7 @@ interface StopCardProps {
 
 const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRowChange, onRecord }) => {
   const hasProducts = stop.products.length > 0;
-  const isRecorded  = hasProducts && stop.products.every((p) => p.qtyDelivered != null);
+  const isRecorded  = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
 
   return (
     <div className="px-4 sm:px-5 py-4 space-y-4">
@@ -149,8 +153,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
               <thead className="bg-portal-canvas border-b border-portal-border/60">
                 <tr>
                   <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Planned</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Delivered</th>
+                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
+                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Delivered</th>
                   <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
                   <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
                   <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
@@ -164,54 +168,47 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   return (
                     <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="font-medium text-white">{product.productName}</span>
-                        {product.basicUnitName && <span className="text-portal-muted ml-1.5 text-[11px]">({product.basicUnitName})</span>}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
-                        <span className="font-mono text-portal-accent font-semibold">{product.plannedQuantity}</span>
-                      </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <input
-                          type="number" min={0} max={product.plannedQuantity} step="0.01"
-                          value={row.qtyDelivered ?? ''} disabled={locked} placeholder="0"
-                          onChange={(e) => onRowChange(spId, 'qtyDelivered', e.target.value)}
-                          className={`${INPUT_CLS} text-center`}
-                        />
+                        <span className="block font-medium text-white">{product.productName}</span>
+                        <span className="block text-[11px] text-portal-muted">
+                          GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
+                          {product.packagingUnitName && product.packagingUnitPrice != null &&
+                            ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
+                        </span>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <select
+                        <span className="block font-mono text-portal-accent font-semibold">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                        {product.packagingUnitName && <span className="block font-mono text-portal-accent font-semibold">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <FlatInputNumber id={`${spId}-basic-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                            value={numberInputValue(row.basicQtyDelivered)} disabled={locked} placeholder={`Basic (${product.basicUnitName || 'units'})`}
+                            onChange={(value) => onRowChange(spId, 'basicQtyDelivered', numberRowValue(value))} />
+                          {product.packagingUnitName && (
+                            <FlatInputNumber id={`${spId}-packaging-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                              value={numberInputValue(row.packagingQtyDelivered)} disabled={locked} placeholder={`Packaging (${product.packagingUnitName})`}
+                              onChange={(value) => onRowChange(spId, 'packagingQtyDelivered', numberRowValue(value))} />
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <FlatDropdown id={`${spId}-payment-desktop`} options={PAYMENT_OPTIONS}
                           value={row.paymentMethod ?? ''} disabled={locked}
-                          onChange={(e) => onRowChange(spId, 'paymentMethod', e.target.value)}
-                          className={`${INPUT_CLS} appearance-none cursor-pointer`}
-                        >
-                          {PAYMENT_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                          onChange={(value) => onRowChange(spId, 'paymentMethod', value ?? '')} size="sm" />
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <input
-                          type="number" min={0} step="0.01"
-                          value={row.amtPaid ?? ''} disabled={locked} placeholder="0.00"
-                          onChange={(e) => onRowChange(spId, 'amtPaid', e.target.value)}
-                          className={`${INPUT_CLS} text-center`}
-                        />
+                        <FlatInputNumber id={`${spId}-amt-paid-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.amtPaid)} disabled={locked} placeholder="0.00"
+                          onChange={(value) => onRowChange(spId, 'amtPaid', numberRowValue(value))} />
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <input
-                          type="number" min={0} step="0.01"
-                          value={row.balance ?? ''} disabled={locked} placeholder="0.00"
-                          onChange={(e) => onRowChange(spId, 'balance', e.target.value)}
-                          className={`${INPUT_CLS} text-center`}
-                        />
+                        <FlatInputNumber id={`${spId}-balance-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.balance)} disabled={locked} placeholder="0.00"
+                          onChange={(value) => onRowChange(spId, 'balance', numberRowValue(value))} />
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <input
-                          type="text"
-                          value={row.notes ?? ''} disabled={locked} placeholder="Optional notes..."
-                          onChange={(e) => onRowChange(spId, 'notes', e.target.value)}
-                          className={INPUT_CLS}
-                        />
+                        <FlatInputText id={`${spId}-notes-desktop`} value={row.notes ?? ''} disabled={locked}
+                          placeholder="Optional notes..." onChange={(e) => onRowChange(spId, 'notes', e.target.value)} size="sm" />
                       </td>
                     </tr>
                   );
@@ -230,15 +227,20 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   key={spId}
                   className="p-3.5 space-y-2.5 bg-portal-canvas/50 border border-portal-border/60 rounded hover:bg-white/[0.02] transition-colors"
                 >
-                  {/* Product title & planned quantity */}
+                  {/* Product title and planned quantities */}
                   <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-white break-words">{product.productName}</p>
-                      {product.basicUnitName && <p className="text-[11px] text-portal-muted">{product.basicUnitName}</p>}
+                      <p className="text-[11px] text-portal-muted">
+                        GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
+                        {product.packagingUnitName && product.packagingUnitPrice != null &&
+                          ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
+                      </p>
                     </div>
-                    <div className="shrink-0 flex items-baseline gap-1 text-[11px] bg-portal-surface border border-portal-border/60 px-2 py-0.5 rounded">
-                      <span className="text-portal-muted text-[10px] uppercase font-bold">Planned</span>
-                      <span className="font-mono text-portal-accent font-bold">{product.plannedQuantity}</span>
+                    <div className="shrink-0 text-right text-[11px]">
+                      <span className="block text-portal-muted text-[10px] uppercase font-bold">Planned</span>
+                      <span className="block font-mono text-portal-accent font-bold">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                      {product.packagingUnitName && <span className="block font-mono text-portal-accent font-bold">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
                     </div>
                   </div>
 
@@ -246,40 +248,36 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-2 items-center text-xs">
                       <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
-                        Delivered
+                        Basic delivered ({product.basicUnitName || 'units'})
                       </span>
                       <div className="col-span-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={product.plannedQuantity}
-                          step="0.01"
-                          value={row.qtyDelivered ?? ''}
-                          disabled={locked}
-                          placeholder={`Max ${product.plannedQuantity}`}
-                          onChange={(e) => onRowChange(spId, 'qtyDelivered', e.target.value)}
-                          className={INPUT_CLS}
-                        />
+                        <FlatInputNumber id={`${spId}-basic-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.basicQtyDelivered)} disabled={locked} placeholder="0"
+                          onChange={(value) => onRowChange(spId, 'basicQtyDelivered', numberRowValue(value))} />
                       </div>
                     </div>
+
+                    {product.packagingUnitName && (
+                      <div className="grid grid-cols-3 gap-2 items-center text-xs">
+                        <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                          Packaging delivered ({product.packagingUnitName})
+                        </span>
+                        <div className="col-span-2">
+                          <FlatInputNumber id={`${spId}-packaging-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                            value={numberInputValue(row.packagingQtyDelivered)} disabled={locked} placeholder="0"
+                            onChange={(value) => onRowChange(spId, 'packagingQtyDelivered', numberRowValue(value))} />
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-3 gap-2 items-center text-xs">
                       <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
                         Payment
                       </span>
                       <div className="col-span-2">
-                        <select
-                          value={row.paymentMethod ?? ''}
-                          disabled={locked}
-                          onChange={(e) => onRowChange(spId, 'paymentMethod', e.target.value)}
-                          className={`${INPUT_CLS} appearance-none cursor-pointer`}
-                        >
-                          {PAYMENT_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                        <FlatDropdown id={`${spId}-payment-mobile`} options={PAYMENT_OPTIONS}
+                          value={row.paymentMethod ?? ''} disabled={locked}
+                          onChange={(value) => onRowChange(spId, 'paymentMethod', value ?? '')} size="sm" />
                       </div>
                     </div>
 
@@ -288,16 +286,9 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                         Amt Paid
                       </span>
                       <div className="col-span-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.amtPaid ?? ''}
-                          disabled={locked}
-                          placeholder="0.00"
-                          onChange={(e) => onRowChange(spId, 'amtPaid', e.target.value)}
-                          className={INPUT_CLS}
-                        />
+                        <FlatInputNumber id={`${spId}-amt-paid-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.amtPaid)} disabled={locked} placeholder="0.00"
+                          onChange={(value) => onRowChange(spId, 'amtPaid', numberRowValue(value))} />
                       </div>
                     </div>
 
@@ -306,16 +297,9 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                         Balance
                       </span>
                       <div className="col-span-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.balance ?? ''}
-                          disabled={locked}
-                          placeholder="0.00"
-                          onChange={(e) => onRowChange(spId, 'balance', e.target.value)}
-                          className={INPUT_CLS}
-                        />
+                        <FlatInputNumber id={`${spId}-balance-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
+                          value={numberInputValue(row.balance)} disabled={locked} placeholder="0.00"
+                          onChange={(value) => onRowChange(spId, 'balance', numberRowValue(value))} />
                       </div>
                     </div>
 
@@ -324,14 +308,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                         Notes
                       </span>
                       <div className="col-span-2">
-                        <input
-                          type="text"
-                          value={row.notes ?? ''}
-                          disabled={locked}
-                          placeholder="Optional notes..."
-                          onChange={(e) => onRowChange(spId, 'notes', e.target.value)}
-                          className={INPUT_CLS}
-                        />
+                        <FlatInputText id={`${spId}-notes-mobile`} value={row.notes ?? ''} disabled={locked}
+                          placeholder="Optional notes..." onChange={(e) => onRowChange(spId, 'notes', e.target.value)} size="sm" />
                       </div>
                     </div>
                   </div>
@@ -400,13 +378,15 @@ export const DriverPage: React.FC = () => {
   const handleRecord = useCallback(async (stop: DriverStop) => {
     for (const p of stop.products) {
       const row = deliveryRows[p.stopProductId];
-      const qty = parseFloat(row?.qtyDelivered ?? '');
-      if (!row?.qtyDelivered || isNaN(qty) || qty <= 0) {
-        toast.error(`Qty delivered is required for "${p.productName}".`);
+      const basic = !row?.basicQtyDelivered ? null : Number(row.basicQtyDelivered);
+      const packaging = !row?.packagingQtyDelivered ? null : Number(row.packagingQtyDelivered);
+      if (basic === null && packaging === null) {
+        toast.error(`Enter a delivered quantity for "${p.productName}".`);
         return;
       }
-      if (qty > p.plannedQuantity) {
-        toast.error(`Qty for "${p.productName}" cannot exceed planned ${p.plannedQuantity}.`);
+      if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) ||
+          (packaging !== null && (!p.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) {
+        toast.error(`Enter valid delivered quantities for "${p.productName}".`);
         return;
       }
       if (!row.paymentMethod) {
@@ -426,7 +406,8 @@ export const DriverPage: React.FC = () => {
           const row = deliveryRows[p.stopProductId];
           return {
             stopProductId: p.stopProductId,
-            qtyDelivered:  row.qtyDelivered  ? parseFloat(row.qtyDelivered)  : undefined,
+            basicQtyDelivered: row.basicQtyDelivered !== '' ? Number(row.basicQtyDelivered) : undefined,
+            packagingQtyDelivered: p.packagingUnitName && row.packagingQtyDelivered !== '' ? Number(row.packagingQtyDelivered) : undefined,
             paymentMethod: row.paymentMethod  ? row.paymentMethod as PaymentMethod : undefined,
             amtPaid:       row.amtPaid        ? parseFloat(row.amtPaid)       : undefined,
             balance:       row.balance        ? parseFloat(row.balance)       : undefined,
@@ -435,6 +416,7 @@ export const DriverPage: React.FC = () => {
         }),
       };
       await treksApi.recordByDriverToken(token, payload);
+      resetTableData();
       toast.success(`Stop ${stop.sequence} recorded.`);
       await load(true);
     } catch {
