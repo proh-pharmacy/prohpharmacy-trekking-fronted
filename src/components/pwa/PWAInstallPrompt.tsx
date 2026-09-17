@@ -54,8 +54,8 @@ export function PWAInstallPrompt() {
           className="w-10 h-10 rounded-lg flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-portal-text-primary">Install ProH Pharmacy</p>
-          <p className="text-xs text-portal-text-muted mt-0.5">
+          <p className="text-sm font-semibold text-white">Install ProH Pharmacy</p>
+          <p className="text-xs text-white mt-0.5">
             Add to your home screen for faster access and offline use.
           </p>
           <div className="flex gap-2 mt-3">
@@ -69,7 +69,7 @@ export function PWAInstallPrompt() {
             <button
               type="button"
               onClick={handleDismiss}
-              className="px-3 py-1.5 text-portal-text-muted hover:text-portal-text-primary text-xs font-semibold rounded cursor-pointer transition"
+              className="px-3 py-1.5 text-white hover:text-portal-text text-xs font-semibold rounded cursor-pointer transition"
             >
               Not now
             </button>
@@ -78,7 +78,7 @@ export function PWAInstallPrompt() {
         <button
           type="button"
           onClick={handleDismiss}
-          className="text-portal-text-muted hover:text-portal-text-primary flex-shrink-0 -mt-0.5 cursor-pointer"
+          className="text-white hover:text-portal-text flex-shrink-0 -mt-0.5 cursor-pointer"
           aria-label="Dismiss"
         >
           <i className="pi pi-times text-xs" />

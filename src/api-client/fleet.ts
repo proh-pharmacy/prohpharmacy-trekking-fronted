@@ -13,8 +13,10 @@ export interface Vehicle {
   model: string;
   year: number;
   colour: string;
-  branchId: string;
-  branchName: string;
+  regionId: string;
+  regionName: string | null;
+  branchId: string | null;
+  branchName: string | null;
   operationalStatus: OperationalStatus;
   currentStaffId?: string | null;
   currentStaffName?: string | null;
@@ -29,6 +31,7 @@ export interface CreateVehiclePayload {
   model: string;
   year: number;
   colour: string;
+  regionId: string;
   branchId?: string;
 }
 
@@ -38,6 +41,7 @@ export interface UpdateVehiclePayload {
   model: string;
   year: number;
   colour: string;
+  regionId: string;
   branchId?: string;
 }
 
@@ -126,6 +130,7 @@ export const fleetApi = {
     sort?: string;
     pageNumber?: number;
     pageSize?: number;
+    regionId?: string;
     branchId?: string;
     status?: string;
   }) => {

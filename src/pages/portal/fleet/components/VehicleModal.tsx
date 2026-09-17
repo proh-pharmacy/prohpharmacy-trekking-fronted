@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatInputText, FlatDropdown } from '../../../../components/flat-form';
-import { fleetApi, organisationApi, type Vehicle, type Branch } from '../../../../api-client';
+import { fleetApi, organisationApi, type Vehicle, type Branch, type Region } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
 
@@ -26,16 +26,25 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
   const [model, setModel] = useState('');
   const [year, setYear] = useState<number | null>(null);
   const [colour, setColour] = useState('');
+  const [regionId, setRegionId] = useState('');
   const [branchId, setBranchId] = useState('');
 
+  const [regions, setRegions] = useState<Region[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [loadingRegions, setLoadingRegions] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     let mounted = true;
+    setLoadingRegions(true);
     setLoadingBranches(true);
+    organisationApi
+      .getRegions()
+      .then((items) => { if (mounted) setRegions(items); })
+      .catch(() => { if (mounted) toast.error('Failed to load regions.'); })
+      .finally(() => { if (mounted) setLoadingRegions(false); });
     organisationApi
       .getBranches()
       .then((b) => { if (mounted) setBranches(b); })
@@ -53,6 +62,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
       setModel(vehicle.model || '');
       setYear(vehicle.year || null);
       setColour(vehicle.colour || '');
+      setRegionId(vehicle.regionId || '');
       setBranchId(vehicle.branchId || '');
     } else {
       setRegistrationNumber('');
@@ -61,13 +71,20 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
       setModel('');
       setYear(null);
       setColour('');
+      setRegionId('');
       setBranchId('');
     }
   }, [visible, vehicle]);
 
+  const regionOptions = useMemo(
+    () => regions.map((region) => ({ label: region.name, value: region.id })),
+    [regions]
+  );
+
   const branchOptions = useMemo(
-    () => branches.filter((b) => b.isActive).map((b) => ({ label: b.name, value: b.id })),
-    [branches]
+    () => branches.filter((branch) => branch.isActive && branch.regionId === regionId)
+      .map((branch) => ({ label: branch.name, value: branch.id })),
+    [branches, regionId]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +95,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
     if (!model.trim()) { toast.error('Model is required.'); return; }
     if (!year) { toast.error('Year is required.'); return; }
     if (!colour.trim()) { toast.error('Colour is required.'); return; }
+    if (!regionId) { toast.error('Trekking region is required.'); return; }
 
     setSubmitting(true);
     try {
@@ -88,6 +106,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           model: model.trim(),
           year,
           colour: colour.trim(),
+          regionId,
           branchId: branchId || undefined,
         });
         toast.success(`Vehicle "${displayName.trim()}" updated.`);
@@ -99,6 +118,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           model: model.trim(),
           year,
           colour: colour.trim(),
+          regionId,
           branchId: branchId || undefined,
         });
         toast.success(`Vehicle "${displayName.trim()}" registered.`);
@@ -172,6 +192,35 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           required
         />
 
+        <FlatDropdown
+          label="Trekking Region"
+          value={regionId}
+          options={regionOptions}
+          onChange={(val: any) => {
+            const nextRegionId = val?.value !== undefined ? val.value : val;
+            setRegionId(nextRegionId || '');
+            setBranchId('');
+          }}
+          placeholder={loadingRegions ? 'Loading regions...' : 'Select trekking region'}
+          filter
+          filterPlaceholder="Search region..."
+          size="sm"
+          required
+        />
+
+        <FlatDropdown
+          label="Branch (Optional)"
+          value={branchId}
+          options={branchOptions}
+          onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val || '')}
+          placeholder={loadingBranches ? 'Loading branches...' : regionId ? 'Select branch' : 'Select region first'}
+          filter
+          filterPlaceholder="Search branch..."
+          showClear
+          size="sm"
+          disabled={!regionId}
+        />
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FlatInputText
             label="Make"
@@ -215,16 +264,6 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           />
         </div>
 
-        <FlatDropdown
-          label="Branch"
-          value={branchId}
-          options={branchOptions}
-          onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
-          placeholder={loadingBranches ? 'Loading...' : 'Select branch'}
-          filter
-          filterPlaceholder="Search branch..."
-          size="sm"
-        />
       </form>
     </FlatModal>
   );

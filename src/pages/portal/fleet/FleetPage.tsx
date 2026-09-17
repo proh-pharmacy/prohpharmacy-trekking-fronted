@@ -32,15 +32,15 @@ const VEHICLE_STATUS_FILTER_OPTIONS = [
 ];
 
 export const FleetPage: React.FC = () => {
-  const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([
-    { label: 'All Branches', value: '' },
+  const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Regions', value: '' },
   ]);
 
   useEffect(() => {
-    organisationApi.getBranches().then((branches) => {
-      setBranchOptions([
-        { label: 'All Branches', value: '' },
-        ...branches.map((b) => ({ label: b.name, value: b.id })),
+    organisationApi.getRegions().then((regions) => {
+      setRegionOptions([
+        { label: 'All Regions', value: '' },
+        ...regions.map((region) => ({ label: region.name, value: region.id })),
       ]);
     }).catch(() => {});
   }, []);
@@ -117,8 +117,10 @@ export const FleetPage: React.FC = () => {
       model: v.model || '',
       year: v.year || 0,
       colour: v.colour || '',
-      branchId: v.branchId || '',
-      branchName: v.branchName || '',
+      regionId: v.regionId || '',
+      regionName: v.regionName || null,
+      branchId: v.branchId || null,
+      branchName: v.branchName || null,
       operationalStatus: (v.operationalStatus as OperationalStatus) || 'Active',
       currentStaffId: v.currentStaffId || null,
       currentStaffName: v.currentStaffName || null,
@@ -141,7 +143,7 @@ export const FleetPage: React.FC = () => {
     search: payload.search || undefined,
     sort: payload.sort || 'createdAt_desc',
     ...(payload.status   ? { status:   payload.status }   : {}),
-    ...(payload.branchId ? { branchId: payload.branchId } : {}),
+    ...(payload.regionId ? { regionId: payload.regionId } : {}),
   }), []);
 
   // ── Vehicle columns ────────────────────────────────────────────────
@@ -167,10 +169,10 @@ export const FleetPage: React.FC = () => {
       ),
     },
     {
-      field: 'branchName',
-      header: 'Branch',
+      field: 'regionName',
+      header: 'Trekking Region',
       style: { width: '150px' },
-      body: (row) => <span className="text-xs text-portal-text">{row.branchName || '—'}</span>,
+      body: (row) => <span className="text-xs text-portal-text">{row.regionName || '—'}</span>,
     },
     {
       field: 'operationalStatus',
@@ -253,9 +255,9 @@ export const FleetPage: React.FC = () => {
             },
             {
               type: 'SelectFilter',
-              accessor: 'branchId',
-              label: 'Branch',
-              args: { options: branchOptions },
+              accessor: 'regionId',
+              label: 'Region',
+              args: { options: regionOptions },
             },
           ],
         }}

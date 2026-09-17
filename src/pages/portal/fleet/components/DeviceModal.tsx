@@ -177,7 +177,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
                 <div className="flex items-center justify-between gap-2 w-full">
                   <div className="min-w-0 truncate">
                     <span className="font-semibold text-white text-xs block truncate">{v?.displayName}</span>
-                    <span className="text-[11px] text-portal-muted truncate block">{v?.branchName || '—'}</span>
+                    <span className="text-[11px] text-portal-muted truncate block">{v?.regionName || '—'}</span>
                   </div>
                   {v?.registrationNumber && (
                     <span className="font-mono text-xs text-portal-accent shrink-0">{v.registrationNumber}</span>
@@ -199,8 +199,8 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-portal-muted text-[11px] block">Branch</span>
-                    <span className="text-white">{selectedVehicle?.branchName || '—'}</span>
+                    <span className="text-portal-muted text-[11px] block">Trekking Region</span>
+                    <span className="text-white">{selectedVehicle?.regionName || '—'}</span>
                   </div>
                   <div>
                     <span className="text-portal-muted text-[11px] block">Status</span>
