@@ -19,8 +19,13 @@ export interface UpdateUnitPayload {
 export interface Product {
   id: string;
   name: string;
-  unit?: string;
-  description?: string;
+  description: string | null;
+  basicUnitId: string;
+  basicUnitName: string;
+  basicUnitPrice: number;
+  packagingUnitId: string | null;
+  packagingUnitName: string | null;
+  packagingUnitPrice: number | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string | null;
@@ -28,24 +33,28 @@ export interface Product {
 
 export interface CreateProductPayload {
   name: string;
-  unit?: string;
   description?: string;
+  basicUnitId: string;
+  basicUnitPrice: number;
+  packagingUnitId?: string | null;
+  packagingUnitPrice?: number | null;
 }
 
-export interface UpdateProductPayload {
-  name: string;
-  unit?: string;
-  description?: string;
-}
+export type UpdateProductPayload = CreateProductPayload;
 
 export interface ImportProductsPayload {
   file: File;
   productNameColumn: string;
-  unitColumn: string;
+  basicUnitColumn: string;
+  basicUnitPriceColumn?: string;
+  packagingUnitColumn?: string;
+  packagingUnitPriceColumn?: string;
+  allowUpdate?: boolean;
 }
 
 export interface ImportProductsResult {
   imported: number;
+  updated: number;
   skipped: number;
   unitsCreated: number;
   skippedNames: string[];
@@ -108,6 +117,11 @@ export const productsApi = {
     return res.data;
   },
 
+  setPackagingUnit: async (id: string, packagingUnitId: string | null, packagingUnitPrice: number | null): Promise<Product> => {
+    const res = await apiClient.patch<Product>(`/products/${id}/packaging-unit`, { packagingUnitId, packagingUnitPrice });
+    return res.data;
+  },
+
   toggleProductStatus: async (id: string): Promise<Product> => {
     const res = await apiClient.patch<Product>(`/products/${id}/status`);
     return res.data;
@@ -117,7 +131,11 @@ export const productsApi = {
     const formData = new FormData();
     formData.append('file', payload.file);
     formData.append('productNameColumn', payload.productNameColumn);
-    formData.append('unitColumn', payload.unitColumn);
+    formData.append('basicUnitColumn', payload.basicUnitColumn);
+    if (payload.basicUnitPriceColumn) formData.append('basicUnitPriceColumn', payload.basicUnitPriceColumn);
+    if (payload.packagingUnitColumn) formData.append('packagingUnitColumn', payload.packagingUnitColumn);
+    if (payload.packagingUnitPriceColumn) formData.append('packagingUnitPriceColumn', payload.packagingUnitPriceColumn);
+    formData.append('allowUpdate', String(payload.allowUpdate ?? false));
     const res = await apiClient.post<ImportProductsResult>('/products/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

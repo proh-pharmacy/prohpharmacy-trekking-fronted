@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatInputText, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
+import { FlatButton, FlatInputText, FlatInputNumber, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
 import { productsApi, type Product, type Unit } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
@@ -24,7 +24,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const isEditing = Boolean(product);
   const [name, setName] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState<string>('');
+  const [basicUnitId, setBasicUnitId] = useState('');
+  const [basicUnitPrice, setBasicUnitPrice] = useState<number | null>(0);
+  const [packagingUnitId, setPackagingUnitId] = useState('');
+  const [packagingUnitPrice, setPackagingUnitPrice] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [availableUnits, setAvailableUnits] = useState<Unit[]>(propUnits);
   const [loadingUnits, setLoadingUnits] = useState(false);
@@ -62,23 +65,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     if (!visible) return;
     if (product) {
       setName(product.name || '');
-      setSelectedUnit(product.unit || '');
+      setBasicUnitId(product.basicUnitId || '');
+      setBasicUnitPrice(product.basicUnitPrice ?? 0);
+      setPackagingUnitId(product.packagingUnitId || '');
+      setPackagingUnitPrice(product.packagingUnitPrice ?? null);
       setDescription(product.description || '');
     } else {
       setName('');
-      setSelectedUnit('');
+      setBasicUnitId('');
+      setBasicUnitPrice(0);
+      setPackagingUnitId('');
+      setPackagingUnitPrice(null);
       setDescription('');
     }
   }, [visible, product]);
 
   const unitOptions = useMemo(() => {
-    const list = availableUnits.map((u) => ({
-      label: u.name,
-      value: u.name,
-    }));
-    // If editing and current product unit is not in active units, preserve it in options
-    if (product?.unit && !list.some((opt) => opt.value === product.unit)) {
-      list.unshift({ label: `${product.unit} (Current)`, value: product.unit });
+    const list = availableUnits.map((unit) => ({ label: unit.name, value: unit.id }));
+    if (product?.basicUnitId && !list.some((option) => option.value === product.basicUnitId)) {
+      list.unshift({ label: `${product.basicUnitName} (Current)`, value: product.basicUnitId });
+    }
+    if (product?.packagingUnitId && !list.some((option) => option.value === product.packagingUnitId)) {
+      list.push({ label: `${product.packagingUnitName} (Current)`, value: product.packagingUnitId });
     }
     return list;
   }, [availableUnits, product]);
@@ -89,13 +97,26 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       toast.error('Product name is required.');
       return;
     }
+    if (!basicUnitId) { toast.error('Basic unit is required.'); return; }
+    if (basicUnitPrice === null || basicUnitPrice < 0) { toast.error('Enter a valid basic unit price.'); return; }
+    if (packagingUnitId && packagingUnitId === basicUnitId) {
+      toast.error('Packaging unit must differ from the basic unit.');
+      return;
+    }
+    if (packagingUnitId && (packagingUnitPrice === null || packagingUnitPrice < 0)) {
+      toast.error('Enter a valid packaging unit price.');
+      return;
+    }
 
     setSubmitting(true);
     try {
       const payload = {
         name: name.trim(),
-        unit: selectedUnit.trim() || undefined,
         description: description.trim() || undefined,
+        basicUnitId,
+        basicUnitPrice,
+        packagingUnitId: packagingUnitId || null,
+        packagingUnitPrice: packagingUnitId ? packagingUnitPrice : null,
       };
 
       if (isEditing && product) {
@@ -137,7 +158,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}
             onClick={handleSubmit}
             loading={submitting}
-            disabled={submitting || !name.trim()}
+            disabled={submitting || !name.trim() || !basicUnitId || basicUnitPrice === null || (Boolean(packagingUnitId) && packagingUnitPrice === null)}
           />
         </div>
       }
@@ -154,16 +175,55 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         />
 
         <FlatDropdown
-          label="Packaging Unit"
-          value={selectedUnit}
+          label="Basic Unit"
+          value={basicUnitId}
           options={unitOptions}
-          onChange={(val: any) => setSelectedUnit(val?.value !== undefined ? val.value : val)}
-          placeholder={loadingUnits ? 'Loading units...' : 'Select unit of measure'}
+          onChange={(val: string) => setBasicUnitId(val || '')}
+          placeholder={loadingUnits ? 'Loading units...' : 'Select basic unit'}
           filter
           filterPlaceholder="Search unit..."
           size="sm"
-          helperText="Select packaging format (e.g. Strips, Boxes, Cartons)."
+          required
         />
+
+        <FlatInputNumber
+          label="Basic Unit Price"
+          value={basicUnitPrice}
+          onChange={setBasicUnitPrice}
+          min={0}
+          minFractionDigits={2}
+          maxFractionDigits={2}
+          size="sm"
+          required
+        />
+
+        <FlatDropdown
+          label="Packaging Unit (Optional)"
+          value={packagingUnitId}
+          options={unitOptions.filter((option) => option.value !== basicUnitId)}
+          onChange={(val: string) => {
+            setPackagingUnitId(val || '');
+            if (!val) setPackagingUnitPrice(null);
+          }}
+          placeholder={loadingUnits ? 'Loading units...' : 'Select packaging unit'}
+          filter
+          filterPlaceholder="Search unit..."
+          showClear
+          size="sm"
+        />
+
+        {packagingUnitId && (
+          <FlatInputNumber
+            label="Packaging Unit Price"
+            value={packagingUnitPrice}
+            onChange={setPackagingUnitPrice}
+            min={0}
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            size="sm"
+            required
+          />
+        )}
 
         <FlatTextarea
           label="Description"

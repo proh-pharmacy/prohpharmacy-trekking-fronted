@@ -165,7 +165,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                     <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="font-medium text-white">{product.productName}</span>
-                        {product.unit && <span className="text-portal-muted ml-1.5 text-[11px]">({product.unit})</span>}
+                        {product.basicUnitName && <span className="text-portal-muted ml-1.5 text-[11px]">({product.basicUnitName})</span>}
                       </td>
                       <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
                         <span className="font-mono text-portal-accent font-semibold">{product.plannedQuantity}</span>
@@ -234,7 +234,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-white break-words">{product.productName}</p>
-                      {product.unit && <p className="text-[11px] text-portal-muted">{product.unit}</p>}
+                      {product.basicUnitName && <p className="text-[11px] text-portal-muted">{product.basicUnitName}</p>}
                     </div>
                     <div className="shrink-0 flex items-baseline gap-1 text-[11px] bg-portal-surface border border-portal-border/60 px-2 py-0.5 rounded">
                       <span className="text-portal-muted text-[10px] uppercase font-bold">Planned</span>
@@ -476,7 +476,7 @@ export const DriverPage: React.FC = () => {
         <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-base font-bold text-white leading-none">{trek.trekNumber}</p>
-            <p className="text-[11px] text-portal-muted mt-0.5">{trek.scheduledDate} · {trek.branchName}</p>
+            <p className="text-[11px] text-portal-muted mt-0.5">{trek.scheduledDate} · {trek.regionName}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className={`text-xs font-semibold ${STATUS_STYLES[trek.status] ?? 'text-portal-muted'}`}>
@@ -496,11 +496,12 @@ export const DriverPage: React.FC = () => {
 
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
         {/* Trek info tiles */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
+            { label: 'Trekking Region', value: trek.regionName },
             { label: 'Driver',  value: trek.driverName },
             { label: 'Vehicle', value: trek.vehicleDisplayName },
-            { label: 'Branch',  value: trek.branchName },
+            { label: 'Sales Staff', value: trek.salesStaffName || '—' },
           ].map(({ label, value }) => (
             <div key={label} className="bg-portal-surface border border-portal-border/60 rounded p-2.5 sm:p-3 min-w-0">
               <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-0.5 truncate">{label}</p>

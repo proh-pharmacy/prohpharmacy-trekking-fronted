@@ -30,11 +30,20 @@ const STATUS_FILTER_OPTIONS = [
 export const TrekkingPage: React.FC = () => {
   const navigate = useNavigate();
   const [createVisible, setCreateVisible] = useState(false);
+  const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
+    { label: 'All Regions', value: '' },
+  ]);
   const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Branches', value: '' },
   ]);
 
   useEffect(() => {
+    organisationApi.getRegions().then((regions) => {
+      setRegionOptions([
+        { label: 'All Regions', value: '' },
+        ...regions.map((region) => ({ label: region.name, value: region.id })),
+      ]);
+    }).catch(() => {});
     organisationApi.getBranches().then((branches) => {
       setBranchOptions([
         { label: 'All Branches', value: '' },
@@ -54,10 +63,14 @@ export const TrekkingPage: React.FC = () => {
     const data: Trek[] = raw.map((t: any) => ({
       id:                 String(t.id || ''),
       trekNumber:         t.trekNumber || '',
-      branchId:           t.branchId || '',
-      branchName:         t.branchName || '—',
+      regionId:           t.regionId || '',
+      regionName:         t.regionName || '',
+      branchId:           t.branchId || null,
+      branchName:         t.branchName || null,
       driverStaffId:      t.driverStaffId || '',
       driverName:         t.driverName || '—',
+      salesStaffId:       t.salesStaffId || null,
+      salesStaffName:     t.salesStaffName || null,
       vehicleId:          t.vehicleId || '',
       vehicleDisplayName: t.vehicleDisplayName || '—',
       scheduledDate:      t.scheduledDate || '',
@@ -83,6 +96,7 @@ export const TrekkingPage: React.FC = () => {
     search:     payload.search     || undefined,
     sort:       payload.sort       || 'scheduledDate_desc',
     ...(payload.status     ? { status:        payload.status }     : {}),
+    ...(payload.regionId   ? { regionId:      payload.regionId }   : {}),
     ...(payload.branchId   ? { branchId:      payload.branchId }   : {}),
     ...(payload.scheduledDate ? { scheduledDate: payload.scheduledDate } : {}),
   }), []);
@@ -103,21 +117,26 @@ export const TrekkingPage: React.FC = () => {
       ),
     },
     {
+      field: 'regionName',
+      header: 'Trekking Region',
+      style: { width: '150px' },
+      body: (row) => <span className="text-xs text-portal-text">{row.regionName || '—'}</span>,
+    },
+    {
       field: 'driverName',
       header: 'Driver',
       body: (row) => <span className="text-xs text-white">{row.driverName}</span>,
+    },
+    {
+      field: 'salesStaffName',
+      header: 'Sales Staff',
+      body: (row) => <span className="text-xs text-portal-text">{row.salesStaffName || '—'}</span>,
     },
     {
       field: 'vehicleDisplayName',
       header: 'Vehicle',
       style: { width: '160px' },
       body: (row) => <span className="text-xs text-portal-text">{row.vehicleDisplayName}</span>,
-    },
-    {
-      field: 'branchName',
-      header: 'Branch',
-      style: { width: '140px' },
-      body: (row) => <span className="text-xs text-portal-text">{row.branchName}</span>,
     },
     {
       field: 'scheduledDate',
@@ -175,6 +194,12 @@ export const TrekkingPage: React.FC = () => {
         extendedFilter={{
           enable: true,
           filters: [
+            {
+              type: 'SelectFilter',
+              accessor: 'regionId',
+              label: 'Region',
+              args: { options: regionOptions },
+            },
             {
               type: 'SelectFilter',
               accessor: 'status',

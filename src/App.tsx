@@ -144,6 +144,7 @@ export default function App() {
                   <Route path="customers" element={<CustomersPage />} />
                   <Route path="customers/:customerId" element={<CustomerDetailPage />} />
                   <Route path="products" element={<ProductsPage />} />
+                  <Route path="product" element={<Navigate to="/portal/products" replace />} />
                   <Route path="fleet" element={<FleetPage />} />
                   <Route path="reports/ledger-summary" element={<LedgerSummaryPage />} />
                   <Route path="reports/treks" element={<TrekReportPage />} />

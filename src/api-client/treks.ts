@@ -7,7 +7,7 @@ export interface TrekStopProduct {
   stopProductId: string;
   productId: string;
   productName: string;
-  unit?: string;
+  basicUnitName?: string | null;
   plannedQuantity: number;
   qtyDelivered?: number | null;
   paymentMethod?: PaymentMethod | null;
@@ -38,10 +38,14 @@ export interface TrekStop {
 export interface Trek {
   id: string;
   trekNumber: string;
-  branchId: string;
-  branchName: string;
+  regionId: string;
+  regionName: string;
+  branchId: string | null;
+  branchName: string | null;
   driverStaffId: string;
   driverName: string;
+  salesStaffId: string | null;
+  salesStaffName: string | null;
   vehicleId: string;
   vehicleDisplayName: string;
   scheduledDate: string;
@@ -53,16 +57,20 @@ export interface Trek {
 }
 
 export interface CreateTrekPayload {
-  branchId: string;
+  regionId: string;
+  branchId?: string | null;
   scheduledDate: string;
   vehicleId: string;
+  salesStaffId?: string | null;
   notes?: string;
 }
 
 export interface UpdateTrekPayload {
-  branchId: string;
+  regionId: string;
+  branchId?: string | null;
   scheduledDate: string;
   vehicleId: string;
+  salesStaffId?: string | null;
   notes?: string | null;
 }
 
@@ -87,7 +95,7 @@ export interface RecordDeliveryPayload {
 export interface DriverStopProduct {
   stopProductId: string;
   productName: string;
-  unit?: string | null;
+  basicUnitName?: string | null;
   plannedQuantity: number;
   qtyDelivered?: number | null;
   paymentMethod?: PaymentMethod | null;
@@ -121,11 +129,26 @@ export interface DriverTrek {
   scheduledDate: string;
   driverName: string;
   vehicleDisplayName: string;
-  branchName: string;
+  regionName: string;
+  salesStaffId: string | null;
+  salesStaffName: string | null;
   status: TrekStatus;
   isLocked: boolean;
   stops: DriverStop[];
 }
+
+const normalizeStopProduct = <T extends { basicUnitName?: string | null; unit?: string | null }>(product: T): T => ({
+  ...product,
+  basicUnitName: product.basicUnitName ?? product.unit ?? null,
+});
+
+const normalizeTrekProducts = <T extends { stops: { products: { basicUnitName?: string | null; unit?: string | null }[] }[] }>(trek: T): T => ({
+  ...trek,
+  stops: trek.stops.map((stop) => ({
+    ...stop,
+    products: stop.products.map(normalizeStopProduct),
+  })),
+});
 
 export const treksApi = {
   getTreks: async (params?: {
@@ -133,6 +156,7 @@ export const treksApi = {
     sort?: string;
     pageNumber?: number;
     pageSize?: number;
+    regionId?: string;
     branchId?: string;
     status?: string;
     scheduledDate?: string;
@@ -143,27 +167,27 @@ export const treksApi = {
 
   getTrek: async (id: string): Promise<Trek> => {
     const res = await apiClient.get<Trek>(`/treks/${id}`);
-    return res.data;
+    return normalizeTrekProducts(res.data);
   },
 
   createTrek: async (payload: CreateTrekPayload): Promise<Trek> => {
     const res = await apiClient.post<Trek>('/treks', payload);
-    return res.data;
+    return normalizeTrekProducts(res.data);
   },
 
   updateTrek: async (id: string, payload: UpdateTrekPayload): Promise<Trek> => {
     const res = await apiClient.patch<Trek>(`/treks/${id}`, payload);
-    return res.data;
+    return normalizeTrekProducts(res.data);
   },
 
   changeStatus: async (id: string, status: TrekStatus): Promise<Trek> => {
     const res = await apiClient.patch<Trek>(`/treks/${id}/status`, { status });
-    return res.data;
+    return normalizeTrekProducts(res.data);
   },
 
   addStop: async (trekId: string, payload: AddStopPayload): Promise<TrekStop> => {
     const res = await apiClient.post<TrekStop>(`/treks/${trekId}/stops`, payload);
-    return res.data;
+    return { ...res.data, products: res.data.products.map(normalizeStopProduct) };
   },
 
   removeStop: async (trekId: string, stopId: string): Promise<void> => {
@@ -192,7 +216,7 @@ export const treksApi = {
 
   getByDriverToken: async (token: string): Promise<DriverTrek> => {
     const res = await publicApi.get<DriverTrek>(`/treks/driver/${token}`);
-    return res.data;
+    return normalizeTrekProducts(res.data);
   },
 
   recordByDriverToken: async (

@@ -138,7 +138,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
         visible={visible}
         onHide={onHide}
         title={trek ? `Trek — ${trek.trekNumber}` : 'Trek Details'}
-        subtitle={trek ? `${trek.branchName} · ${trek.scheduledDate}` : undefined}
+        subtitle={trek ? `${trek.regionName} · ${trek.scheduledDate}` : undefined}
         badge={trek ? STATUS_LABELS[trek.status] : undefined}
         size="lg"
         footer={
@@ -176,11 +176,13 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
         {!loading && trek && (
           <div className="space-y-5 py-1">
             {/* Trek info */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
+                { label: 'Trekking Region', value: trek.regionName },
                 { label: 'Driver',   value: trek.driverName },
                 { label: 'Vehicle',  value: trek.vehicleDisplayName },
-                { label: 'Branch',   value: trek.branchName },
+                { label: 'Sales Staff', value: trek.salesStaffName || '—' },
+                ...(trek.branchName ? [{ label: 'Branch', value: trek.branchName }] : []),
                 { label: 'Status',   value: (
                   <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${STATUS_STYLES[trek.status]}`}>
                     {STATUS_LABELS[trek.status]}
@@ -281,7 +283,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                                     <i className="pi pi-box text-[10px] text-portal-muted" />
                                     <span className="text-portal-text">{p.productName}</span>
                                     <span className="text-portal-accent font-mono">×{p.plannedQuantity}</span>
-                                    {p.unit && <span className="text-portal-muted">{p.unit}</span>}
+                                    {p.basicUnitName && <span className="text-portal-muted">{p.basicUnitName}</span>}
                                     {p.qtyDelivered != null && (
                                       <span className="text-portal-accent ml-1">({p.qtyDelivered} delivered)</span>
                                     )}
@@ -325,6 +327,8 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           visible={addStopVisible}
           onHide={() => setAddStopVisible(false)}
           trekId={trek.id}
+          trekRegionId={trek.regionId}
+          trekRegionName={trek.regionName}
           nextSequence={trek.stops.length + 1}
           onSuccess={loadTrek}
         />

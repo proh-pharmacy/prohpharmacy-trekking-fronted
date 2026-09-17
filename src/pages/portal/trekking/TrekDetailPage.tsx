@@ -272,7 +272,7 @@ export const TrekDetailPage: React.FC = () => {
               {STATUS_LABELS[trek.status]}
             </span>
           </div>
-          <p className="text-xs text-portal-muted">{trek.branchName} · {trek.scheduledDate}</p>
+          <p className="text-xs text-portal-muted">{trek.regionName} · {trek.scheduledDate}</p>
           {isDeliveryLocked && (
             <p className="flex items-center gap-1.5 text-[11px] text-portal-muted italic mt-0.5">
               <i className="pi pi-info-circle shrink-0" />
@@ -343,11 +343,13 @@ export const TrekDetailPage: React.FC = () => {
       </div>
 
       {/* ── Info cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
+          { label: 'Trekking Region', value: trek.regionName },
           { label: 'Driver',  value: trek.driverName },
           { label: 'Vehicle', value: trek.vehicleDisplayName },
-          { label: 'Branch',  value: trek.branchName },
+          { label: 'Sales Staff', value: trek.salesStaffName || '—' },
+          ...(trek.branchName ? [{ label: 'Branch', value: trek.branchName }] : []),
           { label: 'Date',    value: trek.scheduledDate },
         ].map(({ label, value }) => (
           <div key={label} className="bg-portal-surface border border-portal-border/60 rounded p-3">
@@ -410,6 +412,8 @@ export const TrekDetailPage: React.FC = () => {
         visible={addStopVisible}
         onHide={() => setAddStopVisible(false)}
         trekId={trek.id}
+        trekRegionId={trek.regionId}
+        trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
         onSuccess={loadTrek}
       />
@@ -549,7 +553,7 @@ const StopCard: React.FC<StopCardProps> = ({
                   <tr key={product.productId} className="group">
                     <td className="py-2 pl-3 pr-4">
                       <span className="font-medium text-white">{product.productName}</span>
-                      {product.unit && <span className="text-portal-muted ml-1.5">({product.unit})</span>}
+                      {product.basicUnitName && <span className="text-portal-muted ml-1.5">({product.basicUnitName})</span>}
                     </td>
                     <td className="py-2 px-3 text-center">
                       <span className="font-mono text-portal-accent">{product.plannedQuantity}</span>

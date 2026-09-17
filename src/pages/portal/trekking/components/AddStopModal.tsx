@@ -5,9 +5,10 @@ import { FlatButton, FlatDropdown } from '../../../../components/flat-form';
 import { FlatAsyncSelect } from '../../../../components/flat-form/FlatAsyncSelect';
 import {
   treksApi, customersApi, organisationApi,
-  type Customer, type Product, type Region, type District,
+  type Customer, type Product, type District,
 } from '../../../../api-client';
 import apiClient from '../../../../api-client/api';
+import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
 
 const schema = z.object({
@@ -24,49 +25,45 @@ interface Props {
   visible: boolean;
   onHide: () => void;
   trekId: string;
+  trekRegionId: string;
+  trekRegionName: string;
   nextSequence: number;
   onSuccess?: () => void;
 }
 
-export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSequence, onSuccess }) => {
+export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekRegionId, trekRegionName, nextSequence, onSuccess }) => {
   const [customerAccountId, setCustomerAccountId] = useState('');
-  const [regionId, setRegionId]                   = useState('');
   const [districtId, setDistrictId]               = useState('');
   const [sequence, setSequence]                   = useState(nextSequence);
   const [notes, setNotes]                         = useState('');
   const [products, setProducts]                   = useState<ProductRow[]>([{ productId: '', plannedQuantity: 1 }]);
-  const [regions, setRegions]                     = useState<Region[]>([]);
   const [districts, setDistricts]                 = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts]   = useState(false);
   const [saving, setSaving]                       = useState(false);
   const [errors, setErrors]                       = useState<{ customerAccountId?: string; sequence?: string; products?: string }>({});
 
-  // Load regions + products once on open
+  // Reset the form on open. The trek determines the customer region.
   useEffect(() => {
     if (visible) {
       setSequence(nextSequence);
       setCustomerAccountId('');
-      setRegionId('');
       setDistrictId('');
       setDistricts([]);
       setNotes('');
       setProducts([{ productId: '', plannedQuantity: 1 }]);
       setErrors({});
-      organisationApi.getRegions().then(setRegions).catch(() => {});
     }
-  }, [visible, nextSequence]);
+  }, [visible, nextSequence, trekRegionId]);
 
-  // Load districts when region changes
+  // Load only districts in the trek's region.
   useEffect(() => {
-    if (!regionId) { setDistricts([]); setDistrictId(''); return; }
+    if (!visible || !trekRegionId) { setDistricts([]); return; }
     setLoadingDistricts(true);
-    organisationApi.getDistricts(regionId)
+    organisationApi.getDistricts(trekRegionId)
       .then(setDistricts)
       .catch(() => {})
       .finally(() => setLoadingDistricts(false));
-    setDistrictId('');
-    setCustomerAccountId('');
-  }, [regionId]);
+  }, [visible, trekRegionId]);
 
   // Clear customer when district changes
   useEffect(() => {
@@ -79,24 +76,21 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
     return { data: raw as Product[], totalPages: res.data?.totalPages ?? 1 };
   }, []);
 
-  // fetchFn recreated when regionId or districtId changes
+  // fetchFn recreated when the trek region or selected district changes
   const fetchCustomers = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
     const res = await customersApi.getCustomers({
       ...params,
-      ...(regionId   ? { regionId }   : {}),
+      regionId: trekRegionId,
       ...(districtId ? { districtId } : {}),
     });
     const raw: Customer[] = res?.data ?? res?.items ?? (Array.isArray(res) ? res : []);
     return { data: raw, totalPages: res?.totalPages ?? 1 };
-  }, [regionId, districtId]);
+  }, [trekRegionId, districtId]);
 
-  const regionOptions = [
-    { label: 'All Regions', value: '' },
-    ...regions.map((r) => ({ label: r.name, value: r.id })),
-  ];
+  const regionOptions = [{ label: trekRegionName, value: trekRegionId }];
 
   const districtOptions = [
-    { label: regionId ? 'All Districts' : 'Select region first', value: '' },
+    { label: 'All Districts', value: '' },
     ...districts.map((d) => ({ label: d.name, value: d.id })),
   ];
 
@@ -126,6 +120,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
         notes: notes.trim() || undefined,
         products: validProducts,
       });
+      resetTableData();
       toast.success('Stop added.');
       onSuccess?.();
       onHide();
@@ -153,14 +148,13 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
     >
       <div className="space-y-4 py-1 text-xs">
 
-        {/* Region + District filters */}
+        {/* The trek fixes the region; the district narrows the customer list. */}
         <div className="grid grid-cols-2 gap-3">
           <FlatDropdown
-            label="Region"
+            label="Trekking Region"
             options={regionOptions}
-            value={regionId}
-            onChange={(v: any) => setRegionId(v?.value !== undefined ? v.value : v)}
-            placeholder="All Regions"
+            value={trekRegionId}
+            disabled
             size="sm"
           />
           <FlatDropdown
@@ -168,8 +162,8 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
             options={districtOptions}
             value={districtId}
             onChange={(v: any) => setDistrictId(v?.value !== undefined ? v.value : v)}
-            placeholder={regionId ? 'All Districts' : 'Select region first'}
-            disabled={!regionId || loadingDistricts}
+            placeholder="All Districts"
+            disabled={!trekRegionId || loadingDistricts}
             size="sm"
           />
         </div>
@@ -178,7 +172,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <FlatAsyncSelect<Customer>
-              key={`${regionId}:${districtId}`}
+              key={`${trekRegionId}:${districtId}`}
               label="Customer"
               required
               placeholder="Search by name, code, or phone..."
@@ -238,11 +232,11 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, nextSeq
                     onChange={(v) => updateProductRow(i, 'productId', v ?? '')}
                     fetchFn={fetchProducts}
                     optionValue="id"
-                    optionLabel={(p) => `${p.name}${p.unit ? ` (${p.unit})` : ''}`}
+                    optionLabel={(p) => `${p.name}${p.basicUnitName ? ` (${p.basicUnitName})` : ''}`}
                     itemTemplate={(p) => (
                       <div>
                         <span className="text-white text-xs">{p.name}</span>
-                        {p.unit && <span className="text-portal-muted text-[11px] ml-1.5">({p.unit})</span>}
+                        {p.basicUnitName && <span className="text-portal-muted text-[11px] ml-1.5">({p.basicUnitName})</span>}
                       </div>
                     )}
                     size="sm"

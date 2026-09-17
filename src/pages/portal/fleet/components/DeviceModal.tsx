@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatInputText, FlatAsyncSelect } from '../../../../components/flat-form';
-import { fleetApi, type TrackingDevice, type OperationalStatus } from '../../../../api-client';
+import { fleetApi, type TrackingDevice, type OperationalStatus, type Vehicle } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
 
@@ -23,7 +23,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
 
   // Create mode
   const [vehicleId, setVehicleId] = useState('');
-  const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [uniqueId, setUniqueId] = useState('');
 
   // Both modes
@@ -157,13 +157,13 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
           <>
             <SectionLabel>Vehicle</SectionLabel>
 
-            <FlatAsyncSelect<any>
+            <FlatAsyncSelect<Vehicle>
               id="device-vehicle-select"
               label="Vehicle"
               required
-              placeholder="Search by registration or display name..."
+              placeholder="Search vehicles..."
               value={vehicleId}
-              onChange={(val: any, item: any) => {
+              onChange={(val, item) => {
                 setVehicleId(val || '');
                 setSelectedVehicle(item || null);
               }}
@@ -172,16 +172,15 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               pageSize={10}
               searchParam="search"
               optionValue="id"
-              optionLabel={(v: any) => `${v?.displayName || ''} (${v?.registrationNumber || '—'})`}
-              itemTemplate={(v: any) => (
-                <div className="flex items-center justify-between gap-2 w-full">
-                  <div className="min-w-0 truncate">
-                    <span className="font-semibold text-white text-xs block truncate">{v?.displayName}</span>
-                    <span className="text-[11px] text-portal-muted truncate block">{v?.regionName || '—'}</span>
-                  </div>
-                  {v?.registrationNumber && (
-                    <span className="font-mono text-xs text-portal-accent shrink-0">{v.registrationNumber}</span>
-                  )}
+              optionLabel={(v) => `${v.regionName || 'No region'} · ${v.displayName}`}
+              itemTemplate={(v) => (
+                <div className="min-w-0">
+                  <span className="block truncate text-[11px] text-portal-accent">{v.regionName || 'No region'}</span>
+                  <span className="block truncate text-xs font-semibold text-white">{v.displayName}</span>
+                  <span className="block truncate text-[11px] text-portal-muted">
+                    {v.currentStaffName ? `Driver: ${v.currentStaffName}` : 'No driver assigned'}
+                    {v.registrationNumber && ` · ${v.registrationNumber}`}
+                  </span>
                 </div>
               )}
               size="sm"
@@ -193,14 +192,14 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               }`}
             >
               <div className="bg-portal-canvas border border-portal-border/60 rounded p-3 space-y-2 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-portal-border/40">
-                  <span className="font-semibold text-white">{selectedVehicle?.displayName}</span>
-                  <span className="font-mono text-portal-accent">{selectedVehicle?.registrationNumber}</span>
+                <div className="pb-2 border-b border-portal-border/40">
+                  <span className="block text-[11px] text-portal-accent">{selectedVehicle?.regionName || 'No region'}</span>
+                  <span className="block font-semibold text-white">{selectedVehicle?.displayName}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-portal-muted text-[11px] block">Trekking Region</span>
-                    <span className="text-white">{selectedVehicle?.regionName || '—'}</span>
+                    <span className="text-portal-muted text-[11px] block">Driver</span>
+                    <span className="text-white">{selectedVehicle?.currentStaffName || 'Unassigned'}</span>
                   </div>
                   <div>
                     <span className="text-portal-muted text-[11px] block">Status</span>
@@ -209,6 +208,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
                     </span>
                   </div>
                 </div>
+                <span className="block font-mono text-[11px] text-portal-muted">{selectedVehicle?.registrationNumber}</span>
               </div>
             </div>
 

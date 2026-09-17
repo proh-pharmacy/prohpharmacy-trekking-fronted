@@ -49,14 +49,22 @@ export const TrekReportPage: React.FC = () => {
     totalCollected: 0, totalOutstanding: 0,
   });
 
+  const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([{ label: 'All Regions', value: '' }]);
   const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([{ label: 'All Branches', value: '' }]);
   const [driverOptions, setDriverOptions] = useState<{ label: string; value: string }[]>([{ label: 'All Drivers', value: '' }]);
 
   useEffect(() => {
     Promise.allSettled([
+      organisationApi.getRegions(),
       organisationApi.getBranches(),
       fleetApi.getDrivers(),
-    ]).then(([branchRes, driverRes]) => {
+    ]).then(([regionRes, branchRes, driverRes]) => {
+      if (regionRes.status === 'fulfilled') {
+        setRegionOptions([
+          { label: 'All Regions', value: '' },
+          ...regionRes.value.map((region) => ({ label: region.name, value: region.id })),
+        ]);
+      }
       if (branchRes.status === 'fulfilled') {
         setBranchOptions([
           { label: 'All Branches', value: '' },
@@ -78,13 +86,14 @@ export const TrekReportPage: React.FC = () => {
   const [exportVisible, setExportVisible] = useState(false);
   const [exportFrom, setExportFrom] = useState('');
   const [exportTo, setExportTo] = useState(todayStr());
+  const [exportRegionId, setExportRegionId] = useState('');
   const [exportBranchId, setExportBranchId] = useState('');
   const [exportDriverId, setExportDriverId] = useState('');
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
 
   const resetExport = () => {
-    setExportFrom(''); setExportTo(todayStr()); setExportBranchId('');
+    setExportFrom(''); setExportTo(todayStr()); setExportRegionId(''); setExportBranchId('');
     setExportDriverId(''); setExportStatus(''); setExportVisible(false);
   };
 
@@ -94,6 +103,7 @@ export const TrekReportPage: React.FC = () => {
       const { blob, filename } = await reportsApi.exportTrekReport({
         ...(exportFrom ? { from: exportFrom } : {}),
         ...(exportTo ? { to: exportTo } : {}),
+        ...(exportRegionId ? { regionId: exportRegionId } : {}),
         ...(exportBranchId ? { branchId: exportBranchId } : {}),
         ...(exportDriverId ? { driverId: exportDriverId } : {}),
         ...(exportStatus ? { status: exportStatus } : {}),
@@ -137,6 +147,7 @@ export const TrekReportPage: React.FC = () => {
     pageSize: payload.pageSize || 20,
     search: payload.search || undefined,
     sort: payload.sort || 'scheduledDate_desc',
+    ...(payload.regionId ? { regionId: payload.regionId } : {}),
     ...(payload.branchId ? { branchId: payload.branchId } : {}),
     ...(payload.driverId ? { driverId: payload.driverId } : {}),
     ...(payload.status ? { status: payload.status } : {}),
@@ -170,10 +181,10 @@ export const TrekReportPage: React.FC = () => {
       body: (row) => <span className="text-xs text-portal-text">{row.driverName || '—'}</span>,
     },
     {
-      field: 'branchName',
-      header: 'Branch',
+      field: 'regionName',
+      header: 'Trekking Region',
       style: { width: '150px' },
-      body: (row) => <span className="text-xs text-portal-text">{row.branchName || '—'}</span>,
+      body: (row) => <span className="text-xs text-portal-text">{row.regionName || '—'}</span>,
     },
     {
       field: 'status',
@@ -253,7 +264,7 @@ export const TrekReportPage: React.FC = () => {
         actionName="Export Report"
         onAction={() => setExportVisible(true)}
         filterable="search"
-        filterablePlaceholder="Search by trek number, driver, or branch..."
+        filterablePlaceholder="Search by trek number, driver, or region..."
         enableTableFilter
         enablePaginator
         initialPageSize={20}
@@ -264,6 +275,7 @@ export const TrekReportPage: React.FC = () => {
           enable: true,
           filters: [
             { type: 'SelectFilter', accessor: 'status', label: 'Status', args: { options: STATUS_OPTIONS } },
+            { type: 'SelectFilter', accessor: 'regionId', label: 'Region', args: { options: regionOptions } },
             { type: 'SelectFilter', accessor: 'branchId', label: 'Branch', args: { options: branchOptions } },
             { type: 'SelectFilter', accessor: 'driverId', label: 'Driver', args: { options: driverOptions } },
             { type: 'SelectFilter', accessor: 'sort', label: 'Sort', args: { options: SORT_OPTIONS } },
@@ -303,6 +315,12 @@ export const TrekReportPage: React.FC = () => {
               <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)}
                 className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent" />
             </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">Region</label>
+            <FlatDropdown value={exportRegionId} options={regionOptions}
+              onChange={(val: any) => setExportRegionId(val?.value !== undefined ? val.value : val)}
+              placeholder="All Regions" size="sm" />
           </div>
           <div>
             <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">Branch</label>

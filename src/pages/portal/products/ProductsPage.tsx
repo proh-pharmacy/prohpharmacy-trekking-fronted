@@ -5,15 +5,16 @@ import { FlatButton } from '../../../components/flat-form';
 import { productsApi, type Product, type Unit } from '../../../api-client';
 import { ProductModal } from './components/ProductModal';
 import { UnitModal } from './components/UnitModal';
+import { PackagingUnitModal } from './components/PackagingUnitModal';
 import { ImportProductsModal } from './components/ImportProductsModal';
 import toast from 'react-hot-toast';
 
 export const ProductsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
-  const activeTab: 'products' | 'units' = rawTab === 'units' ? 'units' : 'products';
+  const activeTab: 'products' | 'units' | 'packaging' = rawTab === 'units' || rawTab === 'packaging' ? rawTab : 'products';
 
-  const handleTabChange = (tab: 'products' | 'units') => {
+  const handleTabChange = (tab: 'products' | 'units' | 'packaging') => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('tab', tab);
     setSearchParams(nextParams, { replace: true });
@@ -25,6 +26,7 @@ export const ProductsPage: React.FC = () => {
 
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [packagingProduct, setPackagingProduct] = useState<Product | null>(null);
 
   const [importModalVisible, setImportModalVisible] = useState(false);
 
@@ -70,8 +72,13 @@ export const ProductsPage: React.FC = () => {
       const normalized: Product[] = rawList.map((p: any) => ({
         id: String(p.id || ''),
         name: p.name || 'Unnamed Product',
-        unit: p.unit || undefined,
-        description: p.description || undefined,
+        description: p.description || null,
+        basicUnitId: p.basicUnitId || '',
+        basicUnitName: p.basicUnitName || '',
+        basicUnitPrice: p.basicUnitPrice ?? 0,
+        packagingUnitId: p.packagingUnitId || null,
+        packagingUnitName: p.packagingUnitName || null,
+        packagingUnitPrice: p.packagingUnitPrice ?? null,
         isActive: p.isActive ?? true,
         createdAt: p.createdAt || '',
         updatedAt: p.updatedAt || null,
@@ -161,12 +168,25 @@ export const ProductsPage: React.FC = () => {
         ),
       },
       {
-        field: 'unit',
+        field: 'basicUnitName',
+        header: 'Basic Unit',
+        body: (product) => (
+          <div className="text-xs text-portal-text">
+            <span>{product.basicUnitName || '—'}</span>
+            <span className="block text-[11px] text-portal-muted">GHS {Number(product.basicUnitPrice).toFixed(2)}</span>
+          </div>
+        ),
+      },
+      {
+        field: 'packagingUnitName',
         header: 'Packaging Unit',
         body: (product) => (
-          <span className="font-mono text-xs text-portal-text">
-            {product.unit || '—'}
-          </span>
+          <div className="text-xs text-portal-text">
+            <span>{product.packagingUnitName || '—'}</span>
+            {product.packagingUnitPrice != null && (
+              <span className="block text-[11px] text-portal-muted">GHS {Number(product.packagingUnitPrice).toFixed(2)}</span>
+            )}
+          </div>
         ),
       },
       {
@@ -280,10 +300,44 @@ export const ProductsPage: React.FC = () => {
     []
   );
 
+  const packagingColumns: ColumnDef<Product>[] = useMemo(() => [
+    {
+      field: 'name',
+      header: 'Product',
+      body: (product) => <span className="text-xs font-bold text-white">{product.name}</span>,
+    },
+    {
+      field: 'basicUnitName',
+      header: 'Basic Unit',
+      body: (product) => <span className="text-xs text-portal-text">{product.basicUnitName || '—'}</span>,
+    },
+    {
+      field: 'packagingUnitName',
+      header: 'Packaging Unit',
+      body: (product) => <span className="text-xs text-portal-text">{product.packagingUnitName || 'Not assigned'}</span>,
+    },
+    {
+      field: 'packagingUnitPrice',
+      header: 'Price',
+      body: (product) => <span className="text-xs text-portal-text">{product.packagingUnitPrice == null ? '—' : `GHS ${Number(product.packagingUnitPrice).toFixed(2)}`}</span>,
+    },
+    {
+      field: 'actions',
+      header: 'Actions',
+      headerStyle: { textAlign: 'right' },
+      style: { width: '120px', textAlign: 'right' },
+      body: (product) => (
+        <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setPackagingProduct(product)}>
+          {product.packagingUnitId ? 'Edit' : 'Assign'}
+        </FlatButton>
+      ),
+    },
+  ], []);
+
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-portal-border/60 gap-6 text-xs font-bold">
+      <div className="flex border-b border-portal-border/60 gap-6 text-xs font-bold overflow-x-auto whitespace-nowrap">
         <button
           type="button"
           onClick={() => handleTabChange('products')}
@@ -307,6 +361,19 @@ export const ProductsPage: React.FC = () => {
           }`}
         >
           <i className="pi pi-tags text-xs" />
+          <span>Basic Units</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('packaging')}
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+            activeTab === 'packaging'
+              ? 'border-portal-accent text-white'
+              : 'border-transparent text-portal-muted hover:text-white'
+          }`}
+        >
+          <i className="pi pi-inbox text-xs" />
           <span>Packaging Units</span>
         </button>
       </div>
@@ -347,24 +414,24 @@ export const ProductsPage: React.FC = () => {
             ],
           }}
         />
-      ) : (
-        /* Tab 2: Units */
+      ) : activeTab === 'units' ? (
+        /* Tab 2: Basic Units */
         <FlatDataTable<Unit>
           dataSourceUrl="/units"
           columns={unitColumns}
-          heading="Packaging Units"
+          heading="Basic Units"
           hasAction
-          actionName="Add Unit"
+          actionName="Add Basic Unit"
           onAction={() => {
             setEditingUnit(null);
             setUnitModalVisible(true);
           }}
           filterable="search"
-          filterablePlaceholder="Search packaging units..."
+          filterablePlaceholder="Search units..."
           enableTableFilter
           enablePaginator
           initialPageSize={10}
-          emptyDataText="No packaging units found."
+          emptyDataText="No units found."
           dataMapper={unitDataMapper}
           parsePayload={parsePaginationPayload}
           extendedFilter={{
@@ -376,6 +443,31 @@ export const ProductsPage: React.FC = () => {
                 label: 'Status',
                 args: { options: ACTIVE_FILTER_OPTIONS },
               },
+            ],
+          }}
+        />
+      ) : (
+        /* Tab 3: Product packaging assignments */
+        <FlatDataTable<Product>
+          dataSourceUrl="/products"
+          columns={packagingColumns}
+          heading="Packaging Units"
+          headerNotes="Assign a packaging unit and price to each product. Units are shared with the Basic Units tab."
+          hasAction
+          actionName="Add Unit"
+          onAction={() => { setEditingUnit(null); setUnitModalVisible(true); }}
+          filterable="search"
+          filterablePlaceholder="Search products by name..."
+          enableTableFilter
+          enablePaginator
+          initialPageSize={10}
+          emptyDataText="No products found."
+          dataMapper={productDataMapper}
+          parsePayload={parsePaginationPayload}
+          extendedFilter={{
+            enable: true,
+            filters: [
+              { type: 'SelectFilter', accessor: 'isActive', label: 'Status', args: { options: ACTIVE_FILTER_OPTIONS } },
             ],
           }}
         />
@@ -398,6 +490,12 @@ export const ProductsPage: React.FC = () => {
           setEditingUnit(null);
         }}
         unit={editingUnit}
+      />
+
+      <PackagingUnitModal
+        visible={Boolean(packagingProduct)}
+        onHide={() => setPackagingProduct(null)}
+        product={packagingProduct}
       />
 
       <ImportProductsModal

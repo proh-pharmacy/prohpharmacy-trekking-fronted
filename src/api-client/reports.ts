@@ -7,7 +7,7 @@ export interface TrekReportItem {
   trekNumber: string;
   scheduledDate: string;
   driverName: string;
-  branchName: string;
+  regionName: string;
   status: string;
   stopsCount: number;
   totalCollected: number;
@@ -54,7 +54,7 @@ export interface CollectionsReportResponse {
 export interface ProductReportItem {
   productId: string;
   productName: string;
-  unit: string;
+  basicUnitName: string;
   totalQtyDelivered: number;
   totalCollected: number;
   totalOutstanding: number;
@@ -89,6 +89,7 @@ export const reportsApi = {
   getTrekReport: async (params?: {
     from?: string;
     to?: string;
+    regionId?: string;
     branchId?: string;
     driverId?: string;
     status?: string;
@@ -104,6 +105,7 @@ export const reportsApi = {
   exportTrekReport: async (params?: {
     from?: string;
     to?: string;
+    regionId?: string;
     branchId?: string;
     driverId?: string;
     status?: string;
@@ -111,6 +113,7 @@ export const reportsApi = {
     const q = new URLSearchParams();
     if (params?.from) q.set('from', params.from);
     if (params?.to) q.set('to', params.to);
+    if (params?.regionId) q.set('regionId', params.regionId);
     if (params?.branchId) q.set('branchId', params.branchId);
     if (params?.driverId) q.set('driverId', params.driverId);
     if (params?.status) q.set('status', params.status);

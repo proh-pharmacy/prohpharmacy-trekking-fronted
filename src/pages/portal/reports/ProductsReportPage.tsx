@@ -71,7 +71,12 @@ export const ProductsReportPage: React.FC = () => {
         totalAmountCollected: payload.totalAmountCollected ?? 0,
         totalOutstanding: payload.totalOutstanding ?? 0,
       });
-      const products: ProductReportItem[] = Array.isArray(payload.products) ? payload.products : [];
+      const products: ProductReportItem[] = Array.isArray(payload.products)
+        ? payload.products.map((product: ProductReportItem & { unit?: string }) => ({
+            ...product,
+            basicUnitName: product.basicUnitName ?? product.unit ?? '',
+          }))
+        : [];
       return {
         data: products,
         totalCount: payload.totalCount ?? products.length,
@@ -99,7 +104,7 @@ export const ProductsReportPage: React.FC = () => {
       body: (row) => (
         <div>
           <span className="font-bold text-xs text-white">{row.productName}</span>
-          {row.unit && <span className="text-[11px] text-portal-muted ml-2">{row.unit}</span>}
+          {row.basicUnitName && <span className="text-[11px] text-portal-muted ml-2">{row.basicUnitName}</span>}
         </div>
       ),
     },

@@ -20,7 +20,11 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [productNameColumn, setProductNameColumn] = useState('');
-  const [unitColumn, setUnitColumn] = useState('');
+  const [basicUnitColumn, setBasicUnitColumn] = useState('');
+  const [basicUnitPriceColumn, setBasicUnitPriceColumn] = useState('');
+  const [packagingUnitColumn, setPackagingUnitColumn] = useState('');
+  const [packagingUnitPriceColumn, setPackagingUnitPriceColumn] = useState('');
+  const [allowUpdate, setAllowUpdate] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportProductsResult | null>(null);
 
@@ -29,7 +33,11 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
     setFile(null);
     setHeaders([]);
     setProductNameColumn('');
-    setUnitColumn('');
+    setBasicUnitColumn('');
+    setBasicUnitPriceColumn('');
+    setPackagingUnitColumn('');
+    setPackagingUnitPriceColumn('');
+    setAllowUpdate(false);
     setImporting(false);
     setResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -72,7 +80,11 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
       setFile(selected);
       setHeaders(detectedHeaders);
       setProductNameColumn('');
-      setUnitColumn('');
+      setBasicUnitColumn('');
+      setBasicUnitPriceColumn('');
+      setPackagingUnitColumn('');
+      setPackagingUnitPriceColumn('');
+      setAllowUpdate(false);
       setStep('map');
     } catch (err: any) {
       toast.error(err.message ?? 'Failed to read file headers.');
@@ -80,15 +92,23 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
   };
 
   const handleImport = async () => {
-    if (!file || !productNameColumn || !unitColumn) return;
+    if (!file || !productNameColumn || !basicUnitColumn) return;
     setImporting(true);
     try {
-      const res = await productsApi.importProducts({ file, productNameColumn, unitColumn });
+      const res = await productsApi.importProducts({
+        file,
+        productNameColumn,
+        basicUnitColumn,
+        basicUnitPriceColumn: basicUnitPriceColumn || undefined,
+        packagingUnitColumn: packagingUnitColumn || undefined,
+        packagingUnitPriceColumn: packagingUnitColumn ? packagingUnitPriceColumn || undefined : undefined,
+        allowUpdate,
+      });
       setResult(res);
       setStep('result');
-      if (res.imported > 0) {
+      if (res.imported > 0 || res.updated > 0 || res.unitsCreated > 0) {
         resetTableData();
-        toast.success(`${res.imported} product${res.imported !== 1 ? 's' : ''} imported.`);
+        toast.success(`${res.imported} imported, ${res.updated} updated.`);
       } else {
         toast('No new products were imported.', { icon: 'ℹ️' });
       }
@@ -121,7 +141,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
             icon="pi pi-upload"
             onClick={handleImport}
             loading={importing}
-            disabled={importing || !productNameColumn || !unitColumn}
+            disabled={importing || !productNameColumn || !basicUnitColumn}
           />
         </>
       )}
@@ -176,7 +196,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
           </div>
 
           <p className="text-xs text-portal-muted">
-            Select which column in your file contains the product name and which contains the unit.
+            Match the file headers to product units and prices. Unmapped price columns default to 0.
           </p>
 
           <div>
@@ -194,26 +214,74 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
 
           <div>
             <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
-              Unit Column <span className="text-red-400">*</span>
+              Basic Unit Column <span className="text-red-400">*</span>
             </label>
             <FlatDropdown
-              value={unitColumn}
+              value={basicUnitColumn}
               options={headerOptions}
-              onChange={(val: any) => setUnitColumn(val?.value !== undefined ? val.value : val)}
+              onChange={(val: string) => setBasicUnitColumn(val || '')}
               placeholder="Select column..."
               size="sm"
             />
           </div>
+
+          <FlatDropdown
+            label="Basic Unit Price Column (Optional)"
+            value={basicUnitPriceColumn}
+            options={headerOptions}
+            onChange={(val: string) => setBasicUnitPriceColumn(val || '')}
+            placeholder="Defaults to 0"
+            showClear
+            size="sm"
+          />
+
+          <FlatDropdown
+            label="Packaging Unit Column (Optional)"
+            value={packagingUnitColumn}
+            options={headerOptions}
+            onChange={(val: string) => {
+              setPackagingUnitColumn(val || '');
+              if (!val) setPackagingUnitPriceColumn('');
+            }}
+            placeholder="No packaging unit"
+            showClear
+            size="sm"
+          />
+
+          <FlatDropdown
+            label="Packaging Unit Price Column (Optional)"
+            value={packagingUnitPriceColumn}
+            options={headerOptions}
+            onChange={(val: string) => setPackagingUnitPriceColumn(val || '')}
+            placeholder="Defaults to 0"
+            showClear
+            disabled={!packagingUnitColumn}
+            size="sm"
+          />
+
+          <label className="flex items-start gap-2 text-xs text-portal-text cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowUpdate}
+              onChange={(event) => setAllowUpdate(event.target.checked)}
+              className="mt-0.5 accent-portal-accent"
+            />
+            <span>Update existing products with units and prices from this file</span>
+          </label>
         </div>
       )}
 
       {/* Step 3: Result */}
       {step === 'result' && result && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-portal-canvas/60 border border-portal-border/40 rounded p-3 text-center">
               <p className="text-xl font-bold text-portal-accent">{result.imported}</p>
               <p className="text-[10px] text-portal-muted uppercase tracking-wide mt-1">Imported</p>
+            </div>
+            <div className="bg-portal-canvas/60 border border-portal-border/40 rounded p-3 text-center">
+              <p className="text-xl font-bold text-portal-accent">{result.updated ?? 0}</p>
+              <p className="text-[10px] text-portal-muted uppercase tracking-wide mt-1">Updated</p>
             </div>
             <div className="bg-portal-canvas/60 border border-portal-border/40 rounded p-3 text-center">
               <p className="text-xl font-bold text-white">{result.skipped}</p>
@@ -228,7 +296,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
           {result.skippedNames.length > 0 && (
             <div>
               <p className="text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-2">
-                Skipped ({result.skippedNames.length}) — already exist
+                Skipped ({result.skippedNames.length}) — duplicate or missing basic unit
               </p>
               <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
                 {result.skippedNames.map((name) => (
