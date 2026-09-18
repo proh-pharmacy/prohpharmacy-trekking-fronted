@@ -80,6 +80,16 @@ export interface QueuedAction {
   reason?: string;
 }
 
+export type QueuedPhotoKind = 'premises' | 'portrait';
+export interface QueuedPhoto {
+  photoId: string;
+  customerClientId: string;
+  kind: QueuedPhotoKind;
+  file: File;
+  status: 'pending' | 'uploaded' | 'conflict';
+  reason?: string;
+}
+
 export interface SyncResult {
   clientId: string;
   type: ActionType;

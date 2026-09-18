@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetTableData } from '../../../components/data-table';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
-import { fieldApi, type ActionType, type FieldCustomer, type QueuedAction, type RegionTrek } from './api';
+import { fieldApi, type ActionType, type FieldCustomer, type QueuedAction, type QueuedPhoto, type RegionTrek } from './api';
 import { fieldStore } from './store';
 
 function mergeById<T extends { id: string }>(oldItems: T[], updates: T[]): T[] {
@@ -17,6 +17,7 @@ export function useFieldControl(token: string) {
   const [customers, setCustomers] = useState<FieldCustomer[]>([]);
   const [regionTreks, setRegionTreks] = useState<RegionTrek[]>([]);
   const [queue, setQueue] = useState<QueuedAction[]>([]);
+  const [photoQueue, setPhotoQueue] = useState<QueuedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,6 +112,34 @@ export function useFieldControl(token: string) {
     return result;
   }, [token]);
 
+  const processPhotoQueue = useCallback(async () => {
+    if (!navigator.onLine) return;
+    const [photos, actions, savedCustomers] = await Promise.all([
+      fieldStore.photoQueue(token), fieldStore.queue(token), fieldStore.get<FieldCustomer[]>(token, 'customers'),
+    ]);
+    let next = [...photos];
+    for (const photo of photos.filter((item) => item.status === 'pending')) {
+      const customerAction = actions.find((action) => action.clientId === photo.customerClientId);
+      if (!customerAction || customerAction.status === 'conflict') {
+        next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'conflict' as const, reason: customerAction?.reason || 'Customer registration conflicted.' } : item);
+        continue;
+      }
+      if (!customerAction.serverId) continue;
+      const customer = (savedCustomers ?? []).find((item) => item.id === customerAction.serverId);
+      if (!customer) continue;
+      try {
+        if (photo.kind === 'premises') await fieldApi.uploadPremisesPhoto(token, customer.id, photo.file);
+        else if (customer.primaryPersonId) await fieldApi.uploadCustomerPortrait(token, customer.id, customer.primaryPersonId, photo.file);
+        else continue;
+        next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'uploaded' as const } : item);
+      } catch (error) {
+        next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: error instanceof Error ? error.message : 'Photo upload failed.' } : item);
+      }
+    }
+    await fieldStore.setPhotoQueue(token, next);
+    setPhotoQueue(next);
+  }, [token]);
+
   const sync = useCallback(async () => {
     if (!token || !navigator.onLine || syncingRef.current || !controlAvailableRef.current) return;
     syncingRef.current = true; setSyncing(true);
@@ -137,27 +166,28 @@ export function useFieldControl(token: string) {
         pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
       }
       await refresh(true);
+      await processPhotoQueue();
     } catch {
       setError('Sync could not finish. Your actions remain saved on this device.');
     } finally {
       syncingRef.current = false; setSyncing(false);
     }
-  }, [token, refresh]);
+  }, [token, refresh, processPhotoQueue]);
 
   useEffect(() => {
     let alive = true;
     if (!token) { setError('Invalid field link.'); setLoading(false); return; }
     (async () => {
       try {
-        const [savedTrek, savedProducts, savedCustomers, savedRegionTreks, savedQueue, savedSyncTime] = await Promise.all([
+        const [savedTrek, savedProducts, savedCustomers, savedRegionTreks, savedQueue, savedPhotos, savedSyncTime] = await Promise.all([
           fieldStore.get<DriverTrek>(token, 'trek'), fieldStore.get<Product[]>(token, 'products'),
           fieldStore.get<FieldCustomer[]>(token, 'customers'), fieldStore.get<RegionTrek[]>(token, 'regionTreks'),
-          fieldStore.queue(token), fieldStore.get<string>(token, 'lastSyncedAt'),
+          fieldStore.queue(token), fieldStore.photoQueue(token), fieldStore.get<string>(token, 'lastSyncedAt'),
         ]);
         if (!alive) return;
         if (savedTrek) setTrek(savedTrek);
         setProducts(savedProducts ?? []); setCustomers(savedCustomers ?? []);
-        setRegionTreks(savedRegionTreks ?? []); setQueue(savedQueue);
+        setRegionTreks(savedRegionTreks ?? []); setQueue(savedQueue); setPhotoQueue(savedPhotos ?? []);
         setLastSyncedAt(savedSyncTime ?? null);
         if (savedTrek) setLoading(false);
         if (navigator.onLine) { await refresh(true); await sync(); }
@@ -183,6 +213,15 @@ export function useFieldControl(token: string) {
     return action.clientId;
   }, [token, sync]);
 
+  const queuePhoto = useCallback(async (customerClientId: string, kind: QueuedPhoto['kind'], file: File) => {
+    const photo: QueuedPhoto = { photoId: crypto.randomUUID(), customerClientId, kind, file, status: 'pending' };
+    const next = [...await fieldStore.photoQueue(token), photo];
+    await fieldStore.setPhotoQueue(token, next);
+    setPhotoQueue(next);
+    if (navigator.onLine) void sync();
+    return photo.photoId;
+  }, [token, sync]);
+
   const retry = useCallback(async (clientId: string) => {
     const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId ? { ...action, status: 'pending' as const, reason: undefined } : action);
     await fieldStore.setQueue(token, next); setQueue(next); void sync();
@@ -193,5 +232,5 @@ export function useFieldControl(token: string) {
     await fieldStore.setQueue(token, next); setQueue(next);
   }, [token]);
 
-  return { trek, products, customers, regionTreks, queue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, retry, remove };
+  return { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, queuePhoto, retry, remove };
 }

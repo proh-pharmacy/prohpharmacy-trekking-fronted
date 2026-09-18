@@ -1,4 +1,4 @@
-import type { QueuedAction } from './api';
+import type { QueuedAction, QueuedPhoto } from './api';
 
 type Key = 'trek' | 'products' | 'customers' | 'regionTreks' | 'lastSyncedAt' | 'device' | 'lastFix' | 'phoneAddress' | 'weather';
 const DB_NAME = 'proh-field-control';
@@ -41,4 +41,6 @@ export const fieldStore = {
   set: (token: string, part: Key, value: unknown) => write(key(token, part), value),
   queue: async (token: string) => (await read<QueuedAction[]>(key(token, 'queue'))) ?? [],
   setQueue: (token: string, actions: QueuedAction[]) => write(key(token, 'queue'), actions),
+  photoQueue: async (token: string) => (await read<QueuedPhoto[]>(key(token, 'photoQueue'))) ?? [],
+  setPhotoQueue: (token: string, photos: QueuedPhoto[]) => write(key(token, 'photoQueue'), photos),
 };

@@ -392,7 +392,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, customers, regionTreks, queue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, retry, remove } = useFieldControl(token);
+  const { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, queuePhoto, retry, remove } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingStop, setRecordingStop] = useState<string | null>(null);
@@ -577,18 +577,21 @@ export const DriverPage: React.FC = () => {
   const nextStopSequence = Math.max(0, ...sortedStops.map((stop) => stop.sequence), ...queuedStops.map((action) => Number(action.payload.sequence) || 0)) + 1;
   const visibleTreks = regionTreks.length ? regionTreks : [{ trekId: trek.trekId, trekNumber: trek.trekNumber, scheduledDate: trek.scheduledDate,
     status: trek.status, driverName: trek.driverName, salesStaffName: trek.salesStaffName, regionName: trek.regionName, stopsCount: trek.stops.length }];
-  const pendingCount = queue.filter((action) => action.status === 'pending').length;
+  const pendingCount = queue.filter((action) => action.status === 'pending').length + photoQueue.filter((photo) => photo.status === 'pending').length;
   const isStopRecorded = (s: DriverStop) =>
     s.products.length > 0 &&
     s.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
 
   return (
-    <div className="min-h-screen bg-[#14171d] p-2 sm:p-4 md:p-6 flex flex-col justify-start">
-      <div className="w-full max-w-7xl mx-auto">
+    <div className="min-h-screen bg-portal-canvas flex flex-col">
+      <div className="min-h-screen w-full">
         <DriverDashboard
           trek={trek}
+          customers={customers}
           regionalCount={regionTreks.length || null}
           pendingCount={pendingCount}
+          syncing={syncing}
+          onSync={sync}
           online={online}
           device={device}
           phoneAddress={phoneAddress?.label ?? null}
@@ -642,6 +645,7 @@ export const DriverPage: React.FC = () => {
                 customers={customers}
                 queue={queue}
                 enqueue={enqueue}
+                queuePhoto={queuePhoto}
                 request={assignedStopRequest}
                 backendReady={controlAvailable}
                 modalOnly
@@ -703,10 +707,7 @@ export const DriverPage: React.FC = () => {
           renderCustomersView={() => (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
-                <div>
-                  <h1 className="text-lg font-bold text-white">Customers</h1>
-                  <p className="text-xs text-portal-muted">{trek.regionName} · available on this device</p>
-                </div>
+                <span aria-hidden="true" />
                 <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
               </div>
               <FieldActions
@@ -715,6 +716,7 @@ export const DriverPage: React.FC = () => {
                 customers={customers}
                 queue={queue}
                 enqueue={enqueue}
+                queuePhoto={queuePhoto}
                 request={customerRequest}
                 backendReady={controlAvailable}
                 modalOnly
@@ -848,6 +850,7 @@ export const DriverPage: React.FC = () => {
                 customers={customers}
                 queue={queue}
                 enqueue={enqueue}
+                queuePhoto={queuePhoto}
                 request={actionRequest}
                 backendReady={controlAvailable}
               />
@@ -871,7 +874,7 @@ export const DriverPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-3 sm:gap-3">
                   {[
                     { label: 'Products Cached', value: products.length },
                     { label: 'Customers Cached', value: customers.length },

@@ -15,10 +15,11 @@ const REGION_CENTRES: Record<string, [number, number]> = {
   'western north': [6.3, -2.85],
 };
 
-export function RegionMapBackdrop({ regionName, onReady, interactive = false }: {
+export function RegionMapBackdrop({ regionName, onReady, interactive = false, customerPins = [] }: {
   regionName: string;
   onReady: (regionName: string) => void;
   interactive?: boolean;
+  customerPins?: Array<{ id: string; businessName: string; primaryPhoneNumber?: string; latitude: number; longitude: number }>;
 }) {
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -38,15 +39,27 @@ export function RegionMapBackdrop({ regionName, onReady, interactive = false }: 
       const archive = new PMTiles(new FileSource(new File([blob], 'ghana-z9.pmtiles')));
       // protomaps-leaflet uses Leaflet's global L when creating its layer.
       Object.assign(window, { L });
-      const layer = leafletLayer({ url: archive, flavor: 'dark', lang: 'en', maxZoom: 9 });
+      const layer = leafletLayer({ url: archive, flavor: 'light', lang: 'en', maxZoom: 9 });
       layer.once('tileload', () => { if (!cancelled) onReady(regionName); });
       layer.addTo(map);
+      const markers = customerPins
+        .filter((pin) => Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude))
+        .map((pin) => L.circleMarker([pin.latitude, pin.longitude], {
+          radius: 7,
+          color: 'var(--color-red-accent)',
+          fillColor: 'var(--color-red-accent)',
+          fillOpacity: 0.9,
+          weight: 2,
+        }).bindPopup(`<strong>${pin.businessName}</strong>${pin.primaryPhoneNumber ? `<br>${pin.primaryPhoneNumber}` : ''}`).addTo(map!));
+      if (interactive && markers.length > 0) {
+        map.fitBounds(L.latLngBounds(markers.map((marker) => marker.getLatLng())), { padding: [40, 40], maxZoom: 12 });
+      }
     }).catch((error) => console.error('Offline trek map could not load', error));
     return () => {
       cancelled = true;
       map?.remove();
     };
-  }, [regionName, onReady, interactive]);
+  }, [regionName, onReady, interactive, customerPins]);
 
   return <div ref={container} aria-hidden={!interactive} className={`absolute inset-0 ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} />;
 }

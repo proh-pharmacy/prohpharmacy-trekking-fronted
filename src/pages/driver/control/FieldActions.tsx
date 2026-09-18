@@ -20,6 +20,7 @@ interface Props {
   customers: FieldCustomer[];
   queue: QueuedAction[];
   enqueue: (type: ActionType, payload: Record<string, unknown>) => Promise<string>;
+  queuePhoto: (customerClientId: string, kind: 'premises' | 'portrait', file: File) => Promise<string>;
   request?: FieldActionRequest | null;
   backendReady: boolean;
   modalOnly?: boolean;
@@ -48,11 +49,13 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, customers, queue, enqueue, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ trek, products, customers, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'capturing' | 'captured' | 'unavailable'>('idle');
+  const [premisesPhoto, setPremisesPhoto] = useState<File | null>(null);
+  const [portraitPhoto, setPortraitPhoto] = useState<File | null>(null);
   const set = (field: string, value: string) => setValues((prev) => ({ ...prev, [field]: value }));
   const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="sm" />;
   const number = (field: string, label: string, required = false, min = 0) => <FlatInputNumber label={label} value={values[field] ? Number(values[field]) : null} onChange={(value) => set(field, value == null ? '' : String(value))} required={required} min={min} maxFractionDigits={2} useGrouping={false} size="sm" />;
@@ -81,7 +84,15 @@ export function FieldActions({ trek, products, customers, queue, enqueue, reques
   ];
   const selectedProduct = products.find((product) => product.id === values.productId);
   const selectedStop = values.stopId ?? '';
-  const close = () => { setKind(null); setValues({}); setGpsStatus('idle'); onClose?.(); };
+  const close = () => { setKind(null); setValues({}); setGpsStatus('idle'); setPremisesPhoto(null); setPortraitPhoto(null); onClose?.(); };
+  const choosePhoto = (setter: (file: File | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('Choose a JPEG, PNG, or WebP photo.'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be 5 MB or smaller.'); return; }
+    setter(file);
+  };
 
   async function save() {
     try {
@@ -93,7 +104,7 @@ export function FieldActions({ trek, products, customers, queue, enqueue, reques
         setGpsStatus('capturing');
         const gps = await captureGps();
         setGpsStatus(gps ? 'captured' : 'unavailable');
-        await enqueue('RegisterCustomer', {
+        const customerClientId = await enqueue('RegisterCustomer', {
           businessName: values.businessName.trim(), primaryPhoneNumber: values.primaryPhoneNumber.trim(), customerType: values.customerType,
           ...(values.tradingName && { tradingName: values.tradingName.trim() }),
           ...(values.whatsAppNumber && { whatsAppNumber: values.whatsAppNumber.trim() }),
@@ -101,6 +112,8 @@ export function FieldActions({ trek, products, customers, queue, enqueue, reques
             primaryPhoneNumber: values.representativePhone.trim(), ...(values.middleName && { middleName: values.middleName.trim() }) },
           gps,
         });
+        if (premisesPhoto) await queuePhoto(customerClientId, 'premises', premisesPhoto);
+        if (portraitPhoto) await queuePhoto(customerClientId, 'portrait', portraitPhoto);
       } else if (kind === 'stop') {
         if (!values.customer) throw new Error('Select a customer.');
         if (!values.sequence || !Number.isInteger(Number(values.sequence)) || Number(values.sequence) <= 0) throw new Error('Enter a positive whole number for the stop sequence.');
@@ -153,6 +166,16 @@ export function FieldActions({ trek, products, customers, queue, enqueue, reques
           <div className="col-span-full flex items-center gap-2 text-[11px] text-portal-muted">
             <i className={`pi ${gpsStatus === 'capturing' ? 'pi-spin pi-spinner' : gpsStatus === 'captured' ? 'pi-check-circle text-portal-accent' : gpsStatus === 'unavailable' ? 'pi-exclamation-circle text-yellow-400' : 'pi-map-marker'}`} />
             <span>{gpsStatus === 'capturing' ? 'Capturing device location…' : gpsStatus === 'captured' ? 'Device location captured and will be saved with this customer.' : gpsStatus === 'unavailable' ? 'Location unavailable. Customer will still be saved without GPS.' : 'Device location is captured automatically when you save.'}</span>
+          </div>
+          <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
+              <span><span className="block text-[11px] font-medium uppercase text-portal-muted">Premises photo</span><span className="block text-[11px] text-portal-text">{premisesPhoto?.name || 'Optional · queued with customer'}</span></span>
+              <span className="text-xs text-portal-accent">Choose<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => choosePhoto(setPremisesPhoto, event)} /></span>
+            </label>
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
+              <span><span className="block text-[11px] font-medium uppercase text-portal-muted">Representative photo</span><span className="block text-[11px] text-portal-text">{portraitPhoto?.name || 'Optional · queued with customer'}</span></span>
+              <span className="text-xs text-portal-accent">Choose<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => choosePhoto(setPortraitPhoto, event)} /></span>
+            </label>
           </div>
           {text('businessName', 'Business name', true)} {text('primaryPhoneNumber', 'Customer phone', true)}
           {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}

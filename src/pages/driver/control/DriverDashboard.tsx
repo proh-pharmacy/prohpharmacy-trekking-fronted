@@ -4,6 +4,7 @@ import type { DriverTrek } from '../../../api-client/treks';
 import { FlatButton } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay/FlatModal';
 import type { DriverDevice } from './api';
+import type { FieldCustomer } from './api';
 import type { Weather } from './useDeviceStatus';
 import { RegionMapBackdrop } from './RegionMapBackdrop';
 import { CockpitButton } from './CockpitButton';
@@ -11,8 +12,11 @@ import { CockpitBackLink } from './CockpitBackLink';
 
 interface Props {
   trek: DriverTrek;
+  customers: FieldCustomer[];
   regionalCount: number | null;
   pendingCount: number;
+  syncing: boolean;
+  onSync: () => Promise<void>;
   online: boolean;
   device: DriverDevice | null;
   phoneAddress: string | null;
@@ -64,19 +68,19 @@ function NavRailButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`group relative flex h-[82px] w-full flex-col items-center justify-center gap-1.5 px-1 text-center transition-all sm:h-[94px] ${
+      className={`group relative flex h-[72px] w-full flex-col items-center justify-center gap-1 px-0.5 text-center transition-all sm:h-[94px] sm:gap-1.5 sm:px-1 ${
         active
           ? 'bg-portal-surface/90 text-white'
           : 'text-portal-muted hover:bg-white/[0.04] hover:text-portal-text'
       }`}
     >
       <i
-        className={`pi ${icon} text-xl transition-transform group-hover:scale-110 sm:text-2xl ${
+        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 sm:text-2xl ${
           active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
         }`}
         aria-hidden="true"
       />
-      <span className="text-[10px] font-semibold tracking-wide sm:text-[11px]">{label}</span>
+      <span className="text-[9px] font-semibold leading-tight tracking-wide sm:text-[11px]">{label}</span>
       {active && (
         <span className="absolute bottom-2.5 h-1 w-7 rounded-full bg-portal-accent shadow-[0_0_8px_var(--color-portal-accent)]" />
       )}
@@ -88,6 +92,7 @@ function ActionDrawerLink({
   icon,
   label,
   badge,
+  badgeBorderless = false,
   onClick,
   disabled = false,
   danger = false,
@@ -95,6 +100,7 @@ function ActionDrawerLink({
   icon: string;
   label: string;
   badge?: string | number | null;
+  badgeBorderless?: boolean;
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
@@ -115,7 +121,7 @@ function ActionDrawerLink({
         <span>{label}</span>
       </span>
       {badge != null && (
-        <span className="rounded bg-portal-canvas px-1.5 py-0.5 text-[10px] font-semibold text-portal-accent border border-portal-border/60">
+        <span className={`rounded bg-portal-canvas px-1.5 py-0.5 text-[10px] font-semibold text-portal-accent ${badgeBorderless ? '' : 'border border-portal-border/60'}`}>
           {badge}
         </span>
       )}
@@ -125,8 +131,11 @@ function ActionDrawerLink({
 
 export function DriverDashboard({
   trek,
+  customers,
   regionalCount,
   pendingCount,
+  syncing,
+  onSync,
   online,
   device,
   phoneAddress,
@@ -156,6 +165,14 @@ export function DriverDashboard({
   const progress = total ? Math.round((recorded / total) * 100) : 0;
   const sortedStops = [...trek.stops].sort((a, b) => a.sequence - b.sequence);
   const lastStop = sortedStops[sortedStops.length - 1];
+  const trekCustomerNames = new Set(trek.stops.map((stop) => stop.customerName.trim().toLowerCase()));
+  const trekCustomers = customers.filter((customer) => trekCustomerNames.has(customer.businessName.trim().toLowerCase()));
+  const mapCustomers = (trekCustomers.length > 0 ? trekCustomers : customers)
+    .flatMap((customer) => {
+      const latitude = customer.latitude ?? customer.primaryLocation?.latitude;
+      const longitude = customer.longitude ?? customer.primaryLocation?.longitude;
+      return latitude != null && longitude != null ? [{ id: customer.id, businessName: customer.businessName, primaryPhoneNumber: customer.primaryPhoneNumber, latitude, longitude }] : [];
+    });
 
   // Real telemetry metrics from device & API (zero fake fallbacks)
   const battery = batteryPercentage(device?.batteryLevel);
@@ -185,19 +202,20 @@ export function DriverDashboard({
   };
 
   return (
-    <div className="flex min-h-[640px] w-full flex-col overflow-hidden rounded-lg border border-portal-border/70 bg-[#191d24] shadow-2xl">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-portal-canvas">
       {/* Top Application Bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-portal-border/60 bg-[#1f242d] px-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <p className="text-xs font-bold tracking-wide text-white">
-            ProH Field Operations
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" className="h-8 w-8 object-contain" />
+          <p className="truncate text-xs font-bold tracking-wide text-white">
+            Driver Control Panel
           </p>
-          <span className="text-xs font-semibold text-portal-accent">
+          <span className="hidden truncate text-xs font-semibold text-portal-accent sm:inline">
             ({trek.regionName}, {trek.scheduledDate})
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           {regionalCount != null && regionalCount > 1 && (
             <button
               type="button"
@@ -205,36 +223,37 @@ export function DriverDashboard({
                 setActiveView('treks');
                 setMoreOpen(false);
               }}
-              className="hidden sm:flex items-center gap-1.5 rounded bg-portal-canvas/80 px-2.5 py-1 text-[11px] font-medium text-portal-text border border-portal-border/50 hover:text-white transition-colors"
+              className="hidden sm:flex items-center text-[11px] font-medium text-portal-text hover:text-white transition-colors"
             >
-              <i className="pi pi-sitemap text-[10px] text-portal-accent" />
               <span>{regionalCount} regional treks</span>
             </button>
           )}
-          {pendingCount > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView('offline');
-                setMoreOpen(false);
-              }}
-              className="flex items-center gap-1.5 rounded bg-portal-accent/15 px-2 py-1 text-[11px] font-semibold text-portal-accent border border-portal-accent/30 hover:bg-portal-accent/25 transition-colors"
-            >
-              <i className="pi pi-sync text-[10px]" />
-              <span>{pendingCount} awaiting sync</span>
-            </button>
-          )}
-          <span className="rounded bg-portal-canvas px-2.5 py-1 font-mono text-[11px] font-medium text-portal-text border border-portal-border/50">
+          {regionalCount != null && regionalCount > 1 && <span className="hidden sm:inline text-portal-muted">|</span>}
+          <span className="font-mono text-[11px] font-medium text-portal-text">
             {status}
           </span>
+          {pendingCount > 0 && <span className="text-portal-muted">|</span>}
+          {pendingCount > 0 && (
+            <FlatButton
+              size="sm"
+              variant="primary"
+              leftIcon={syncing ? 'pi pi-spin pi-spinner' : 'pi pi-cloud-upload'}
+              loading={syncing}
+              disabled={syncing || !online}
+              onClick={() => void onSync()}
+              title={!online ? 'Connect to sync pending work' : 'Sync pending work'}
+            >
+              {syncing ? 'Syncing…' : `Sync ${pendingCount}`}
+            </FlatButton>
+          )}
         </div>
       </header>
 
       {/* Main Desktop Body (Left Nav Rail + Workspace) */}
-      <div className="relative flex min-h-[580px] flex-1 overflow-visible">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Navigation Rail (matches image) */}
         <aside
-          className="relative z-20 flex w-[78px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:w-[96px]"
+          className="relative z-20 flex h-full w-[64px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:w-[96px]"
           aria-label="Desktop control rail"
         >
           {/* Back Arrow Button */}
@@ -287,6 +306,15 @@ export function DriverDashboard({
                 setMoreOpen(false);
               }}
             />
+            <NavRailButton
+              icon="pi-map"
+              label="Map"
+              active={activeView === 'map'}
+              onClick={() => {
+                setActiveView('map');
+                setMoreOpen(false);
+              }}
+            />
           </div>
 
           {/* Bottom Fast Action Controls */}
@@ -312,13 +340,12 @@ export function DriverDashboard({
           <div
             id="desktop-action-drawer"
             aria-hidden={!moreOpen}
-            className={`absolute bottom-2 left-full z-40 w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${
+            className={`absolute bottom-2 left-full z-40 w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${
               moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
             }`}
           >
             <div className="mb-2.5 flex items-center justify-between border-b border-portal-border/50 pb-2 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
               <span className="flex items-center gap-1.5 text-white">
-                <i className="pi pi-compass text-portal-accent" />
                 <span>Field Operations</span>
               </span>
               <button
@@ -333,14 +360,6 @@ export function DriverDashboard({
 
             <div className="space-y-0.5">
               <ActionDrawerLink
-                icon="pi-map"
-                label="Region map"
-                onClick={() => {
-                  setActiveView('map');
-                  setMoreOpen(false);
-                }}
-              />
-              <ActionDrawerLink
                 icon="pi-bolt"
                 label="Battery & vehicle"
                 onClick={() => {
@@ -352,6 +371,7 @@ export function DriverDashboard({
                 icon="pi-sitemap"
                 label="Regional treks list"
                 badge={regionalCount}
+                badgeBorderless
                 onClick={() => {
                   setActiveView('treks');
                   setMoreOpen(false);
@@ -392,14 +412,14 @@ export function DriverDashboard({
         </aside>
 
         {/* Center Workspace (Desktop SPA Area) */}
-        <main className="min-w-0 flex-1 bg-[#181c24] p-3 sm:p-5 overflow-y-auto" role="tabpanel">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-portal-canvas p-2 sm:p-5" role="tabpanel">
           {/* ─────────────────────────────────────────────────────────────────
               1. OVERVIEW TELEMETRY COCKPIT (Matches user design image)
               ───────────────────────────────────────────────────────────────── */}
           {(activeView === 'dashboard' || activeView === 'overview') && (
-            <div className="mx-auto flex max-w-6xl flex-col gap-4">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
               {/* TOP WIDE CARD: JOURNEY */}
-              <section className="relative overflow-hidden rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
+              <section className="relative overflow-hidden rounded-xl border border-portal-border/70 bg-[#20252e] p-3 sm:p-6 shadow-xl">
                 {/* Background Map Backdrop (Real Vector Map) */}
                 <div className="pointer-events-none absolute inset-0 z-0">
                   <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} />
@@ -408,7 +428,7 @@ export function DriverDashboard({
                 <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-portal-canvas/95 via-portal-canvas/85 to-portal-canvas/70" />
 
                 {/* Driver and vehicle info (left) with speedometer (right) */}
-                <div className="relative z-10 flex items-start justify-between">
+                <div className="relative z-10 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-base font-bold text-white mt-1.5">{trek.driverName}</p>
                     <p className="text-xs text-portal-muted">{trek.vehicleDisplayName || trek.trekNumber}</p>
@@ -425,7 +445,7 @@ export function DriverDashboard({
                   </div>
 
                   {/* Top-Right Circular Speedometer Gauge */}
-                  <div className="relative flex h-28 w-28 shrink-0 items-center justify-center">
+                  <div className="relative flex h-20 w-20 shrink-0 items-center justify-center sm:h-28 sm:w-28">
                     <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
                       {/* Background track arc */}
                       <circle
@@ -461,7 +481,7 @@ export function DriverDashboard({
 
                     {/* Speedometer Reading in Center */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-2xl font-extrabold tracking-tight text-white">{liveSpeed}</span>
+                      <span className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">{liveSpeed}</span>
                       <span className="text-[9px] font-bold uppercase tracking-wider text-portal-muted">km/h</span>
                       {/* PRND Gear Selector */}
                       <div className="mt-0.5 flex items-center gap-1 text-[8px] font-bold tracking-widest text-portal-muted">
@@ -479,9 +499,9 @@ export function DriverDashboard({
                 {/* Bottom Route Timeline Bar */}
                 <div className="relative z-10 mt-6 border-t border-white/10 pt-4">
                   {/* Timeline Track with Nodes */}
-                  <div className="relative flex items-center justify-between">
+                  <div className="relative flex items-start justify-between gap-2">
                     {/* Node 1: Route Start */}
-                    <div className="flex flex-col items-start max-w-[30%]">
+                    <div className="flex max-w-[30%] flex-col items-start">
                       <div className="flex items-center gap-1.5 text-cyan-400">
                         <span className="text-xs font-bold text-white">Route Start</span>
                       </div>
@@ -489,14 +509,14 @@ export function DriverDashboard({
                     </div>
 
                     {/* Node 2: Delivery Progress */}
-                    <div className="flex flex-col items-center text-center max-w-[40%]">
+                    <div className="flex max-w-[40%] flex-col items-center text-center">
                       <span className="text-xs font-bold text-portal-accent">
                         {recorded} of {total} stops completed
                       </span>
                     </div>
 
                     {/* Node 3: Destination / Final Stop */}
-                    <div className="flex flex-col items-end text-right max-w-[30%]">
+                    <div className="flex max-w-[30%] flex-col items-end text-right">
                       <div className="flex items-center gap-1.5 text-portal-muted">
                         <span className="text-xs font-bold text-white truncate">
                           {lastStop ? `Stop ${total}: ${lastStop.customerName}` : `${trek.regionName} Base`}
@@ -540,7 +560,7 @@ export function DriverDashboard({
                     )}
                   </div>
 
-                  <div className="my-auto grid grid-cols-[auto_1fr] items-center gap-6 py-3 sm:gap-8">
+                  <div className="my-auto grid grid-cols-[auto_1fr] items-center gap-4 py-3 sm:gap-8">
                     {/* Vertical Battery Graphic (Left) */}
                     <div className="flex flex-col items-center">
                       {/* Top Battery Terminal Nub */}
@@ -709,7 +729,7 @@ export function DriverDashboard({
               2. SUBVIEW: VEHICLE & TELEMETRY DIAGNOSTICS
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'vehicle' && (
-            <section className="mx-auto max-w-5xl rounded-xl border border-portal-border/70 bg-[#20252e] p-6 shadow-xl space-y-6">
+            <section className="mx-auto max-w-5xl rounded-xl border border-portal-border/70 bg-[#20252e] p-3 shadow-xl space-y-6 sm:p-6">
               <div className="flex items-center justify-between border-b border-portal-border/50 pb-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">
@@ -792,12 +812,12 @@ export function DriverDashboard({
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'map' && (
             <section className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-portal-border/70 bg-[#20252e] shadow-xl">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-portal-border/50">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-portal-border/50 sm:px-5 sm:py-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">Offline Map</p>
                   <h1 className="mt-0.5 text-lg font-bold text-white">{trek.regionName} Region</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <span className="text-[11px] text-portal-text">
                     {recorded} of {total} stops recorded
                   </span>
@@ -805,8 +825,8 @@ export function DriverDashboard({
                 </div>
               </div>
 
-              <div className="relative h-[min(65vh,640px)] min-h-[440px] bg-portal-canvas">
-                <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive />
+              <div className="relative h-[min(65vh,640px)] min-h-[360px] bg-portal-canvas sm:min-h-[440px]">
+                  <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive customerPins={mapCustomers} />
                 {!mapAvailable && !online && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-portal-canvas/85 p-5 text-center text-xs text-portal-text">
                     Map not saved on this device. Connect and download it from Offline & sync.
@@ -824,7 +844,7 @@ export function DriverDashboard({
                 )}
               </div>
 
-              <div className="flex items-center justify-between px-5 py-3 border-t border-portal-border/50 text-[11px]">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 border-t border-portal-border/50 text-[11px] sm:px-5">
                 <span className="text-portal-muted">Offline PMTiles vector tiles active</span>
                 <button
                   type="button"
@@ -841,23 +861,23 @@ export function DriverDashboard({
               4. SUBVIEWS: ASSIGNED STOPS, TREKS, ACTIONS, OFFLINE (SPA DESKTOP)
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'assigned' && renderStopsView && (
-            <div className="mx-auto max-w-5xl space-y-4">{renderStopsView()}</div>
+            <div className="mx-auto w-full max-w-5xl space-y-4">{renderStopsView()}</div>
           )}
 
           {activeView === 'customers' && renderCustomersView && (
-            <div className="mx-auto max-w-5xl space-y-4">{renderCustomersView()}</div>
+            <div className="mx-auto w-full max-w-5xl space-y-4">{renderCustomersView()}</div>
           )}
 
           {activeView === 'treks' && renderTreksView && (
-            <div className="mx-auto max-w-6xl space-y-4">{renderTreksView()}</div>
+            <div className="mx-auto w-full max-w-6xl space-y-4">{renderTreksView()}</div>
           )}
 
           {activeView === 'actions' && renderActionsView && (
-            <div className="mx-auto max-w-4xl space-y-4">{renderActionsView()}</div>
+            <div className="mx-auto w-full max-w-4xl space-y-4">{renderActionsView()}</div>
           )}
 
           {activeView === 'offline' && renderOfflineView && (
-            <div className="mx-auto max-w-4xl space-y-4">{renderOfflineView()}</div>
+            <div className="mx-auto w-full max-w-4xl space-y-4">{renderOfflineView()}</div>
           )}
         </main>
       </div>
