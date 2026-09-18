@@ -298,7 +298,7 @@ export const TraccarPage: React.FC = () => {
       header: 'User',
       body: (row) => (
         <div>
-          <div className="font-bold text-xs text-white">{row.name}</div>
+          <div className="text-xs text-portal-text">{row.name}</div>
           <div className="text-[11px] text-portal-muted mt-0.5 font-mono">{row.email}</div>
         </div>
       ),
@@ -371,7 +371,7 @@ export const TraccarPage: React.FC = () => {
       header: 'Driver',
       body: (row) => (
         <div>
-          <div className="font-bold text-xs text-white">{row.staffName}</div>
+          <div className="text-xs text-portal-text">{row.staffName}</div>
           {row.branchName && (
             <div className="text-[11px] text-portal-muted mt-0.5">{row.branchName}</div>
           )}
@@ -443,7 +443,7 @@ export const TraccarPage: React.FC = () => {
       header: 'Device',
       body: (row) => (
         <div>
-          <div className="font-bold text-xs text-white">{row.name}</div>
+          <div className="text-xs text-portal-text">{row.name}</div>
           <div className="text-[11px] text-portal-muted mt-0.5 font-mono">{row.traccarUniqueId}</div>
         </div>
       ),
@@ -619,21 +619,15 @@ export const TraccarPage: React.FC = () => {
       )}
 
       {activeTab === 'drivers' && (
-        <>
-          <div className="flex justify-end">
-            <FlatButton
-              variant="outline"
-              label="Sync Drivers to Traccar"
-              leftIcon="pi pi-refresh"
-              size="sm"
-              onClick={() => { setSyncDriversForce(false); setSyncDriversVisible(true); }}
-            />
-          </div>
-          <FlatDataTable<FleetDriver>
+        <FlatDataTable<FleetDriver>
             dataSourceUrl="/fleet/drivers"
             columns={driverColumns}
             heading="Fleet Drivers"
             headerNotes="Staff registered as fleet drivers. Sync to Traccar for live tracking attribution."
+            secondaryAction
+            secondaryActionName="Sync Drivers to Traccar"
+            secondaryActionIcon="pi pi-refresh"
+            onSecondaryAction={() => { setSyncDriversForce(false); setSyncDriversVisible(true); }}
             hasAction
             actionName="Register Driver"
             onAction={() => setRegisterDriverVisible(true)}
@@ -641,25 +635,18 @@ export const TraccarPage: React.FC = () => {
             dataMapper={fleetDriverDataMapper}
             parsePayload={parseNoop}
           />
-        </>
       )}
 
       {activeTab === 'devices' && (
-        <>
-          <div className="flex justify-end">
-            <FlatButton
-              variant="outline"
-              label="Sync to Traccar"
-              leftIcon="pi pi-refresh"
-              size="sm"
-              onClick={() => { setSyncDevicesForce(false); setSyncDevicesVisible(true); }}
-            />
-          </div>
-          <FlatDataTable<TrackingDevice>
+        <FlatDataTable<TrackingDevice>
             dataSourceUrl="/fleet/devices"
             columns={deviceColumns}
             heading="Tracking Devices"
             headerNotes="GPS and smartphone tracking devices assigned to staff members."
+            secondaryAction
+            secondaryActionName="Sync to Traccar"
+            secondaryActionIcon="pi pi-refresh"
+            onSecondaryAction={() => { setSyncDevicesForce(false); setSyncDevicesVisible(true); }}
             hasAction
             actionName="Register Device"
             onAction={() => { setEditingDevice(null); setDeviceModalVisible(true); }}
@@ -689,7 +676,6 @@ export const TraccarPage: React.FC = () => {
               ],
             }}
           />
-        </>
       )}
 
       {/* ── Sync Devices Modal ───────────────────────────────────────── */}

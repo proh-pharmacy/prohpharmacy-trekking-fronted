@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatModal } from './FlatModal';
+import { FlatModal, type ModalSize } from './FlatModal';
 import { FlatButton } from '../flat-form/FlatButton';
 
 export type ConfirmVariant = 'primary' | 'danger' | 'warning';
@@ -12,8 +12,12 @@ export interface FlatConfirmDialogProps {
   message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   variant?: ConfirmVariant;
   icon?: string;
+  showIcon?: boolean;
+  size?: ModalSize;
   loading?: boolean;
 }
 
@@ -25,8 +29,12 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  secondaryActionLabel,
+  onSecondaryAction,
   variant = 'primary',
   icon,
+  showIcon = true,
+  size = 'sm',
   loading = false,
 }) => {
   const [internalLoading, setInternalLoading] = useState(false);
@@ -76,7 +84,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
     <FlatModal
       visible={visible}
       onHide={isBusy ? () => {} : onHide}
-      size="sm"
+      size={size}
       closable={!isBusy}
       dismissableMask={!isBusy}
       closeOnEscape={!isBusy}
@@ -92,6 +100,18 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
             {cancelLabel}
           </FlatButton>
 
+          {secondaryActionLabel && onSecondaryAction && (
+            <FlatButton
+              variant="outline"
+              size="sm"
+              onClick={onSecondaryAction}
+              disabled={isBusy}
+              className="!border-portal-border !text-portal-text hover:!bg-white/[0.08] text-xs font-semibold"
+            >
+              {secondaryActionLabel}
+            </FlatButton>
+          )}
+
           <FlatButton
             size="sm"
             onClick={handleConfirm}
@@ -105,11 +125,13 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
       }
     >
       <div className="flex items-start gap-4 py-1">
-        <div
-          className={`w-11 h-11 rounded-full border flex items-center justify-center shrink-0 shadow-inner ${iconColors[variant]}`}
-        >
-          <i className={`${activeIcon} text-lg`} />
-        </div>
+        {showIcon && (
+          <div
+            className={`w-11 h-11 rounded-full border flex items-center justify-center shrink-0 shadow-inner ${iconColors[variant]}`}
+          >
+            <i className={`${activeIcon} text-lg`} />
+          </div>
+        )}
 
         <div className="space-y-1.5 flex-1">
           <h4 className="text-base font-bold text-white tracking-tight">{title}</h4>

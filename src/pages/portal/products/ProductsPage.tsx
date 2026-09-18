@@ -155,7 +155,7 @@ export const ProductsPage: React.FC = () => {
                 setEditingProduct(product);
                 setProductModalVisible(true);
               }}
-              className="font-bold text-xs text-white hover:text-portal-accent text-left transition cursor-pointer"
+              className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
             >
               {product.name}
             </button>
@@ -245,7 +245,7 @@ export const ProductsPage: React.FC = () => {
         field: 'name',
         header: 'Unit Name',
         body: (unit) => (
-          <span className="font-bold text-xs text-white">
+          <span className="text-xs text-portal-text">
             {unit.name}
           </span>
         ),
@@ -304,7 +304,7 @@ export const ProductsPage: React.FC = () => {
     {
       field: 'name',
       header: 'Product',
-      body: (product) => <span className="text-xs font-bold text-white">{product.name}</span>,
+      body: (product) => <span className="text-xs text-portal-text">{product.name}</span>,
     },
     {
       field: 'basicUnitName',

@@ -161,7 +161,7 @@ export const FleetPage: React.FC = () => {
       header: 'Vehicle',
       body: (row) => (
         <div>
-          <div className="font-bold text-xs text-white">{row.displayName}</div>
+          <div className="text-xs text-portal-text">{row.displayName}</div>
           <div className="text-[11px] text-portal-muted mt-0.5">
             {row.make} {row.model} · {row.year} · {row.colour}
           </div>

@@ -229,9 +229,33 @@ export interface CustomerMapPin {
   primaryContactPortraitUrl?: string;
 }
 
+export interface CustomerImportMapping {
+  businessNameColumn: string;
+  customerTypeColumn: string;
+  regionNameColumn: string;
+  primaryPhoneColumn: string;
+  repFirstNameColumn: string;
+  repLastNameColumn: string;
+  repPhoneColumn: string;
+  repRelationshipColumn: string;
+  tradingNameColumn?: string;
+  whatsAppColumn?: string;
+  repMiddleNameColumn?: string;
+  ghanaCardColumn?: string;
+  districtNameColumn?: string;
+  streetAddressColumn?: string;
+  landmarkColumn?: string;
+}
+
+export interface CustomerImportResult {
+  imported: number;
+  skipped: number;
+  skippedRows: string[];
+}
+
 // ── API ────────────────────────────────────────────────────────────────
 export const customersApi = {
-  getMapPins: async (params?: { branchId?: string; regionId?: string }): Promise<CustomerMapPin[]> => {
+  getMapPins: async (params?: { branchId?: string; regionId?: string; districtId?: string }): Promise<CustomerMapPin[]> => {
     const res = await apiClient.get<CustomerMapPin[]>('/customers/map-pins', { params });
     return res.data;
   },
@@ -290,6 +314,16 @@ export const customersApi = {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
+    return res.data;
+  },
+
+  importCustomers: async (file: File, mapping: CustomerImportMapping): Promise<CustomerImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.entries(mapping).forEach(([key, value]) => { if (value) formData.append(key, value); });
+    const res = await apiClient.post<CustomerImportResult>('/customers/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   },
 

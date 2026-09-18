@@ -29,7 +29,7 @@ export function OfflineMapControl({ regionName, online }: { regionName: string; 
 
   return <section className="bg-portal-surface border border-portal-border/60 rounded p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 className="text-sm font-bold text-white">Offline map</h2>
+      <h2 className="text-sm font-semibold text-portal-text">Offline map</h2>
       <p className="text-[11px] text-portal-muted mt-1">High-detail {regionName} map when available; Ghana fallback otherwise.</p>
       <p className={`text-[11px] mt-1 ${saved ? 'text-portal-accent' : 'text-portal-muted'}`}>{saved ? 'Saved on this device' : 'Download once while online'}</p>
     </div>

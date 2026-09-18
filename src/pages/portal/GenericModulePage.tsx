@@ -29,7 +29,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-portal-surface border border-portal-border/60 rounded shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-white tracking-tight">{moduleName}</h1>
+            <h1 className="text-xl font-semibold text-portal-text tracking-tight">{moduleName}</h1>
             <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-portal-accent/15 text-portal-accent border border-portal-accent/30 rounded">
               Ready for Integration
             </span>
@@ -67,7 +67,7 @@ export const GenericModulePage: React.FC<GenericModuleProps> = ({
           <i className={icon} />
         </div>
         <div className="space-y-1 max-w-md">
-          <h2 className="text-base font-bold text-white tracking-wide">
+          <h2 className="text-base font-semibold text-portal-text tracking-wide">
             {moduleName} Viewport Ready
           </h2>
           <p className="text-xs text-portal-muted leading-relaxed">

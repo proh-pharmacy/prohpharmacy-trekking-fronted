@@ -162,7 +162,7 @@ export const TrekReportPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.id}`)}
-          className="font-mono font-bold text-xs text-portal-accent hover:text-white transition cursor-pointer"
+          className="font-mono text-xs text-portal-accent hover:text-white transition cursor-pointer"
         >
           {row.trekNumber}
         </button>
@@ -191,7 +191,7 @@ export const TrekReportPage: React.FC = () => {
       header: 'Status',
       style: { width: '110px' },
       body: (row) => (
-        <span className={`text-xs font-semibold ${STATUS_COLORS[row.status] ?? 'text-portal-muted'}`}>
+        <span className={`text-xs ${STATUS_COLORS[row.status] ?? 'text-portal-muted'}`}>
           {row.status === 'InProgress' ? 'In Progress' : row.status}
         </span>
       ),
@@ -218,7 +218,7 @@ export const TrekReportPage: React.FC = () => {
       style: { width: '130px', textAlign: 'right' },
       headerStyle: { textAlign: 'right' },
       body: (row) => (
-        <span className={`font-mono text-xs font-semibold ${row.totalOutstanding > 0 ? 'text-orange-400' : 'text-portal-accent'}`}>
+        <span className={`font-mono text-xs ${row.totalOutstanding > 0 ? 'text-orange-400' : 'text-portal-accent'}`}>
           {fmtGhs(row.totalOutstanding)}
         </span>
       ),
@@ -231,7 +231,7 @@ export const TrekReportPage: React.FC = () => {
       <div className="flex flex-wrap gap-3">
         <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Treks</p>
-          <p className="text-xs font-semibold text-white truncate">{stats.totalTreks.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-portal-text truncate">{stats.totalTreks.toLocaleString()}</p>
         </div>
         <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Completed</p>

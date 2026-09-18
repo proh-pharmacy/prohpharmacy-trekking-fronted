@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
-import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
-import { FlatButton } from '../../../components/flat-form';
-import { type Customer, organisationApi } from '../../../api-client';
+import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
+import { FlatButton, FlatDropdown } from '../../../components/flat-form';
+import { FlatModal } from '../../../components/overlay';
+import { type Customer, organisationApi, customersApi, type CustomerImportMapping } from '../../../api-client';
 import { CustomerModal } from './components/CustomerModal';
+import toast from 'react-hot-toast';
 
 // ── Filter options ──────────────────────────────────────────────────
 const CUSTOMER_TYPE_FILTER_OPTIONS = [
@@ -62,6 +65,11 @@ export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [importVisible, setImportVisible] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importMapping, setImportMapping] = useState<CustomerImportMapping>({ businessNameColumn: 'Business Name', customerTypeColumn: 'Type', regionNameColumn: 'Region', primaryPhoneColumn: 'Phone', repFirstNameColumn: 'Rep First Name', repLastNameColumn: 'Rep Last Name', repPhoneColumn: 'Rep Phone', repRelationshipColumn: 'Rep Relationship' });
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Regions', value: '' },
   ]);
@@ -168,7 +176,7 @@ export const CustomersPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(`/portal/customers/${row.id}`)}
-              className="font-bold text-xs text-white hover:text-portal-accent text-left transition cursor-pointer"
+              className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
             >
               {row.businessName}
             </button>
@@ -267,6 +275,42 @@ export const CustomersPage: React.FC = () => {
     []
   );
 
+  const importFields: Array<{ key: keyof CustomerImportMapping; label: string; required?: boolean }> = [
+    { key: 'businessNameColumn', label: 'Business name', required: true }, { key: 'customerTypeColumn', label: 'Customer type', required: true }, { key: 'regionNameColumn', label: 'Region', required: true }, { key: 'primaryPhoneColumn', label: 'Primary phone', required: true },
+    { key: 'repFirstNameColumn', label: 'Rep first name', required: true }, { key: 'repLastNameColumn', label: 'Rep last name', required: true }, { key: 'repPhoneColumn', label: 'Rep phone', required: true }, { key: 'repRelationshipColumn', label: 'Rep relationship', required: true },
+    { key: 'tradingNameColumn', label: 'Trading name' }, { key: 'whatsAppColumn', label: 'WhatsApp' }, { key: 'districtNameColumn', label: 'District' }, { key: 'streetAddressColumn', label: 'Street address' }, { key: 'landmarkColumn', label: 'Landmark' },
+  ];
+  const runImport = async () => {
+    if (!importFile) { toast.error('Choose an Excel file first.'); return; }
+    setImporting(true);
+    try { const result = await customersApi.importCustomers(importFile, importMapping); toast.success(`${result.imported} customers imported; ${result.skipped} skipped.`); setImportVisible(false); setImportFile(null); resetTableData(); }
+    catch (error: any) { toast.error(error.response?.data?.message || 'Customer import failed.'); }
+    finally { setImporting(false); }
+  };
+
+  const normalizeHeader = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const inferImportMapping = (headers: string[]) => {
+    const normalized = headers.map((header) => ({ header, key: normalizeHeader(header) }));
+    const aliases: Record<keyof CustomerImportMapping, string[]> = {
+      businessNameColumn: ['businessname', 'customername', 'name'], customerTypeColumn: ['customertype', 'type'], regionNameColumn: ['region', 'regionname'], primaryPhoneColumn: ['primaryphone', 'phone', 'phonenumber'],
+      repFirstNameColumn: ['repfirstname', 'representativefirstname', 'firstname'], repLastNameColumn: ['replastname', 'representativelastname', 'lastname'], repPhoneColumn: ['repphone', 'representativephone'], repRelationshipColumn: ['reprelationship', 'relationship', 'relationshiptype'],
+      tradingNameColumn: ['tradingname', 'dba'], whatsAppColumn: ['whatsapp', 'whatsappnumber'], repMiddleNameColumn: ['repmiddlename', 'middlename'], ghanaCardColumn: ['ghanacard', 'ghanacardnumber'], districtNameColumn: ['district', 'districtname'], streetAddressColumn: ['street', 'streetaddress', 'address'], landmarkColumn: ['landmark', 'landmarkanddirections'],
+    };
+    setImportMapping((current) => Object.fromEntries(Object.entries(aliases).map(([field, names]) => [field, normalized.find((item) => names.some((name) => item.key === name || item.key.includes(name)))?.header || current[field as keyof CustomerImportMapping] || ''])) as unknown as CustomerImportMapping);
+  };
+  const handleImportFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const headers = await new Promise<string[]>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => { try { const workbook = XLSX.read(new Uint8Array(event.target?.result as ArrayBuffer), { type: 'array' }); const sheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 }); resolve(((rows[0] as unknown[]) || []).filter(Boolean).map(String)); } catch (error) { reject(error); } };
+        reader.onerror = () => reject(new Error('Could not read file.'));
+        reader.readAsArrayBuffer(file);
+      });
+      setImportFile(file); setImportHeaders(headers); inferImportMapping(headers);
+    } catch { toast.error('Could not read the Excel headers.'); }
+  };
+
   return (
     <div className="space-y-6">
       <FlatDataTable<Customer>
@@ -275,6 +319,10 @@ export const CustomersPage: React.FC = () => {
         heading="Customers"
         hasAction
         actionName="Add Customer"
+        secondaryAction
+        secondaryActionName="Import Customers"
+        secondaryActionIcon="pi pi-upload"
+        onSecondaryAction={() => setImportVisible(true)}
         onAction={() => {
           setEditingCustomer(null);
           setModalVisible(true);
@@ -332,6 +380,24 @@ export const CustomersPage: React.FC = () => {
         }}
         customer={editingCustomer}
       />
+      <FlatModal visible={importVisible} onHide={() => !importing && setImportVisible(false)} title="Import customers" size="lg"
+        footer={<><FlatButton size="sm" variant="ghost" onClick={() => setImportVisible(false)} disabled={importing}>Cancel</FlatButton><FlatButton size="sm" onClick={() => void runImport()} loading={importing}>Import customers</FlatButton></>}>
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-portal-muted">Upload an <span className="text-portal-text">.xlsx</span> or <span className="text-portal-text">.xls</span> file. Row 1 must contain the spreadsheet headers.</p>
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-portal-border/60 p-7 transition hover:border-portal-accent/50">
+            <i className="pi pi-file-excel text-2xl text-portal-muted" />
+            <span className="text-xs text-portal-muted">{importFile ? importFile.name : 'Click to select a file'}</span>
+            <span className="text-[11px] text-portal-muted/60">.xlsx or .xls</span>
+            <input type="file" accept=".xlsx,.xls" onChange={(event) => void handleImportFile(event.target.files?.[0] ?? null)} className="hidden" />
+          </label>
+          {importFile && <div className="border-t border-portal-border/50 pt-4">
+            <p className="mb-3 text-[11px] text-portal-muted">{importHeaders.length ? `Detected ${importHeaders.length} headers and matched the available fields. You can adjust any mapping below.` : 'Map each field to the exact spreadsheet header.'}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {importFields.map((field) => <FlatDropdown key={field.key} label={`${field.label}${field.required ? ' *' : ''}`} options={[{ label: 'Not mapped', value: '' }, ...importHeaders.map((header) => ({ label: header, value: header }))]} value={importMapping[field.key] ?? ''} onChange={(value) => setImportMapping((current) => ({ ...current, [field.key]: value ?? '' }))} placeholder="Select spreadsheet column" size="sm" />)}
+            </div>
+          </div>}
+        </div>
+      </FlatModal>
     </div>
   );
 };

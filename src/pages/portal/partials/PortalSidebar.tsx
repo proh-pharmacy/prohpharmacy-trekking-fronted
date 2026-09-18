@@ -127,7 +127,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-white truncate tracking-tight">
+            <div className="text-xs font-semibold text-portal-text truncate tracking-tight">
                     {userName}
                   </div>
                   <div className="text-[10px] text-portal-muted truncate font-mono">

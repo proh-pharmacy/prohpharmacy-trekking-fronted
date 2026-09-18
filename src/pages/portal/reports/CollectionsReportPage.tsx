@@ -141,7 +141,7 @@ export const CollectionsReportPage: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
               <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Transactions</p>
-              <p className="text-xs font-semibold text-white truncate">{data.totalTransactions.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-portal-text truncate">{data.totalTransactions.toLocaleString()}</p>
             </div>
           </div>
 
@@ -166,7 +166,7 @@ export const CollectionsReportPage: React.FC = () => {
                   <tbody className="divide-y divide-portal-border/30">
                     {data.byPaymentMethod.map((row) => (
                       <tr key={row.paymentMethod} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2.5 px-4 text-xs text-white font-medium">
+                        <td className="py-2.5 px-4 text-xs text-portal-text">
                           {PAYMENT_METHOD_LABELS[row.paymentMethod] ?? row.paymentMethod}
                         </td>
                         <td className="py-2.5 px-3 text-xs text-portal-muted text-center">{row.transactions}</td>
@@ -206,7 +206,7 @@ export const CollectionsReportPage: React.FC = () => {
                   <tbody className="divide-y divide-portal-border/30">
                     {data.byBranch.map((row) => (
                       <tr key={row.branchName} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2.5 px-4 text-xs text-white font-medium">{row.branchName}</td>
+                        <td className="py-2.5 px-4 text-xs text-portal-text">{row.branchName}</td>
                         <td className="py-2.5 px-3 text-xs text-portal-muted text-center">{row.transactions.toLocaleString()}</td>
                         <td className="py-2.5 px-4 text-xs font-mono text-portal-accent text-right">
                           {fmtGhs(row.total)}

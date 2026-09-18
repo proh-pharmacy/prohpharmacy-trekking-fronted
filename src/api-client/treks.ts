@@ -11,6 +11,7 @@ export interface TrekStopProduct {
   packagingUnitName: string | null;
   basicUnitPrice: number;
   packagingUnitPrice: number | null;
+  amountDue?: number | null;
   plannedBasicQuantity: number;
   plannedPackagingQuantity: number | null;
   basicQtyDelivered?: number | null;
@@ -61,6 +62,7 @@ export interface Trek {
   notes?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+  syncRequired?: boolean;
   stops: TrekStop[];
 }
 
@@ -107,6 +109,43 @@ export interface RecordDeliveryPayload {
   }[];
 }
 
+export interface StopProductPricePayload {
+  basicUnitPrice: number;
+  packagingUnitPrice?: number | null;
+}
+
+export interface SyncTrekPricesResponse {
+  trekId: string;
+  trekNumber: string;
+  productsUpdated: number;
+  packagingAdded: number;
+  packagingRemoved: number;
+  changes: string[];
+}
+
+export interface TrekPriceDifference {
+  stopId: string;
+  stopSequence: number;
+  customerName: string;
+  stopProductId: string;
+  productName: string;
+  snapshotBasicUnitPrice: number;
+  catalogBasicUnitPrice: number;
+  basicPriceChanged: boolean;
+  snapshotPackagingUnitPrice: number | null;
+  catalogPackagingUnitPrice: number | null;
+  packagingPriceChanged: boolean;
+  packagingAdded: boolean;
+  packagingRemoved: boolean;
+}
+
+export interface TrekPriceDiffResponse {
+  trekId: string;
+  trekNumber: string;
+  syncRequired: boolean;
+  differences: TrekPriceDifference[];
+}
+
 export interface DriverStopProduct {
   stopProductId: string;
   productName: string;
@@ -114,6 +153,7 @@ export interface DriverStopProduct {
   packagingUnitName: string | null;
   basicUnitPrice: number;
   packagingUnitPrice: number | null;
+  amountDue?: number | null;
   plannedBasicQuantity: number;
   plannedPackagingQuantity: number | null;
   basicQtyDelivered?: number | null;
@@ -235,6 +275,21 @@ export const treksApi = {
   updateStop: async (trekId: string, stopId: string, payload: UpdateStopPayload): Promise<TrekStop> => {
     const res = await apiClient.patch<TrekStop>(`/treks/${trekId}/stops/${stopId}`, payload);
     return { ...res.data, products: res.data.products.map(normalizeStopProduct) };
+  },
+
+  updateStopProductPrice: async (trekId: string, stopId: string, stopProductId: string, payload: StopProductPricePayload): Promise<TrekStopProduct> => {
+    const res = await apiClient.patch<TrekStopProduct>(`/treks/${trekId}/stops/${stopId}/products/${stopProductId}/price`, payload);
+    return normalizeStopProduct(res.data);
+  },
+
+  syncPrices: async (trekId: string): Promise<SyncTrekPricesResponse> => {
+    const res = await apiClient.post<SyncTrekPricesResponse>(`/treks/${trekId}/sync-prices`);
+    return res.data;
+  },
+
+  getPriceDiff: async (trekId: string): Promise<TrekPriceDiffResponse> => {
+    const res = await apiClient.get<TrekPriceDiffResponse>(`/treks/${trekId}/price-diff`);
+    return res.data;
   },
 
   removeStop: async (trekId: string, stopId: string): Promise<void> => {

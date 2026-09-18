@@ -632,7 +632,7 @@ export const UsersAndRolesPage: React.FC = () => {
                   .toUpperCase()}
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-white text-xs truncate group-hover:text-portal-accent transition-colors">
+                <div className="text-portal-text text-xs truncate group-hover:text-portal-accent transition-colors">
                   {user.fullName}
                 </div>
                 <div className="text-[11px] text-portal-accent font-mono truncate">{user.email}</div>
@@ -645,7 +645,7 @@ export const UsersAndRolesPage: React.FC = () => {
         field: 'roles',
         header: 'Role',
         body: (user) => (
-          <span className="text-xs text-portal-text font-medium">
+          <span className="text-xs text-portal-text">
             {Array.isArray(user.roles) && user.roles.length > 0
               ? user.roles.join(', ')
               : 'No Roles Assigned'}
@@ -687,7 +687,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Last Active',
         sortable: true,
         body: (user) => (
-          <span className="text-portal-text font-mono text-xs font-medium">
+          <span className="text-portal-text font-mono text-xs">
             {user.lastLoginAt
               ? new Date(user.lastLoginAt).toLocaleDateString(undefined, {
                   month: 'short',
@@ -769,7 +769,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 .toUpperCase()}
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-white text-xs truncate group-hover:text-portal-accent transition-colors">
+              <div className="text-portal-text text-xs truncate group-hover:text-portal-accent transition-colors">
                 {staff.fullName}
               </div>
               <div className="text-[11px] text-portal-muted font-mono truncate">
@@ -784,7 +784,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Emp #',
         sortable: true,
         body: (staff) => (
-          <span className="font-mono text-xs text-portal-accent font-medium">
+          <span className="font-mono text-xs text-portal-accent">
             {staff.employeeNumber || '—'}
           </span>
         ),
@@ -794,7 +794,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Branch',
         sortable: true,
         body: (staff) => (
-          <span className="text-xs text-portal-text font-medium">
+          <span className="text-xs text-portal-text">
             {staff.branchName || '—'}
           </span>
         ),
@@ -803,7 +803,7 @@ export const UsersAndRolesPage: React.FC = () => {
         field: 'role',
         header: 'Role / Title',
         body: (staff) => (
-          <span className="text-xs text-white font-medium">
+          <span className="text-xs text-portal-text">
             {staff.role || staff.jobTitle || 'Staff'}
           </span>
         ),
@@ -1098,7 +1098,7 @@ export const UsersAndRolesPage: React.FC = () => {
                           className="hover:bg-white/[0.02] transition"
                         >
                           <td className="py-3.5 px-5">
-                            <span className="text-xs font-bold text-white">
+                            <span className="text-xs text-portal-text">
                               {role.name}
                             </span>
                           </td>
@@ -1156,7 +1156,7 @@ export const UsersAndRolesPage: React.FC = () => {
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2.5">
-                        <span className="text-xs font-bold text-white">
+                        <span className="text-xs text-portal-text">
                           {role.name}
                         </span>
                         <span

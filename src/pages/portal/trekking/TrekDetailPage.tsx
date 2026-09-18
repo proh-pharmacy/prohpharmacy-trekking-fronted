@@ -1,20 +1,21 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { treksApi, type Trek, type TrekStop, type TrekStatus, type PaymentMethod } from '../../../api-client';
+import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
-import { FlatConfirmDialog } from '../../../components/overlay';
+import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { resetTableData } from '../../../components/data-table';
 import { EditTrekModal } from './components/EditTrekModal';
 import { AddStopModal } from './components/AddStopModal';
 import toast from 'react-hot-toast';
+import { fmtGhs, parseNumericInput } from '../../../lib/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<TrekStatus, string> = {
-  Draft:      'text-portal-muted',
-  Scheduled:  'text-blue-400',
+  Draft: 'text-portal-muted',
+  Scheduled: 'text-blue-400',
   InProgress: 'text-yellow-400',
-  Completed:  'text-portal-accent',
-  Cancelled:  'text-red-400',
+  Completed: 'text-portal-accent',
+  Cancelled: 'text-red-400',
 };
 
 const STATUS_LABELS: Record<TrekStatus, string> = {
@@ -23,8 +24,8 @@ const STATUS_LABELS: Record<TrekStatus, string> = {
 };
 
 const NEXT_STATUSES: Partial<Record<TrekStatus, TrekStatus[]>> = {
-  Draft:      ['Scheduled', 'Cancelled'],
-  Scheduled:  ['InProgress', 'Cancelled'],
+  Draft: ['Scheduled', 'Cancelled'],
+  Scheduled: ['InProgress', 'Cancelled'],
   InProgress: ['Completed'],
 };
 
@@ -34,7 +35,7 @@ const NEXT_LABELS: Partial<Record<TrekStatus, string>> = {
 };
 
 const PAYMENT_OPTIONS = [
-  { label: 'Select method...', value: '' },
+  { label: '—', value: '' },
   { label: 'Cash', value: 'Cash' },
   { label: 'Mobile Money', value: 'MobileMoney' },
   { label: 'Credit', value: 'Credit' },
@@ -42,8 +43,15 @@ const PAYMENT_OPTIONS = [
   { label: 'Bank Transfer', value: 'BankTransfer' },
 ];
 
-const numberInputValue = (value?: string) => value ? Number(value) : null;
+const numberInputValue = (value?: string) => value ? parseNumericInput(value) : null;
 const numberRowValue = (value: number | null) => value == null ? '' : String(value);
+
+const calculateDeliveredAmount = (product: TrekStop['products'][number], row: Partial<DeliveryRow>) => {
+  const basic = parseNumericInput(row.basicQtyDelivered);
+  const packaging = parseNumericInput(row.packagingQtyDelivered);
+  return (Number.isFinite(basic) ? basic : 0) * Number(product.basicUnitPrice || 0)
+    + (Number.isFinite(packaging) ? packaging : 0) * Number(product.packagingUnitPrice || 0);
+};
 
 // ── Delivery row state ─────────────────────────────────────────────────
 interface DeliveryRow {
@@ -63,9 +71,9 @@ function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
         basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
         packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
         paymentMethod: p.paymentMethod ?? '',
-        amtPaid:       p.amtPaid != null ? String(p.amtPaid) : '',
-        balance:       p.balance != null ? String(p.balance) : '',
-        notes:         p.notes ?? '',
+        amtPaid: p.amtPaid != null ? String(p.amtPaid) : '',
+        balance: p.balance != null ? String(p.balance) : '',
+        notes: p.notes ?? '',
       };
     });
   });
@@ -75,17 +83,22 @@ function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
 // ── Page ───────────────────────────────────────────────────────────────
 export const TrekDetailPage: React.FC = () => {
   const { trekId } = useParams<{ trekId: string }>();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
 
-  const [trek, setTrek]               = useState<Trek | null>(null);
-  const [loading, setLoading]         = useState(true);
+  const [trek, setTrek] = useState<Trek | null>(null);
+  const [loading, setLoading] = useState(true);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
-  const [recordingStop, setRecordingStop] = useState<string | null>(null);
+  const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
+  const [syncingPrices, setSyncingPrices] = useState(false);
+  const [priceDiff, setPriceDiff] = useState<TrekPriceDiffResponse | null>(null);
+  const [priceDiffVisible, setPriceDiffVisible] = useState(false);
+  const [priceDiffExpanded, setPriceDiffExpanded] = useState(false);
+  const [priceUpdateMenuOpen, setPriceUpdateMenuOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState<TrekStatus | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [shareOpen, setShareOpen]     = useState(false);
-  const shareRef                      = useRef<HTMLDivElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
   const [editVisible, setEditVisible] = useState(false);
   const [addStopVisible, setAddStopVisible] = useState(false);
   const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
@@ -124,56 +137,48 @@ export const TrekDetailPage: React.FC = () => {
     }));
   };
 
-  const handleRecordStop = async (stop: TrekStop) => {
-    if (!trek) return;
-
-    // Validate required delivery fields per product
-    for (const p of stop.products) {
-      const row = deliveryRows[p.stopProductId] ?? {};
-      const name = `"${p.productName}"`;
-      const basic = row.basicQtyDelivered === '' ? null : Number(row.basicQtyDelivered);
-      const packaging = row.packagingQtyDelivered === '' ? null : Number(row.packagingQtyDelivered);
-      if (basic === null && packaging === null) {
-        toast.error(`Enter a delivered quantity for ${name}.`);
-        return;
-      }
-      if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) ||
-          (packaging !== null && (!p.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) {
-        toast.error(`Enter valid delivered quantities for ${name}.`);
-        return;
-      }
-      if (!row.paymentMethod) {
-        toast.error(`Payment method is required for ${name}.`);
-        return;
-      }
-      if (!row.amtPaid || parseFloat(row.amtPaid) < 0) {
-        toast.error(`Amount paid is required for ${name}.`);
-        return;
-      }
+  const handleRecordProduct = async (product: TrekStopProduct): Promise<boolean> => {
+    if (!trek) return false;
+    const row = deliveryRows[product.stopProductId] ?? {};
+    const basic = row.basicQtyDelivered === '' ? null : parseNumericInput(row.basicQtyDelivered);
+    const packaging = row.packagingQtyDelivered === '' ? null : parseNumericInput(row.packagingQtyDelivered);
+    if (basic === null && packaging === null) {
+      toast.error(`Enter a delivered quantity for "${product.productName}".`);
+      return false;
+    }
+    if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) ||
+      (packaging !== null && (!product.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) {
+      toast.error(`Enter valid delivered quantities for "${product.productName}".`);
+      return false;
+    }
+    if (!row.paymentMethod) {
+      toast.error(`Payment method is required for "${product.productName}".`);
+      return false;
     }
 
-    setRecordingStop(stop.stopId);
+    setRecordingProduct(product.stopProductId);
     try {
-      const products = stop.products.map((p) => {
-          const row = deliveryRows[p.stopProductId] ?? {};
-          return {
-            stopProductId: p.stopProductId,
-            basicQtyDelivered: row.basicQtyDelivered !== '' ? Number(row.basicQtyDelivered) : undefined,
-            packagingQtyDelivered: p.packagingUnitName && row.packagingQtyDelivered !== '' ? Number(row.packagingQtyDelivered) : undefined,
-            paymentMethod: row.paymentMethod  ? row.paymentMethod as PaymentMethod : undefined,
-            amtPaid:       row.amtPaid        ? parseFloat(row.amtPaid)        : undefined,
-            balance:       row.balance        ? parseFloat(row.balance)        : undefined,
-            notes:         row.notes          ? row.notes                      : undefined,
-          };
-        });
-      await treksApi.recordDelivery(trek.id, { products });
+      await treksApi.recordDelivery(trek.id, {
+        products: [{
+          stopProductId: product.stopProductId,
+          basicQtyDelivered: basic ?? undefined,
+          packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined,
+          paymentMethod: row.paymentMethod as PaymentMethod,
+          ...(row.amtPaid !== '' && row.amtPaid != null
+            ? { amtPaid: parseFloat(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseFloat(row.amtPaid)) }
+            : {}),
+          notes: row.notes || undefined,
+        }],
+      });
       resetTableData();
-      toast.success(`Stop ${stop.sequence} recorded.`);
+      toast.success(`${product.productName} delivery saved.`);
       await loadTrek(true);
+      return true;
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to record delivery.');
+      toast.error(err.response?.data?.detail || 'Failed to save delivery.');
+      return false;
     } finally {
-      setRecordingStop(null);
+      setRecordingProduct(null);
     }
   };
 
@@ -198,7 +203,7 @@ export const TrekDetailPage: React.FC = () => {
     setShareOpen(false);
     try {
       const result = await treksApi.generateLink(trek.id);
-      await navigator.clipboard.writeText(result.url).catch(() => {});
+      await navigator.clipboard.writeText(result.url).catch(() => { });
       toast.success('Driver link copied to clipboard.');
     } catch {
       toast.error('Failed to generate link.');
@@ -213,9 +218,9 @@ export const TrekDetailPage: React.FC = () => {
     setShareOpen(false);
     try {
       const blob = await treksApi.downloadPdf(trek.id);
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
       a.download = `TrekkingSheet-${trek.trekNumber}-${trek.scheduledDate}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
@@ -226,8 +231,59 @@ export const TrekDetailPage: React.FC = () => {
     }
   };
 
+  const handleSyncPrices = async () => {
+    if (!trek) return;
+    setSyncingPrices(true);
+    try {
+      const result = await treksApi.getPriceDiff(trek.id);
+      if (!result.syncRequired || result.differences.length === 0) {
+        toast.success('Prices are already up to date.');
+        await loadTrek(true);
+        return;
+      }
+      setPriceDiff(result);
+      setPriceUpdateMenuOpen(true);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to check trek prices.');
+    } finally {
+      setSyncingPrices(false);
+    }
+  };
+
+  const handleViewPriceChanges = () => {
+    setPriceUpdateMenuOpen(false);
+    setPriceDiffExpanded(true);
+    setPriceDiffVisible(true);
+  };
+
+  const confirmSyncPrices = async () => {
+    if (!trek) return;
+    setSyncingPrices(true);
+    try {
+      const result = await treksApi.syncPrices(trek.id);
+      setPriceUpdateMenuOpen(false);
+      setPriceDiffVisible(false);
+      setPriceDiff(null);
+      setPriceDiffExpanded(false);
+      await loadTrek(true);
+      resetTableData();
+      toast.success(result.productsUpdated > 0
+        ? `${result.productsUpdated} product price${result.productsUpdated === 1 ? '' : 's'} updated.`
+        : 'Prices are already up to date.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to sync trek prices.');
+    } finally {
+      setSyncingPrices(false);
+    }
+  };
+
   const handleRemoveStop = async () => {
     if (!trek || !removingStop) return;
+    if (trek.status === 'InProgress') {
+      toast.error('Stops cannot be changed while the trek is in progress.');
+      setRemovingStop(null);
+      return;
+    }
     try {
       await treksApi.removeStop(trek.id, removingStop.stopId);
       resetTableData();
@@ -240,10 +296,11 @@ export const TrekDetailPage: React.FC = () => {
     }
   };
 
-  const isLocked        = trek?.status === 'Completed' || trek?.status === 'Cancelled';
+  const isLocked = trek?.status === 'Completed' || trek?.status === 'Cancelled';
+  const isStructureLocked = isLocked || trek?.status === 'InProgress';
   const isDeliveryLocked = trek?.status !== 'InProgress';
   const nextStatuses = trek ? (NEXT_STATUSES[trek.status] ?? []) : [];
-  const sortedStops  = trek ? [...trek.stops].sort((a, b) => a.sequence - b.sequence) : [];
+  const sortedStops = trek ? [...trek.stops].sort((a, b) => a.sequence - b.sequence) : [];
 
   // ── Loading ────────────────────────────────────────────────────────
   if (loading) {
@@ -269,13 +326,6 @@ export const TrekDetailPage: React.FC = () => {
       {/* ── Breadcrumb + header ── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            onClick={() => navigate('/portal/trekking')}
-            className="flex items-center gap-1.5 text-[11px] text-portal-muted hover:text-portal-accent transition-colors w-fit"
-          >
-            <i className="pi pi-arrow-left text-[10px]" /> Trekking
-          </button>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-white tracking-tight">{trek.trekNumber}</h1>
             <span className="w-px h-4 bg-portal-border shrink-0" />
@@ -300,6 +350,37 @@ export const TrekDetailPage: React.FC = () => {
             <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setEditVisible(true)}>
               Edit
             </FlatButton>
+          )}
+
+          {!isLocked && trek.syncRequired && (
+            <div className="relative inline-flex">
+              <FlatButton
+                variant="outline"
+                size="sm"
+                leftIcon="pi pi-refresh"
+                onClick={handleSyncPrices}
+                loading={syncingPrices}
+                disabled={syncingPrices}
+              >
+                Update available
+              </FlatButton>
+              <span
+                className="absolute -right-1.5 -top-1.5 z-10 flex h-4 w-4 rotate-45 items-center justify-center rounded-[2px] border border-amber-200/90 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 text-amber-950 shadow-lg shadow-amber-400/40"
+                aria-label="Product updates available"
+                title="Product updates available"
+              >
+                <span className="-rotate-45 text-[11px] font-bold leading-none" aria-hidden="true">!</span>
+              </span>
+              {priceUpdateMenuOpen && priceDiff && (
+                <div className="absolute right-0 top-full z-[100] mt-2 w-72 rounded border border-portal-border bg-portal-surface p-3 shadow-xl">
+                  <p className="text-[11px] leading-relaxed text-portal-orange">These trek products were created before the latest catalogue update.</p>
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <FlatButton size="sm" variant="outline" onClick={handleViewPriceChanges}>View updates</FlatButton>
+                    <FlatButton size="sm" variant="primary" onClick={confirmSyncPrices} loading={syncingPrices} disabled={syncingPrices}>Sync update</FlatButton>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Share dropdown */}
@@ -356,11 +437,11 @@ export const TrekDetailPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           { label: 'Trekking Region', value: trek.regionName },
-          { label: 'Driver',  value: trek.driverName },
+          { label: 'Driver', value: trek.driverName },
           { label: 'Vehicle', value: trek.vehicleDisplayName },
           { label: 'Sales Staff', value: trek.salesStaffName || '—' },
           ...(trek.branchName ? [{ label: 'Branch', value: trek.branchName }] : []),
-          { label: 'Date',    value: trek.scheduledDate },
+          { label: 'Date', value: trek.scheduledDate },
         ].map(({ label, value }) => (
           <div key={label} className="bg-portal-surface border border-portal-border/60 rounded p-3">
             <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">{label}</p>
@@ -380,7 +461,7 @@ export const TrekDetailPage: React.FC = () => {
             Stops
             <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
           </span>
-          {!isLocked && (
+          {!isStructureLocked && (
             <FlatButton variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
               Add Stop
             </FlatButton>
@@ -397,12 +478,12 @@ export const TrekDetailPage: React.FC = () => {
               <StopCard
                 key={stop.stopId}
                 stop={stop}
-                isLocked={isLocked}
+                isLocked={isStructureLocked}
                 isDeliveryLocked={isDeliveryLocked}
                 deliveryRows={deliveryRows}
                 updateRow={updateRow}
-                onRecord={() => handleRecordStop(stop)}
-                recording={recordingStop === stop.stopId}
+                onRecordProduct={handleRecordProduct}
+                recordingProduct={recordingProduct}
                 onEdit={() => setEditingStop(stop)}
                 onRemove={() => setRemovingStop(stop)}
               />
@@ -420,7 +501,7 @@ export const TrekDetailPage: React.FC = () => {
       />
 
       <AddStopModal
-        visible={addStopVisible}
+        visible={addStopVisible && !isStructureLocked}
         onHide={() => setAddStopVisible(false)}
         trekId={trek.id}
         trekRegionId={trek.regionId}
@@ -429,7 +510,7 @@ export const TrekDetailPage: React.FC = () => {
         onSuccess={loadTrek}
       />
 
-      {editingStop && <AddStopModal
+      {editingStop && !isStructureLocked && <AddStopModal
         visible
         onHide={() => setEditingStop(null)}
         trekId={trek.id}
@@ -465,6 +546,63 @@ export const TrekDetailPage: React.FC = () => {
         confirmLabel="Mark Completed"
         variant="primary"
       />
+
+      <FlatConfirmDialog
+        visible={priceDiffVisible}
+        onHide={() => { if (!syncingPrices) { setPriceDiffVisible(false); setPriceDiff(null); } }}
+        onConfirm={confirmSyncPrices}
+        title="Product Updates Available"
+        showIcon={false}
+        size="lg"
+        message={
+          <div className="space-y-2.5 lg:min-h-[26rem]">
+            {!priceDiffExpanded ? (
+              <p className="text-portal-orange">These trek products were created before the latest catalog update. You can view the changes or update the catalogue now.</p>
+            ) : (
+              <div className="h-64 overflow-y-auto pr-1 lg:h-[28rem]">
+                <div className="grid grid-cols-3 overflow-hidden rounded border border-portal-border/40 text-[11px]">
+                  <div className="bg-portal-canvas/70">
+                    <div className="px-2.5 py-2 text-[10px] font-medium uppercase tracking-wide text-portal-muted">Product</div>
+                    {priceDiff?.differences.map((difference) => (
+                      <div key={difference.stopProductId} className="min-h-14 border-b border-portal-border/40 px-2.5 py-2 last:border-b-0">
+                        <p className="text-portal-text font-medium leading-snug">{difference.productName}</p>
+                        {(difference.packagingAdded || difference.packagingRemoved) && (
+                          <p className="text-[10px] text-amber-300 mt-1">{difference.packagingAdded ? 'Packaging added' : 'Packaging removed'}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-portal-surface/80 text-portal-text">
+                    <div className="px-2.5 py-2 text-[10px] font-medium uppercase tracking-wide text-portal-muted">On trek</div>
+                    {priceDiff?.differences.map((difference) => (
+                      <div key={difference.stopProductId} className="min-h-14 border-b border-portal-border/40 px-2.5 py-2 space-y-0.5 last:border-b-0">
+                        <p>Basic · {fmtGhs(difference.snapshotBasicUnitPrice)}</p>
+                        <p>Packaging · {difference.snapshotPackagingUnitPrice == null ? '—' : fmtGhs(difference.snapshotPackagingUnitPrice)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-portal-card/70">
+                    <div className="px-2.5 py-2 text-[10px] font-medium uppercase tracking-wide text-portal-muted">Current catalog</div>
+                    {priceDiff?.differences.map((difference) => (
+                      <div key={difference.stopProductId} className="min-h-14 border-b border-portal-border/40 px-2.5 py-2 space-y-0.5 last:border-b-0">
+                        <p className="text-portal-text">Basic · {fmtGhs(difference.catalogBasicUnitPrice)}</p>
+                        <p className="text-portal-text">Packaging · {difference.catalogPackagingUnitPrice == null ? '—' : fmtGhs(difference.catalogPackagingUnitPrice)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <p className="text-portal-muted">Syncing updates the trek prices and recalculates planned totals.</p>
+          </div>
+        }
+        cancelLabel="Close"
+        secondaryActionLabel={!priceDiffExpanded ? 'View changes' : undefined}
+        onSecondaryAction={!priceDiffExpanded ? () => setPriceDiffExpanded(true) : undefined}
+        confirmLabel="Sync update"
+        variant="primary"
+        loading={syncingPrices}
+      />
     </div>
   );
 };
@@ -476,8 +614,8 @@ interface StopCardProps {
   isDeliveryLocked: boolean;
   deliveryRows: Record<string, DeliveryRow>;
   updateRow: (stopProductId: string, field: keyof DeliveryRow, value: string) => void;
-  onRecord: () => void;
-  recording: boolean;
+  onRecordProduct: (product: TrekStopProduct) => Promise<boolean>;
+  recordingProduct: string | null;
   onEdit: () => void;
   onRemove: () => void;
 }
@@ -493,13 +631,14 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = ({
-  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecord, recording, onEdit, onRemove,
+  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, recordingProduct, onEdit, onRemove,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const hasProducts  = stop.products.length > 0;
-  const isRecorded   = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
-  const landmark     = stop.primaryLocationLandmark?.trim() || null;
-  const street       = stop.primaryLocationStreet?.trim() || null;
+  const [activeStopTab, setActiveStopTab] = useState<'products' | 'details'>('products');
+  const [editingProduct, setEditingProduct] = useState<TrekStopProduct | null>(null);
+  const isRecorded = stop.products.length > 0 && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
+  const landmark = stop.primaryLocationLandmark?.trim() || null;
+  const street = stop.primaryLocationStreet?.trim() || null;
 
   return (
     <div className="px-4 py-3 sm:px-5 sm:py-4">
@@ -509,6 +648,8 @@ const StopCard: React.FC<StopCardProps> = ({
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} products for ${stop.customerName}`}
+          title={`${expanded ? 'Collapse' : 'Expand'} products`}
           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
         >
           <i className={`pi ${expanded ? 'pi-chevron-down' : 'pi-chevron-right'} shrink-0 text-[10px] text-portal-muted`} aria-hidden="true" />
@@ -536,118 +677,147 @@ const StopCard: React.FC<StopCardProps> = ({
       </div>
 
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-      <div className="min-h-0 overflow-hidden">
+        <div className="min-h-0 overflow-hidden">
       <div className="mt-4 space-y-4">
-      {/* Info grid */}
-      <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
-        <div>
-          <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
-          <InfoRow label="Region"   value={stop.regionName} />
-          <InfoRow label="District" value={stop.districtName} />
-          <InfoRow label="Landmark" value={landmark} />
-          <InfoRow label="Street"   value={street} />
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Contact</p>
-          <InfoRow label="Customer Phone"   value={stop.customerPhone} mono />
-          <InfoRow label="Primary Contact"  value={stop.primaryContactName} />
-          <InfoRow label="Contact Phone"    value={stop.primaryContactPhone} mono />
-          {stop.notes && <InfoRow label="Notes" value={stop.notes} />}
-        </div>
+      <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
       </div>
+      {/* Info grid */}
+      {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
+              <div>
+                <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
+                <InfoRow label="Region" value={stop.regionName} />
+                <InfoRow label="District" value={stop.districtName} />
+                <InfoRow label="Landmark" value={landmark} />
+                <InfoRow label="Street" value={street} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Contact</p>
+                <InfoRow label="Customer Phone" value={stop.customerPhone} mono />
+                <InfoRow label="Primary Contact" value={stop.primaryContactName} />
+                <InfoRow label="Contact Phone" value={stop.primaryContactPhone} mono />
+                {stop.notes && <InfoRow label="Notes" value={stop.notes} />}
+              </div>
+            </div>}
 
-      {/* Products table */}
-      {stop.products.length > 0 && (
-        <div className="overflow-x-auto ml-0 sm:ml-10 border border-portal-border/60 bg-portal-canvas/30 rounded">
-          <table className="min-w-[760px] w-full text-xs">
-            <thead className="bg-portal-canvas border-b border-portal-border/60">
-              <tr>
-                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
-                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
-                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Qty Delivered</th>
-                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
-                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
-                <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
-                <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-portal-border/30">
-              {stop.products.map((product) => {
+            {/* Products table */}
+            {activeStopTab === 'products' && stop.products.length > 0 && (
+              <div className="overflow-x-auto ml-0 sm:ml-10 border border-portal-border/60 bg-portal-canvas/30 rounded">
+                <table className="min-w-[760px] w-full text-xs">
+                  <thead className="bg-portal-canvas border-b border-portal-border/60">
+                    <tr>
+                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 w-44 max-w-44 whitespace-nowrap">Product</th>
+                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
+                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Qty Delivered</th>
+                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Payment</th>
+                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Total</th>
+                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2 w-12">Record</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-portal-border/30">
+              {stop.products.map((product, productIndex) => {
                 const row = deliveryRows[product.stopProductId] ?? {};
-                const spId = product.stopProductId;
+                const plannedPackaging = Boolean(product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0);
+                const plannedBasic = Number(product.plannedBasicQuantity || 0) > 0;
+                const deliveredPackaging = Boolean(product.packagingUnitName && parseNumericInput(row.packagingQtyDelivered) > 0);
+                const deliveredBasic = parseNumericInput(row.basicQtyDelivered) > 0;
 
-                return (
-                  <tr key={product.productId} className="group">
-                    <td className="py-2 pl-3 pr-4">
-                      <span className="block font-medium text-white">{product.productName}</span>
-                      <span className="block text-[11px] text-portal-muted">
-                        GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
-                        {product.packagingUnitName && product.packagingUnitPrice != null &&
-                          ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
-                      </span>
+                      return (
+                  <tr key={`${product.stopProductId}-${product.productId}-${productIndex}`} className="group">
+                          <td className="py-2 pl-3 pr-4 w-44 max-w-44">
+                            <span className="block truncate font-medium text-white" title={product.productName}>{product.productName}</span>
+                      <span className="mt-1.5 block text-[11px] text-portal-muted">
+                              {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
+                              {product.packagingUnitName && product.packagingUnitPrice != null &&
+                                ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
+                            </span>
                     </td>
                     <td className="py-2 px-3">
-                      <span className="block font-mono text-portal-accent">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                      {product.packagingUnitName && <span className="block font-mono text-portal-accent">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                      <div className="flex flex-wrap items-center gap-x-2 text-portal-text">
+                        {plannedPackaging && <span>{product.plannedPackagingQuantity} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span></span>}
+                        {plannedPackaging && plannedBasic && <span className="text-portal-muted">·</span>}
+                        {plannedBasic && <span>{product.plannedBasicQuantity} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>}
+                        {!plannedPackaging && !plannedBasic && <span>—</span>}
+                      </div>
+                            <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? (Number(product.plannedBasicQuantity || 0) * Number(product.basicUnitPrice || 0) + Number(product.plannedPackagingQuantity || 0) * Number(product.packagingUnitPrice || 0))))}</span>
                     </td>
                     <td className="py-2 px-3">
-                      <div className="space-y-1">
-                        <FlatInputNumber id={`${spId}-basic`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => updateRow(spId, 'basicQtyDelivered', numberRowValue(value))}
-                          disabled={isDeliveryLocked} placeholder={`Basic (${product.basicUnitName || 'units'})`} />
-                        {product.packagingUnitName && (
-                          <FlatInputNumber id={`${spId}-packaging`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                            value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => updateRow(spId, 'packagingQtyDelivered', numberRowValue(value))}
-                            disabled={isDeliveryLocked} placeholder={`Packaging (${product.packagingUnitName})`} />
-                        )}
+                      <div className="flex flex-wrap items-center gap-x-2 text-portal-text">
+                        {deliveredPackaging && <span>{row.packagingQtyDelivered} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span></span>}
+                        {deliveredPackaging && deliveredBasic && <span className="text-portal-muted">·</span>}
+                        {deliveredBasic && <span>{row.basicQtyDelivered} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>}
+                        {!deliveredPackaging && !deliveredBasic && <span>—</span>}
                       </div>
                     </td>
-                    <td className="py-2 px-3">
-                      <FlatDropdown id={`${spId}-payment`} options={PAYMENT_OPTIONS} value={row.paymentMethod ?? ''}
-                        onChange={(value) => updateRow(spId, 'paymentMethod', value ?? '')} disabled={isDeliveryLocked} size="sm" />
-                    </td>
-                    <td className="py-2 px-3">
-                      <FlatInputNumber id={`${spId}-amt-paid`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                        value={numberInputValue(row.amtPaid)} onChange={(value) => updateRow(spId, 'amtPaid', numberRowValue(value))}
-                        disabled={isDeliveryLocked} placeholder="0.00" />
-                    </td>
-                    <td className="py-2 px-3">
-                      <FlatInputNumber id={`${spId}-balance`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                        value={numberInputValue(row.balance)} onChange={(value) => updateRow(spId, 'balance', numberRowValue(value))}
-                        disabled={isDeliveryLocked} placeholder="0.00" />
-                    </td>
-                    <td className="py-2 pl-3 pr-3">
-                      <FlatInputText id={`${spId}-notes`} value={row.notes ?? ''}
-                        onChange={(e) => updateRow(spId, 'notes', e.target.value)}
-                        disabled={isDeliveryLocked} placeholder="Optional note..." size="sm" />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          <td className="py-2 px-3">
+                            <span className="text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === row.paymentMethod)?.label || '—'}</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <span className="text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))}</span>
+                          </td>
+                    <td className="py-2 px-2 text-center">
+                            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}>
+                              <i className="pi pi-pencil text-xs" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
-          {hasProducts && (
-            <div className="flex items-center justify-end px-3 py-3">
-              {!isDeliveryLocked && (
-                <FlatButton
-                  variant={isRecorded ? 'outline' : 'primary'}
-                  size="sm"
-                  leftIcon={isRecorded ? 'pi pi-refresh' : 'pi pi-check'}
-                  onClick={onRecord}
-                  loading={recording}
-                  disabled={recording}
-                >
-                  {recording ? 'Saving...' : isRecorded ? 'Update Deliveries' : 'Record Deliveries'}
-                </FlatButton>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
       </div>
-      </div>
-      </div>
+
+      {editingProduct && (() => {
+        const editingRow = deliveryRows[editingProduct.stopProductId] ?? {
+          basicQtyDelivered: '', packagingQtyDelivered: '', paymentMethod: '', amtPaid: '', balance: '', notes: '',
+        };
+        const deliveredAmount = calculateDeliveredAmount(editingProduct, editingRow);
+        const paid = editingRow.amtPaid === '' ? null : Number(editingRow.amtPaid);
+        const balance = paid == null || !Number.isFinite(paid) ? 0 : Math.max(0, deliveredAmount - paid);
+        const plannedAmount = Number(editingProduct.amountDue ?? (Number(editingProduct.plannedBasicQuantity || 0) * Number(editingProduct.basicUnitPrice || 0) + Number(editingProduct.plannedPackagingQuantity || 0) * Number(editingProduct.packagingUnitPrice || 0)));
+        const savingProduct = recordingProduct === editingProduct.stopProductId;
+        return (
+          <FlatModal
+            visible
+            onHide={() => setEditingProduct(null)}
+            title={`Record ${editingProduct.productName}`}
+            subtitle="Delivery, payment and notes"
+            size="md"
+            footer={(
+              <div className="flex items-center justify-end gap-2">
+                <FlatButton variant="outline" size="sm" onClick={() => setEditingProduct(null)}>Cancel</FlatButton>
+                <FlatButton size="sm" onClick={async () => { const saved = await onRecordProduct(editingProduct); if (saved) setEditingProduct(null); }} loading={savingProduct} disabled={savingProduct || isDeliveryLocked}>Save changes</FlatButton>
+              </div>
+            )}
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2">
+                <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Planned</span><span className="text-xs text-portal-text">{editingProduct.plannedBasicQuantity} {editingProduct.basicUnitName || 'basic units'}{editingProduct.packagingUnitName ? ` · ${editingProduct.plannedPackagingQuantity ?? 0} ${editingProduct.packagingUnitName}` : ''}</span></div>
+                <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Due</span><span className="text-xs text-portal-accent">{fmtGhs(plannedAmount)}</span></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FlatInputNumber id={`${editingProduct.stopProductId}-basic-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.basicQtyDelivered)} onChange={(value) => updateRow(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => updateRow(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={isDeliveryLocked} />
+                {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.packagingQtyDelivered)} onChange={(value) => updateRow(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => updateRow(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={isDeliveryLocked} />}
+                <FlatDropdown id={`${editingProduct.stopProductId}-payment-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={editingRow.paymentMethod} onChange={(value) => updateRow(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={isDeliveryLocked} size="sm" />
+                <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.amtPaid)} onChange={(value) => updateRow(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={isDeliveryLocked} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2">
+                <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(deliveredAmount)}</span></div>
+                <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(balance)}</span></div>
+              </div>
+              <FlatInputText id={`${editingProduct.stopProductId}-notes-modal`} label="Delivery note" value={editingRow.notes} onChange={(event) => updateRow(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
+              <p className="text-[11px] text-portal-muted">Leave amount paid empty when the customer pays the full calculated total.</p>
+            </div>
+          </FlatModal>
+        );
+      })()}
+
     </div>
   );
 };

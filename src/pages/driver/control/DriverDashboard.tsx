@@ -8,7 +8,6 @@ import type { FieldCustomer } from './api';
 import type { Weather } from './useDeviceStatus';
 import { RegionMapBackdrop } from './RegionMapBackdrop';
 import { CockpitButton } from './CockpitButton';
-import { CockpitBackLink } from './CockpitBackLink';
 
 interface Props {
   trek: DriverTrek;
@@ -220,8 +219,11 @@ export function DriverDashboard({
           <p className="truncate text-xs font-bold tracking-wide text-white">
             Driver Control Panel
           </p>
+          <span className="hidden truncate text-[11px] font-semibold text-portal-text sm:inline">
+            · {trek.trekNumber}
+          </span>
           <span className="hidden truncate text-xs font-semibold text-portal-accent sm:inline">
-            ({trek.regionName}, {trek.scheduledDate})
+            ({trek.regionName})
           </span>
         </div>
 
@@ -439,7 +441,7 @@ export function DriverDashboard({
                 {/* Driver and vehicle info (left) with speedometer (right) */}
                 <div className="relative z-10 flex items-start justify-between gap-3">
                   <div>
-                    <p className="mt-1.5 text-sm font-bold text-white sm:text-base">{trek.driverName}</p>
+                    <p className="mt-1.5 text-sm font-semibold text-portal-text sm:text-base">{trek.driverName}</p>
                     <p className="text-[11px] text-portal-muted sm:text-xs">{trek.vehicleDisplayName || trek.trekNumber}</p>
 
                     {/* Link to the assigned trek's stops */}
@@ -506,7 +508,7 @@ export function DriverDashboard({
 
                     {/* Speedometer Reading in Center */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">{liveSpeed}</span>
+                      <span className="text-xl font-bold tracking-tight text-portal-text sm:text-2xl">{liveSpeed}</span>
                       <span className="text-[9px] font-bold uppercase tracking-wider text-portal-muted">km/h</span>
                       {/* PRND Gear Selector */}
                       <div className="mt-0.5 flex items-center gap-1 text-[8px] font-bold tracking-widest text-portal-muted">
@@ -528,7 +530,7 @@ export function DriverDashboard({
                     {/* Node 1: Route Start */}
                     <div className="hidden max-w-[30%] flex-col items-start sm:flex">
                       <div className="flex items-center gap-1.5 text-cyan-400">
-                        <span className="text-[11px] font-bold text-white sm:text-xs">Route Start</span>
+                        <span className="text-[11px] font-semibold text-portal-text sm:text-xs">Route Start</span>
                       </div>
                       <span className="mt-0.5 text-[9px] text-portal-muted sm:text-[10px]">Origin</span>
                     </div>
@@ -543,7 +545,7 @@ export function DriverDashboard({
                     {/* Node 3: Destination / Final Stop */}
                     <div className="hidden max-w-[30%] flex-col items-end text-right sm:flex">
                       <div className="flex items-center gap-1.5 text-portal-muted">
-                        <span className="truncate text-[11px] font-bold text-white sm:text-xs">
+                        <span className="truncate text-[11px] font-semibold text-portal-text sm:text-xs">
                           {lastStop ? `Stop ${total}: ${lastStop.customerName}` : `${trek.regionName} Base`}
                         </span>
                       </div>
@@ -577,7 +579,7 @@ export function DriverDashboard({
                 {/* BOTTOM LEFT CARD: BATTERY */}
                 <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 sm:text-base">Battery</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Battery</h3>
                     {device?.ignition != null && (
                       <span className={`text-[11px] font-medium ${device.ignition ? 'text-emerald-400' : 'text-portal-muted'}`}>
                         {device.ignition ? 'Ignition ON' : 'Ignition OFF'}
@@ -617,21 +619,21 @@ export function DriverDashboard({
                     {/* Key Telemetry Metrics (Right) */}
                     <div className="space-y-4">
                       <div>
-                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-semibold tracking-tight text-portal-text sm:text-3xl">
                           {remaining}
                         </p>
                         <p className="text-xs text-portal-muted">stops remaining</p>
                       </div>
 
                       <div>
-                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-semibold tracking-tight text-portal-text sm:text-3xl">
                           {recorded}
                         </p>
                         <p className="text-xs text-portal-muted">stops completed</p>
                       </div>
 
                       <div>
-                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-semibold tracking-tight text-portal-text sm:text-3xl">
                           {total}
                         </p>
                         <p className="text-xs text-portal-muted">total planned stops</p>
@@ -658,7 +660,7 @@ export function DriverDashboard({
                 {/* BOTTOM RIGHT CARD: WEATHER & ENVIRONMENT */}
                 <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 sm:text-base">Weather</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Weather</h3>
                     {weather && (
                       <span className="text-[10px] uppercase font-semibold text-portal-muted tracking-wider">
 
@@ -674,12 +676,12 @@ export function DriverDashboard({
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/15 text-amber-400">
                           <i className="pi pi-sun text-2xl drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]" />
                         </div>
-                        <p className="mt-3 text-sm font-bold text-white capitalize truncate max-w-full">
+                        <p className="mt-3 text-sm font-semibold text-portal-text capitalize truncate max-w-full">
                           {weather.condition || weather.description}
                         </p>
                         <p className="text-[10px] text-portal-muted uppercase">condition</p>
 
-                        <p className="mt-4 text-sm font-bold text-white">{weather.windSpeed ?? 0} km/h</p>
+                        <p className="mt-4 text-sm font-semibold text-portal-text">{weather.windSpeed ?? 0} km/h</p>
                         <p className="text-[10px] text-portal-muted uppercase">wind</p>
                       </div>
 
@@ -688,7 +690,7 @@ export function DriverDashboard({
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/15 text-orange-400">
                           <i className="pi pi-sliders-v text-xl text-orange-400" />
                         </div>
-                        <p className="mt-3 text-2xl font-extrabold text-white">
+                        <p className="mt-3 text-2xl font-bold text-portal-text">
                           {Math.round(weather.temperature)}°C
                         </p>
                         <p className="text-[10px] text-portal-muted uppercase">ambient</p>
@@ -704,10 +706,10 @@ export function DriverDashboard({
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-400">
                           <i className="pi pi-cloud text-xl drop-shadow-[0_0_6px_rgba(56,189,248,0.6)]" />
                         </div>
-                        <p className="mt-3 text-sm font-bold text-white">{weather.humidity ?? 0}%</p>
+                        <p className="mt-3 text-sm font-semibold text-portal-text">{weather.humidity ?? 0}%</p>
                         <p className="text-[10px] text-portal-muted uppercase">humidity</p>
 
-                        <p className="mt-4 text-sm font-bold text-white">{weather.precipitation ?? 0}%</p>
+                        <p className="mt-4 text-sm font-semibold text-portal-text">{weather.precipitation ?? 0}%</p>
                         <p className="text-[10px] text-portal-muted uppercase">cloud cover</p>
                       </div>
                     </div>
@@ -760,17 +762,16 @@ export function DriverDashboard({
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">
                     Telemetry Diagnostics
                   </p>
-                  <h1 className="mt-1 text-base font-bold text-white sm:text-xl">
+                  <h1 className="mt-1 text-base font-semibold text-portal-text sm:text-xl">
                     {trek.vehicleDisplayName || `Vehicle for Trek ${trek.trekNumber}`}
                   </h1>
                 </div>
-                <CockpitBackLink onClick={() => setActiveView('dashboard')} />
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracker Battery</p>
-                  <p className="mt-1 text-2xl font-bold text-white sm:text-3xl">{battery}%</p>
+                  <p className="mt-1 text-2xl font-semibold text-portal-text sm:text-3xl">{battery}%</p>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-portal-border/40">
                     <div className="h-full rounded-full bg-portal-accent" style={{ width: `${battery}%` }} />
                   </div>
@@ -778,7 +779,7 @@ export function DriverDashboard({
 
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Motion & Ignition</p>
-                  <p className="mt-1 text-base font-bold text-white capitalize sm:text-lg">
+                  <p className="mt-1 text-base font-semibold text-portal-text capitalize sm:text-lg">
                     {device?.motion ? 'Vehicle Moving' : 'Vehicle Stopped'}
                   </p>
                   <p className="text-xs text-portal-muted mt-1">
@@ -788,7 +789,7 @@ export function DriverDashboard({
 
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracking Service</p>
-                  <p className="mt-1 text-base font-bold text-white capitalize sm:text-lg">
+                  <p className="mt-1 text-base font-semibold text-portal-text capitalize sm:text-lg">
                     {device?.traccarStatus || 'Connected'}
                   </p>
                   <p className="text-xs text-portal-muted mt-1">
@@ -799,7 +800,7 @@ export function DriverDashboard({
 
               <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase text-portal-muted">Last Geocoded Position</p>
-                <p className="text-sm font-semibold text-white break-words">{location}</p>
+                <p className="text-sm font-medium text-portal-text break-words">{location}</p>
                 {device?.lastReportedAt && (
                   <p className="text-xs text-portal-muted">
                     Reported: {new Date(device.lastReportedAt).toLocaleString()}
@@ -841,7 +842,7 @@ export function DriverDashboard({
               <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-portal-border/50 sm:px-5 sm:py-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">Offline Map</p>
-                  <h1 className="mt-0.5 text-base font-bold text-white sm:text-lg">{trek.regionName} Region</h1>
+                  <h1 className="mt-0.5 text-base font-semibold text-portal-text sm:text-lg">{trek.regionName} Region</h1>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <div className="flex items-center rounded border border-portal-border/60 bg-portal-canvas/60 p-0.5">
@@ -863,7 +864,6 @@ export function DriverDashboard({
                   <span className="text-[11px] text-portal-text">
                     {recorded} of {total} stops recorded
                   </span>
-                  <CockpitBackLink onClick={() => setActiveView('dashboard')} />
                 </div>
               </div>
 
@@ -879,7 +879,7 @@ export function DriverDashboard({
                     href="https://www.openstreetmap.org/copyright"
                     target="_blank"
                     rel="noreferrer"
-                    className="absolute bottom-2 right-2 rounded bg-portal-canvas/80 px-2 py-1 text-[10px] text-white hover:text-portal-accent"
+                    className="absolute bottom-2 right-2 rounded bg-portal-canvas/80 px-2 py-1 text-[10px] text-portal-muted hover:text-portal-accent"
                   >
                     © OpenStreetMap contributors
                   </a>

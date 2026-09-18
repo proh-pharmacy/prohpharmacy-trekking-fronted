@@ -125,7 +125,7 @@ export const TrekkingPage: React.FC = () => {
     {
       field: 'driverName',
       header: 'Driver',
-      body: (row) => <span className="text-xs text-white">{row.driverName}</span>,
+      body: (row) => <span className="text-xs text-portal-text">{row.driverName}</span>,
     },
     {
       field: 'salesStaffName',

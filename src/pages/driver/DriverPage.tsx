@@ -6,6 +6,7 @@ import {
   treksApi,
   type DriverTrek,
   type DriverStop,
+  type DriverStopProduct,
   type PaymentMethod,
 } from '../../api-client';
 import { FlatDataTable, resetTableData } from '../../components/data-table';
@@ -13,11 +14,11 @@ import { baseURL } from '../../api-client/api';
 import { useFieldControl } from './control/useFieldControl';
 import { FieldActions, type FieldActionKind, type FieldActionRequest } from './control/FieldActions';
 import { DriverDashboard } from './control/DriverDashboard';
-import { CockpitBackLink } from './control/CockpitBackLink';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
 import type { FieldCustomer, QueuedAction, RegionTrek } from './control/api';
 import { FlatModal } from '../../components/overlay/FlatModal';
+import { fmtGhs, parseNumericInput } from '../../lib/utils';
 
 type DeliveryRow = {
   basicQtyDelivered: string;
@@ -31,7 +32,7 @@ type DeliveryRow = {
 type CustomerListRow = FieldCustomer & { syncStatus?: 'pending' | 'conflict'; syncReason?: string };
 
 const PAYMENT_OPTIONS = [
-  { label: 'Select method...', value: '' },
+  { label: '—', value: '' },
   { label: 'Cash',             value: 'Cash' },
   { label: 'Mobile Money',     value: 'MobileMoney' },
   { label: 'Cheque',           value: 'Cheque' },
@@ -51,8 +52,15 @@ const STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed', Cancelled: 'Cancelled',
 };
 
-const numberInputValue = (value?: string) => value ? Number(value) : null;
+const numberInputValue = (value?: string) => value ? parseNumericInput(value) : null;
 const numberRowValue = (value: number | null) => value == null ? '' : String(value);
+
+const calculateDeliveredAmount = (product: DriverStop['products'][number], row: Partial<DeliveryRow>) => {
+  const basic = parseNumericInput(row.basicQtyDelivered);
+  const packaging = parseNumericInput(row.packagingQtyDelivered);
+  return (Number.isFinite(basic) ? basic : 0) * Number(product.basicUnitPrice || 0)
+    + (Number.isFinite(packaging) ? packaging : 0) * Number(product.packagingUnitPrice || 0);
+};
 
 function initRows(trek: DriverTrek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
@@ -76,7 +84,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
   return (
     <div className="flex items-start justify-between gap-4 py-1.5 border-b border-portal-border/30 last:border-0">
       <span className="text-[11px] text-portal-muted shrink-0">{label}</span>
-      <span className={`text-[11px] text-white text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className={`text-[11px] text-portal-text text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   );
 };
@@ -87,19 +95,20 @@ interface StopCardProps {
   stop: DriverStop;
   rows: Record<string, DeliveryRow>;
   locked: boolean;
-  recording: boolean;
   onRowChange: (spId: string, field: keyof DeliveryRow, value: string) => void;
-  onRecord: (stop: DriverStop) => void;
+  onRecordProduct: (product: DriverStopProduct) => Promise<boolean>;
+  recordingProduct: string | null;
   onVoid: (stopId: string, returnId: string) => void;
   onFieldAction: (kind: FieldActionKind, stopId: string) => void;
   queuedReturns: QueuedAction[];
 }
 
-const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRowChange, onRecord, onVoid, onFieldAction, queuedReturns }) => {
+const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns }) => {
   const [expanded, setExpanded] = useState(false);
+  const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
+  const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
   const hasProducts = stop.products.length > 0;
-  const hasPlanned = stop.products.some((product) => !product.isUnplanned);
-  const isRecorded  = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
+  const isRecorded = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
 
   return (
     <div className="px-4 sm:px-5 py-3">
@@ -127,7 +136,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
               </span>
             </>
           )}
-          {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Walk-in</span>}
+          {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
@@ -141,6 +150,19 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
       >
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
+      <div className="flex flex-wrap gap-2 items-center">
+        {stop.isWalkIn && <span className="text-[11px] text-portal-accent">Additional stop</span>}
+        {!locked && <>
+          <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
+          <FlatButton size="sm" variant="ghost" className="!border-portal-orange/40 !bg-portal-orange/10 !text-portal-orange hover:!bg-portal-orange/20" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
+        </>}
+      </div>
+      <div className="flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-orange text-portal-orange' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{(stop.returns?.length || queuedReturns.length) ? ` (${(stop.returns?.length || 0) + queuedReturns.length})` : ''}</button>
+      </div>
+      {activeStopTab === 'details' && <>
       {/* Info grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-3.5 sm:px-4 py-2">
         <div>
@@ -173,23 +195,9 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
           )}
         </div>
       </div>
+      </>}
 
-      <div className="flex flex-wrap gap-2 items-center">
-        {stop.isWalkIn && <span className="text-[11px] text-portal-accent">Walk-in stop</span>}
-        {!locked && <>
-          <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
-          <FlatButton size="sm" variant="ghost" className="!border-portal-orange/40 !bg-portal-orange/10 !text-portal-orange hover:!bg-portal-orange/20" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
-        </>}
-      </div>
-      {!!stop.returns?.length && <div className="space-y-1">
-        <p className="text-[11px] font-bold text-portal-muted uppercase">Returns</p>
-        {stop.returns.map((item) => <div key={item.returnId} className="flex items-center justify-between gap-2 text-xs text-portal-text">
-          <span>{item.productName} · {item.basicQtyReturned} {item.basicUnitName}{item.packagingQtyReturned ? ` · ${item.packagingQtyReturned} ${item.packagingUnitName}` : ''}</span>
-          {!locked && <FlatButton size="sm" variant="ghost" onClick={() => onVoid(stop.stopId, item.returnId)}>Void</FlatButton>}
-        </div>)}
-      </div>}
-      {!!queuedReturns.length && <p className="text-[11px] text-portal-muted">{queuedReturns.length} return action(s) saved on this device.</p>}
-
+      {activeStopTab === 'products' && <>
       {/* Products listing */}
       {hasProducts && (
         <div className="space-y-3">
@@ -202,9 +210,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
                   <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Delivered</th>
                   <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Amt Paid</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Balance</th>
-                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 min-w-[140px] whitespace-nowrap">Notes</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Total</th>
+                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Record</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-portal-border/30">
@@ -215,46 +222,30 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                     <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="block font-medium text-portal-text">{product.productName}</span>
-                        <span className="block text-[11px] text-portal-muted">
-                          GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
+                        <span className="mt-1.5 block text-[11px] text-portal-muted">
+                          {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
                           {product.packagingUnitName && product.packagingUnitPrice != null &&
-                            ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
+                            ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
                         </span>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <span className="block font-mono text-portal-text font-medium">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                        {product.packagingUnitName && <span className="block font-mono text-portal-text font-medium">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                        {product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 && <span className="text-portal-text">{product.plannedPackagingQuantity} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span> · </span>}
+                        <span className="text-portal-text">{product.plannedBasicQuantity} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>
+                        <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? (Number(product.plannedBasicQuantity || 0) * Number(product.basicUnitPrice || 0) + Number(product.plannedPackagingQuantity || 0) * Number(product.packagingUnitPrice || 0))))}</span>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
                         <div className="space-y-1">
-                          <FlatInputNumber id={`${spId}-basic-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                            value={numberInputValue(row.basicQtyDelivered)} disabled={locked} placeholder={`Basic (${product.basicUnitName || 'units'})`}
-                            onChange={(value) => onRowChange(spId, 'basicQtyDelivered', numberRowValue(value))} />
-                          {product.packagingUnitName && (
-                            <FlatInputNumber id={`${spId}-packaging-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                              value={numberInputValue(row.packagingQtyDelivered)} disabled={locked} placeholder={`Packaging (${product.packagingUnitName})`}
-                              onChange={(value) => onRowChange(spId, 'packagingQtyDelivered', numberRowValue(value))} />
-                          )}
+                          <span className="text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>
                         </div>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <FlatDropdown id={`${spId}-payment-desktop`} options={PAYMENT_OPTIONS}
-                          value={row.paymentMethod ?? ''} disabled={locked}
-                          onChange={(value) => onRowChange(spId, 'paymentMethod', value ?? '')} size="sm" />
+                        <span className="text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === row.paymentMethod)?.label || '—'}</span>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <FlatInputNumber id={`${spId}-amt-paid-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.amtPaid)} disabled={locked} placeholder="0.00"
-                          onChange={(value) => onRowChange(spId, 'amtPaid', numberRowValue(value))} />
+                        <span className="text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))}</span>
                       </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <FlatInputNumber id={`${spId}-balance-desktop`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.balance)} disabled={locked} placeholder="0.00"
-                          onChange={(value) => onRowChange(spId, 'balance', numberRowValue(value))} />
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <FlatInputText id={`${spId}-notes-desktop`} value={row.notes ?? ''} disabled={locked}
-                          placeholder="Optional notes..." onChange={(e) => onRowChange(spId, 'notes', e.target.value)} size="sm" />
+                      <td className="py-2.5 px-2.5 text-center">
+                        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} aria-label={`Record ${product.productName} delivery`} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>
                       </td>
                     </tr>
                   );
@@ -278,115 +269,63 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                     <div className="min-w-0">
                       <p className="text-[11px] font-medium text-portal-text break-words sm:text-xs">{product.productName}</p>
                       <p className="text-[11px] text-portal-muted">
-                        GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
+                        {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
                         {product.packagingUnitName && product.packagingUnitPrice != null &&
-                          ` · GHS ${Number(product.packagingUnitPrice).toFixed(2)} / ${product.packagingUnitName}`}
+                          ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
                       </p>
                     </div>
                     <div className="shrink-0 text-right text-[11px]">
                       <span className="block text-portal-muted text-[10px] uppercase font-semibold">Planned</span>
-                      <span className="block font-mono text-portal-text font-medium">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                      {product.packagingUnitName && <span className="block font-mono text-portal-text font-medium">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                      <span className="block text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                      <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span>
                     </div>
                   </div>
 
-                  {/* Horizontal entry rows just as DataTable mobile layout */}
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                        Basic delivered ({product.basicUnitName || 'units'})
-                      </span>
-                      <div className="col-span-2 text-[11px]">
-                        <FlatInputNumber id={`${spId}-basic-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.basicQtyDelivered)} disabled={locked} placeholder="0"
-                          onChange={(value) => onRowChange(spId, 'basicQtyDelivered', numberRowValue(value))} />
-                      </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-portal-border/30 pt-2 text-[11px]">
+                    <div className="min-w-0 text-portal-text">
+                      <span>{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>
+                      <span className="block text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))} total</span>
                     </div>
-
-                    {product.packagingUnitName && (
-                      <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                        <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                          Packaging delivered ({product.packagingUnitName})
-                        </span>
-                        <div className="col-span-2 text-[11px]">
-                          <FlatInputNumber id={`${spId}-packaging-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                            value={numberInputValue(row.packagingQtyDelivered)} disabled={locked} placeholder="0"
-                            onChange={(value) => onRowChange(spId, 'packagingQtyDelivered', numberRowValue(value))} />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                        Payment
-                      </span>
-                      <div className="col-span-2 text-[11px]">
-                        <FlatDropdown id={`${spId}-payment-mobile`} options={PAYMENT_OPTIONS}
-                          value={row.paymentMethod ?? ''} disabled={locked}
-                          onChange={(value) => onRowChange(spId, 'paymentMethod', value ?? '')} size="sm" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                        Amt Paid
-                      </span>
-                      <div className="col-span-2 text-[11px]">
-                        <FlatInputNumber id={`${spId}-amt-paid-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.amtPaid)} disabled={locked} placeholder="0.00"
-                          onChange={(value) => onRowChange(spId, 'amtPaid', numberRowValue(value))} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                        Balance
-                      </span>
-                      <div className="col-span-2 text-[11px]">
-                        <FlatInputNumber id={`${spId}-balance-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
-                          value={numberInputValue(row.balance)} disabled={locked} placeholder="0.00"
-                          onChange={(value) => onRowChange(spId, 'balance', numberRowValue(value))} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
-                        Notes
-                      </span>
-                      <div className="col-span-2 text-[11px]">
-                        <FlatInputText id={`${spId}-notes-mobile`} value={row.notes ?? ''} disabled={locked}
-                          placeholder="Optional notes..." onChange={(e) => onRowChange(spId, 'notes', e.target.value)} size="sm" />
-                      </div>
-                    </div>
+                    <button type="button" className="inline-flex h-8 shrink-0 items-center gap-1 rounded border border-portal-border px-2.5 text-[11px] text-portal-text hover:border-portal-accent hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-[10px]" /> Record</button>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {!locked && hasPlanned && (
-            <div className="flex items-center justify-between sm:justify-end gap-3 mt-3 pt-1">
-              <span className="text-[11px] text-portal-muted md:hidden">
-                {isRecorded ? 'Recorded' : 'Pending'}
-              </span>
-              <FlatButton
-                variant={isRecorded ? 'outline' : 'primary'}
-                size="sm"
-                leftIcon={isRecorded ? 'pi pi-refresh' : 'pi pi-check'}
-                onClick={() => onRecord(stop)}
-                loading={recording}
-                disabled={recording}
-                className="w-full sm:w-auto"
-              >
-                {recording ? 'Saving...' : isRecorded ? 'Update Deliveries' : 'Record Deliveries'}
-              </FlatButton>
-            </div>
-          )}
         </div>
       )}
+      </>}
+      {activeStopTab === 'returns' && <div className="space-y-3">
+        {!!stop.returns?.length ? <div className="space-y-1">
+          {stop.returns.map((item) => <div key={item.returnId} className="flex items-center justify-between gap-2 text-xs text-portal-text"><span>{item.productName} · {item.basicQtyReturned} {item.basicUnitName}{item.packagingQtyReturned ? ` · ${item.packagingQtyReturned} ${item.packagingUnitName}` : ''}</span>{!locked && <FlatButton size="sm" variant="ghost" onClick={() => onVoid(stop.stopId, item.returnId)}>Void</FlatButton>}</div>)}
+        </div> : <p className="text-[11px] text-portal-muted">No returns recorded for this stop.</p>}
+        {!!queuedReturns.length && <p className="text-[11px] text-portal-muted">{queuedReturns.length} return action(s) saved on this device.</p>}
+      </div>}
           </div>
         </div>
       </div>
+
+      {editingProduct && (() => {
+        const row = rows[editingProduct.stopProductId] ?? { basicQtyDelivered: '', packagingQtyDelivered: '', paymentMethod: '', amtPaid: '', balance: '', notes: '' };
+        const calculatedTotal = calculateDeliveredAmount(editingProduct, row);
+        const paid = row.amtPaid === '' ? null : parseNumericInput(row.amtPaid);
+        const balance = paid == null || !Number.isFinite(paid) ? 0 : Math.max(0, calculatedTotal - paid);
+        const saving = recordingProduct === editingProduct.stopProductId;
+        return <FlatModal visible onHide={() => setEditingProduct(null)} title={`Record ${editingProduct.productName}`} subtitle="Delivery, payment and notes" size="md" footer={<div className="flex items-center justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => setEditingProduct(null)}>Cancel</FlatButton><FlatButton size="sm" loading={saving} disabled={saving || locked} onClick={async () => { const saved = await onRecordProduct(editingProduct); if (saved) setEditingProduct(null); }}>Save changes</FlatButton></div>}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Planned</span><span className="text-xs text-portal-text">{editingProduct.packagingUnitName && Number(editingProduct.plannedPackagingQuantity || 0) > 0 ? `${editingProduct.plannedPackagingQuantity} ${editingProduct.packagingUnitName} · ` : ''}{editingProduct.plannedBasicQuantity} {editingProduct.basicUnitName || 'basic units'}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Due</span><span className="text-xs text-portal-accent">{fmtGhs(Number(editingProduct.amountDue ?? 0))}</span></div></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FlatInputNumber id={`${editingProduct.stopProductId}-basic-driver-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />
+              {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />}
+              <FlatDropdown id={`${editingProduct.stopProductId}-payment-driver-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={row.paymentMethod} onChange={(value) => onRowChange(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={locked} size="sm" />
+              <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-driver-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.amtPaid)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={locked} />
+            </div>
+            <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedTotal)}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(balance)}</span></div></div>
+            <FlatInputText id={`${editingProduct.stopProductId}-notes-driver-modal`} label="Delivery note" value={row.notes} onChange={(event) => onRowChange(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
+          </div>
+        </FlatModal>;
+      })()}
     </div>
   );
 };
@@ -408,8 +347,9 @@ export const DriverPage: React.FC = () => {
   const { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, queuePhoto, retry, remove } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
-  const [recordingStop, setRecordingStop] = useState<string | null>(null);
+  const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
   const [assignedStopRequest, setAssignedStopRequest] = useState<FieldActionRequest | null>(null);
+  const [stopsTab, setStopsTab] = useState<'current' | 'regional'>('current');
   const [customerRequest, setCustomerRequest] = useState<FieldActionRequest | null>(null);
   const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
   const premisesPhotoCustomerIdRef = useRef<string | null>(null);
@@ -490,67 +430,29 @@ export const DriverPage: React.FC = () => {
     setDeliveryRows((prev) => ({ ...prev, [spId]: { ...prev[spId], [field]: value } }));
   }, []);
 
-  const handleRecord = useCallback(async (stop: DriverStop) => {
-    for (const p of stop.products.filter((product) => !product.isUnplanned)) {
-      const row = deliveryRows[p.stopProductId];
-      const basic = !row?.basicQtyDelivered ? null : Number(row.basicQtyDelivered);
-      const packaging = !row?.packagingQtyDelivered ? null : Number(row.packagingQtyDelivered);
-      if (basic === null && packaging === null) {
-        toast.error(`Enter a delivered quantity for "${p.productName}".`);
-        return;
-      }
-      if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) ||
-          (packaging !== null && (!p.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) {
-        toast.error(`Enter valid delivered quantities for "${p.productName}".`);
-        return;
-      }
-      if (!row.paymentMethod) {
-        toast.error(`Payment method is required for "${p.productName}".`);
-        return;
-      }
-      if (!row.amtPaid || parseFloat(row.amtPaid) < 0) {
-        toast.error(`Amount paid is required for "${p.productName}".`);
-        return;
-      }
-    }
-
-    setRecordingStop(stop.stopId);
+  const handleRecordProduct = useCallback(async (product: DriverStopProduct): Promise<boolean> => {
+    const row = deliveryRows[product.stopProductId] ?? {};
+    const basic = !row.basicQtyDelivered ? null : parseNumericInput(row.basicQtyDelivered);
+    const packaging = !row.packagingQtyDelivered ? null : parseNumericInput(row.packagingQtyDelivered);
+    if (basic === null && packaging === null) { toast.error(`Enter a delivered quantity for "${product.productName}".`); return false; }
+    if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) || (packaging !== null && (!product.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) { toast.error(`Enter valid delivered quantities for "${product.productName}".`); return false; }
+    if (!row.paymentMethod) { toast.error(`Payment method is required for "${product.productName}".`); return false; }
+    setRecordingProduct(product.stopProductId);
+    const payload = { stopProductId: product.stopProductId, basicQtyDelivered: basic ?? undefined, packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined, paymentMethod: row.paymentMethod as PaymentMethod, ...(row.amtPaid !== '' && row.amtPaid != null ? { amtPaid: parseNumericInput(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseNumericInput(row.amtPaid)) } : {}), notes: row.notes || undefined };
     try {
       if (!controlAvailable) {
-        if (!online) { toast.error('Connect to record deliveries until the updated backend is available.'); return; }
-        await treksApi.recordByDriverToken(token, { products: stop.products.filter((product) => !product.isUnplanned).map((p) => {
-          const row = deliveryRows[p.stopProductId];
-          return { stopProductId: p.stopProductId,
-            basicQtyDelivered: row.basicQtyDelivered !== '' ? Number(row.basicQtyDelivered) : undefined,
-            packagingQtyDelivered: p.packagingUnitName && row.packagingQtyDelivered !== '' ? Number(row.packagingQtyDelivered) : undefined,
-            paymentMethod: row.paymentMethod ? row.paymentMethod as PaymentMethod : undefined,
-            amtPaid: row.amtPaid ? Number(row.amtPaid) : undefined,
-            balance: row.balance ? Number(row.balance) : undefined,
-            notes: row.notes || undefined };
-        }) });
+        if (!online) { toast.error('Connect to record this delivery.'); return false; }
+        await treksApi.recordByDriverToken(token, { products: [payload] });
         resetTableData();
-        toast.success(`Stop ${stop.sequence} recorded.`);
         await refresh(true);
-        return;
+        toast.success(`${product.productName} delivery saved.`);
+      } else {
+        await enqueue('RecordDelivery', payload);
+        toast.success(`${product.productName} saved on this device.`);
       }
-      for (const p of stop.products.filter((product) => !product.isUnplanned)) {
-          const row = deliveryRows[p.stopProductId];
-          await enqueue('RecordDelivery', {
-            stopProductId: p.stopProductId,
-            basicQtyDelivered: row.basicQtyDelivered !== '' ? Number(row.basicQtyDelivered) : undefined,
-            packagingQtyDelivered: p.packagingUnitName && row.packagingQtyDelivered !== '' ? Number(row.packagingQtyDelivered) : undefined,
-            paymentMethod: row.paymentMethod  ? row.paymentMethod as PaymentMethod : undefined,
-            amtPaid:       row.amtPaid        ? parseFloat(row.amtPaid)       : undefined,
-            balance:       row.balance        ? parseFloat(row.balance)       : undefined,
-            notes:         row.notes          || undefined,
-          });
-      }
-      toast.success(`Stop ${stop.sequence} saved on this device.`);
-    } catch {
-      toast.error('Could not save delivery on this device.');
-    } finally {
-      setRecordingStop(null);
-    }
+      return true;
+    } catch { toast.error('Could not save delivery.'); return false; }
+    finally { setRecordingProduct(null); }
   }, [deliveryRows, enqueue, controlAvailable, online, token, refresh]);
 
   const handleVoid = useCallback(async (_stopId: string, returnId: string) => {
@@ -574,7 +476,7 @@ export const DriverPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-portal-canvas flex items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-sm font-semibold text-white mb-1">Field data unavailable</p>
+          <p className="text-sm font-semibold text-portal-text mb-1">Field data unavailable</p>
           <p className="text-xs text-portal-muted">{error || 'Connect once to download this trek.'}</p>
         </div>
       </div>
@@ -637,40 +539,49 @@ export const DriverPage: React.FC = () => {
           }}
           renderStopsView={() => (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
+              <div className="flex items-center gap-1 border-b border-portal-border/60">
+                <button type="button" onClick={() => setStopsTab('current')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${stopsTab === 'current' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>
+                  Current trek
+                </button>
+                <button type="button" onClick={() => setStopsTab('regional')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${stopsTab === 'regional' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>
+                  Regional treks
+                </button>
+              </div>
+
+              {stopsTab === 'current' && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
                 <div>
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
-                  <p className="text-[11px] text-portal-muted sm:text-xs">{trek.regionName} · {trek.scheduledDate}</p>
                 </div>
                 <div className="flex w-full flex-col items-stretch gap-2 pb-1 sm:w-auto sm:flex-row sm:items-center sm:pb-0">
-                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
-                    size="sm"
-                    leftIcon="pi pi-plus"
-                    className="w-full shrink-0 sm:w-auto"
-                    onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
-                  >Add walk-in stop</FlatButton>}
-                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
-                    size="sm"
-                    variant="outline"
-                    leftIcon="pi pi-check-circle"
-                    className="w-full shrink-0 sm:w-auto"
-                    disabled={!online || syncing || completingTrek}
-                    onClick={() => setCompleteDialogOpen(true)}
-                  >Complete trek</FlatButton>}
-                  <FlatButton
-                    size="sm"
-                    variant="outline"
-                    leftIcon="pi pi-download"
-                    className="w-full shrink-0 sm:w-auto"
-                    onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
-                  >
-                    Download PDF Sheet
-                  </FlatButton>
-                  <span className="hidden shrink-0 sm:inline-flex">
-                    <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
-                  </span>
+                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton size="sm" leftIcon="pi pi-plus" className="w-full shrink-0 sm:w-auto" onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}>Add additional stop</FlatButton>}
+                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton size="sm" variant="outline" leftIcon="pi pi-check-circle" className="w-full shrink-0 sm:w-auto" disabled={!online || syncing || completingTrek} onClick={() => setCompleteDialogOpen(true)}>Complete trek</FlatButton>}
+                  <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" className="w-full shrink-0 sm:w-auto" onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}>Download PDF Sheet</FlatButton>
                 </div>
-              </div>
+              </div>}
+
+              {stopsTab === 'regional' ? (
+                <FlatDataTable<RegionTrek>
+                  data={visibleTreks}
+                  columns={[
+                    { field: 'trekNumber', header: 'Trek ID', body: (item) => <span className="text-xs font-semibold text-portal-text">{item.trekNumber}</span> },
+                    { field: 'regionName', header: 'Trekking Region' },
+                    { field: 'scheduledDate', header: 'Date' },
+                    { field: 'status', header: 'Status', body: (item) => <span className={STATUS_STYLES[item.status] ?? 'text-portal-muted'}>{STATUS_LABELS[item.status] ?? item.status}</span> },
+                    { field: 'driverName', header: 'Driver' },
+                    { field: 'salesStaffName', header: 'Sales Staff', body: (item) => item.salesStaffName || '—' },
+                    { field: 'stopsCount', header: 'Stops' },
+                    { field: 'actions', header: 'Actions', body: (item) => item.status !== 'Completed' && item.status !== 'Cancelled' ? <FlatButton size="sm" variant="ghost" onClick={() => openAction('stop', item.trekId)}>Add stop</FlatButton> : null },
+                  ]}
+                  heading={`Treks in ${trek.regionName}`}
+                  headerNotes={<span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>}
+                  filterablePlaceholder="Search trek, driver or region..."
+                  enableTableFilter
+                  enablePaginator
+                  initialPageSize={10}
+                  emptyDataText="No regional treks available."
+                />
+              ) : (
+              <>
 
               {trek.isLocked && (
                 <p className="text-[11px] text-portal-muted italic border-l-2 border-portal-border pl-3">
@@ -713,13 +624,11 @@ export const DriverPage: React.FC = () => {
                         stop={stop}
                         rows={deliveryRows}
                         locked={trek.isLocked}
-                        recording={recordingStop === stop.stopId}
                         onRowChange={updateRow}
-                        onRecord={handleRecord}
+                        onRecordProduct={handleRecordProduct}
+                        recordingProduct={recordingProduct}
                         onVoid={handleVoid}
-                        onFieldAction={(kind, stopId) => kind === 'sale'
-                          ? setAssignedStopRequest({ kind: 'sale', stopId, nonce: Date.now() })
-                          : openAction(kind, undefined, stopId)}
+                        onFieldAction={(kind, stopId) => setAssignedStopRequest({ kind, stopId, nonce: Date.now() })}
                         queuedReturns={queue.filter(
                           (action) =>
                             action.type === 'RecordReturn' &&
@@ -732,7 +641,7 @@ export const DriverPage: React.FC = () => {
                       const customer = customers.find((item) => item.id === action.payload.customerId);
                       const queuedCustomer = queue.find((item) => item.type === 'RegisterCustomer' && item.clientId === action.payload.customerClientId);
                       return <div key={action.clientId} className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs sm:px-5">
-                        <span className="font-semibold text-white">{String(action.payload.sequence)}. {customer?.businessName || String(queuedCustomer?.payload.businessName || 'Walk-in customer')}</span>
+                        <span className="font-semibold text-portal-text">{String(action.payload.sequence)}. {customer?.businessName || String(queuedCustomer?.payload.businessName || 'Additional stop customer')}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-portal-accent">Saved on device · awaiting sync</span>
                           {!trek.isLocked && <FlatButton size="sm" variant="ghost" onClick={() => setAssignedStopRequest({ kind: 'sale', stopClientId: action.clientId, nonce: Date.now() })}>Unplanned sale</FlatButton>}
@@ -742,14 +651,12 @@ export const DriverPage: React.FC = () => {
                   </div>
                 )}
               </div>
+              </>
+              )}
             </div>
           )}
           renderCustomersView={() => (
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
-                <span aria-hidden="true" />
-                <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
-              </div>
               <FieldActions
                 trek={trek}
                 products={products}
@@ -818,7 +725,7 @@ export const DriverPage: React.FC = () => {
                     field: 'trekNumber',
                     header: 'Trek ID',
                     body: (item) => (
-                      <span className="font-semibold text-white">
+                      <span className="font-semibold text-portal-text">
                         {item.trekNumber}
                         {item.trekId === trek.trekId && (
                           <span className="block text-[11px] text-portal-accent">Assigned to you</span>
@@ -871,11 +778,10 @@ export const DriverPage: React.FC = () => {
           )}
           renderActionsView={() => (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-portal-border/60 pb-3">
+              <div className="border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-base font-bold text-white sm:text-lg">Field Actions</h1>
+                  <h1 className="text-base font-semibold text-portal-text sm:text-lg">Field Actions</h1>
                 </div>
-                <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
               </div>
               <FieldActions
                 trek={trek}
@@ -891,17 +797,16 @@ export const DriverPage: React.FC = () => {
           )}
           renderOfflineView={() => (
             <div className="grid grid-cols-1 gap-4">
-              <div className="flex items-center justify-between border-b border-portal-border/60 pb-3">
+              <div className="border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-base font-bold text-white sm:text-lg">Offline & Sync Center</h1>
+                  <h1 className="text-base font-semibold text-portal-text sm:text-lg">Offline & Sync Center</h1>
                   <p className="text-xs text-portal-muted">Local IndexedDB database & sync status</p>
                 </div>
-                <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
               </div>
 
               <section className="bg-portal-surface border border-portal-border/60 rounded p-4 sm:p-5 space-y-4 shadow-md">
                 <div>
-                  <h2 className="text-sm font-bold text-white">Device Database Storage</h2>
+                  <h2 className="text-sm font-semibold text-portal-text">Device Database Storage</h2>
                   <p className="text-[11px] text-portal-muted">
                     Saved in this device’s IndexedDB for complete offline use.
                   </p>
@@ -917,7 +822,7 @@ export const DriverPage: React.FC = () => {
                       key={item.label}
                       className="bg-portal-canvas/70 rounded p-3 border border-portal-border/40"
                     >
-                      <p className="text-lg font-bold text-white sm:text-xl">{item.value}</p>
+                      <p className="text-lg font-semibold text-portal-text sm:text-xl">{item.value}</p>
                       <p className="text-[11px] text-portal-muted mt-0.5">{item.label}</p>
                     </div>
                   ))}
@@ -972,7 +877,7 @@ export const DriverPage: React.FC = () => {
 
               {queue.some((action) => action.status !== 'synced') && (
                 <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-3 shadow-md">
-                  <h2 className="text-sm font-bold text-white">Local Action Queue</h2>
+                  <h2 className="text-sm font-semibold text-portal-text">Local Action Queue</h2>
                   {queue
                     .filter((action) => action.status !== 'synced')
                     .map((action) => (

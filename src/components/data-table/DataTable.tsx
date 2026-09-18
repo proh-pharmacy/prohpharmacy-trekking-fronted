@@ -729,7 +729,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
     <div
       ref={tableRootRef}
       className={cn(
-        'w-full font-sans text-white',
+        'w-full font-sans text-portal-text',
         stretchHeight ? 'flex flex-col h-full gap-4' : 'space-y-4',
         className
       )}
@@ -759,7 +759,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         <div className="bg-portal-surface border border-portal-border/60 rounded p-3 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
             {typeof heading === 'string' ? (
-              <h2 className="text-base sm:text-xl font-bold tracking-tight text-white">{heading}</h2>
+              <h2 className="text-base sm:text-xl font-semibold tracking-tight text-portal-text">{heading}</h2>
             ) : (
               heading
             )}
@@ -942,7 +942,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               column: {
                 headerCell: {
                   className:
-                    'bg-portal-canvas text-white text-xs font-bold uppercase tracking-wider py-3.5 px-4 border-b border-portal-border whitespace-nowrap text-left rounded-none',
+                    'bg-portal-canvas text-portal-muted text-xs font-medium uppercase tracking-wider py-3.5 px-4 border-b border-portal-border whitespace-nowrap text-left rounded-none',
                 },
                 bodyCell: {
                   className:
@@ -957,7 +957,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 field={col.field}
                 header={
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-bold">{col.header}</span>
+                    <span className="text-portal-muted font-medium">{col.header}</span>
                     {sortableColumns?.find((s) => s.key === col.field) && (
                       <button
                         type="button"
@@ -1013,9 +1013,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       key={col.field}
                       className="grid grid-cols-3 gap-2 items-baseline text-[11px]"
                     >
-                      <span className="font-semibold text-[10px] text-portal-muted uppercase tracking-wide">
-                        {col.header}
-                      </span>
+                      <span className="font-semibold text-[10px] text-portal-muted uppercase tracking-wide">{col.header}</span>
                       <div className="col-span-2 text-[11px] text-portal-text break-words font-normal leading-snug">
                         {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
                       </div>

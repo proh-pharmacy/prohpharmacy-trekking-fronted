@@ -29,11 +29,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
           <i className="pi pi-bars text-sm" />
         </button>
 
-        <i className="pi pi-th-large text-portal-muted text-xs hidden sm:inline-block shrink-0" />
-        <i className="pi pi-star text-portal-muted text-xs hidden sm:inline-block shrink-0" />
-        <span className="text-portal-muted font-medium hidden sm:inline-block shrink-0">Dashboards</span>
-        <span className="text-portal-border hidden sm:inline-block shrink-0">/</span>
-        <span className="text-white font-semibold capitalize truncate">
+        <span className="text-portal-text font-semibold capitalize truncate">
           {currentSection}
         </span>
       </div>

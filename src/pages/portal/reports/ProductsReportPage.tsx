@@ -97,7 +97,7 @@ export const ProductsReportPage: React.FC = () => {
       field: 'productName',
       header: 'Product',
       body: (row) => (
-        <span className="font-bold text-xs text-white">{row.productName}</span>
+        <span className="text-xs text-portal-text">{row.productName}</span>
       ),
     },
     {
@@ -141,7 +141,7 @@ export const ProductsReportPage: React.FC = () => {
       style: { width: '130px', textAlign: 'right' },
       headerStyle: { textAlign: 'right' },
       body: (row) => (
-        <span className={`font-mono text-xs font-semibold ${row.totalOutstanding > 0 ? 'text-orange-400' : 'text-portal-accent'}`}>
+        <span className={`font-mono text-xs ${row.totalOutstanding > 0 ? 'text-orange-400' : 'text-portal-accent'}`}>
           {fmtGhs(row.totalOutstanding)}
         </span>
       ),
@@ -161,7 +161,7 @@ export const ProductsReportPage: React.FC = () => {
       <div className="flex gap-3">
         <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Product Lines</p>
-          <p className="text-xs font-semibold text-white truncate">{stats.totalProductLines.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-portal-text truncate">{stats.totalProductLines.toLocaleString()}</p>
         </div>
         <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Collected</p>

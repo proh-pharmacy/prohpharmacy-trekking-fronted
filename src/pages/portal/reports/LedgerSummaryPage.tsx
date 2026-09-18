@@ -144,7 +144,7 @@ export const LedgerSummaryPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(`/portal/customers/${row.customerId}`)}
-            className="font-bold text-xs text-white hover:text-portal-accent text-left transition cursor-pointer"
+            className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
           >
             {row.businessName}
           </button>
@@ -211,7 +211,7 @@ export const LedgerSummaryPage: React.FC = () => {
         headerStyle: { textAlign: 'right' },
         body: (row) => (
           <span
-            className={`font-mono text-xs font-semibold ${
+          className={`font-mono text-xs ${
               row.currentBalance > 0 ? 'text-orange-400' : 'text-portal-accent'
             }`}
           >
@@ -234,7 +234,7 @@ export const LedgerSummaryPage: React.FC = () => {
         </div>
         <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Customers with Balance</p>
-          <p className="text-xs font-semibold text-white truncate">{stats.customersWithBalance.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-portal-text truncate">{stats.customersWithBalance.toLocaleString()}</p>
         </div>
       </div>
 

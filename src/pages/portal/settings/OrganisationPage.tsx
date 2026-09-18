@@ -248,7 +248,7 @@ export const OrganisationPage: React.FC = () => {
                   setEditingBranch(branch);
                   setBranchModalVisible(true);
                 }}
-                className="font-bold text-xs text-white hover:text-portal-accent text-left transition cursor-pointer"
+                className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
               >
                 {branch.name}
               </button>
@@ -271,7 +271,7 @@ export const OrganisationPage: React.FC = () => {
         header: 'District & Region',
         body: (branch) => (
           <div>
-            <div className="text-white font-medium text-xs">
+            <div className="text-portal-text text-xs">
               {branch.districtName || 'Unassigned'}
             </div>
             <div className="text-[11px] text-portal-muted">
@@ -345,7 +345,7 @@ export const OrganisationPage: React.FC = () => {
         field: 'name',
         header: 'District Name',
         body: (dist) => (
-          <span className="font-bold text-xs text-white">
+          <span className="text-xs text-portal-text">
             {dist.name}
           </span>
         ),
@@ -354,7 +354,7 @@ export const OrganisationPage: React.FC = () => {
         field: 'regionName',
         header: 'Parent Region',
         body: (dist) => (
-          <span className="text-white font-medium text-xs">
+          <span className="text-portal-text text-xs">
             {dist.regionName || 'Ghana'}
           </span>
         ),
@@ -380,7 +380,7 @@ export const OrganisationPage: React.FC = () => {
         field: 'name',
         header: 'Region Name',
         body: (reg) => (
-          <span className="font-bold text-xs text-white">
+          <span className="text-xs text-portal-text">
             {reg.name}
           </span>
         ),
