@@ -868,6 +868,10 @@ div.p-icon-field {
   font-family: inherit !important;
 }
 
+.driver-map-text {
+  text-shadow: 0 1px 3px var(--color-portal-canvas);
+}
+
 /* Crisp dark mode filter for OpenStreetMap raster tiles */
 .dark-tiles {
   filter: brightness(0.7) invert(1) contrast(1.8) hue-rotate(180deg) saturate(0.4);

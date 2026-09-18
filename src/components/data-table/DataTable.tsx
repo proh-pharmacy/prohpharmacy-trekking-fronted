@@ -443,27 +443,29 @@ export function FlatDataTable<TData extends Record<string, any>>({
   } = useQuery<PaginatedDataResponse<TData>>({
     queryKey,
     queryFn: () => fetchTableData(filters, pagination, debouncedSearch),
-    enabled: Boolean(dataSourceUrl || staticData),
+    enabled: Boolean(dataSourceUrl && !staticData),
   });
 
-  // Client-side filtering when static data is supplied
+  // Local arrays (including IndexedDB snapshots) are the source of truth when supplied.
+  // Derive the page on every array change instead of retaining React Query's older page.
   const resolvedTableData = useMemo(() => {
-    if (staticData && debouncedSearch.trim()) {
+    if (staticData) {
       const q = debouncedSearch.toLowerCase().trim();
-      const filtered = staticData.filter((item) =>
+      const filtered = q ? staticData.filter((item) =>
         Object.values(item).some((val) =>
           String(val).toLowerCase().includes(q)
         )
-      );
+      ) : staticData;
       const totalCount = filtered.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pagination.pageSize));
-      const start = (pagination.pageNumber - 1) * pagination.pageSize;
+      const currentPage = Math.min(pagination.pageNumber, totalPages);
+      const start = (currentPage - 1) * pagination.pageSize;
       const pageSlice = filtered.slice(start, start + pagination.pageSize);
 
       return {
         totalCount,
         totalPages,
-        currentPage: pagination.pageNumber,
+        currentPage,
         pageSize: pagination.pageSize,
         data: pageSlice,
       };

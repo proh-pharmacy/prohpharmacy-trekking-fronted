@@ -159,6 +159,7 @@ export default function App() {
                 {/* ── Driver (standalone, no auth) ── */}
                 <Route path="/driver/:token" element={<DriverPage />} />
                 <Route path="/treks/driver" element={<DriverPage />} />
+                <Route path="/treks/driver/:section" element={<DriverPage />} />
 
                 {/* ── Dev showcases ── */}
                 <Route

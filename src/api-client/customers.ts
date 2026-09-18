@@ -78,6 +78,7 @@ export interface Customer {
   registeredByName?: string;
   registeredDuringTrekId?: string | null;
   createdOffline?: boolean;
+  premisesPhotoUrl?: string | null;
   recordedAt?: string;
   createdAt: string;
   updatedAt?: string | null;
@@ -275,6 +276,17 @@ export const customersApi = {
     formData.append('file', file);
     const res = await apiClient.post(
       `/customers/${customerId}/people/${personId}/portrait`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data;
+  },
+
+  uploadPremisesPhoto: async (customerId: string, file: File): Promise<{ customerId: string; premisesPhotoUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post<{ customerId: string; premisesPhotoUrl: string }>(
+      `/customers/${customerId}/premises-photo`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );

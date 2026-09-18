@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
 import { FlatButton, FlatDropdown } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay';
-import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
+import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import {
   customersApi,
   type Customer,
@@ -86,6 +86,33 @@ export const CustomerDetailPage: React.FC = () => {
   // ── Customer state ─────────────────────────────────────────────────
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingPremisesPhoto, setUploadingPremisesPhoto] = useState(false);
+  const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePremisesPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !customerId) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Choose a JPEG, PNG, or WebP photo.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Premises photo must be 5 MB or smaller.');
+      return;
+    }
+    setUploadingPremisesPhoto(true);
+    try {
+      const result = await customersApi.uploadPremisesPhoto(customerId, file);
+      setCustomer((current) => current ? { ...current, premisesPhotoUrl: result.premisesPhotoUrl } : current);
+      resetTableData();
+      toast.success('Premises photo uploaded.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.response?.data?.detail || 'Could not upload premises photo.');
+    } finally {
+      setUploadingPremisesPhoto(false);
+    }
+  };
 
   // ── Ledger totals (populated via dataMapper side effect) ───────────
   const [totals, setTotals] = useState({ totalDebits: 0, totalCredits: 0, currentBalance: 0 });
@@ -403,6 +430,31 @@ export const CustomerDetailPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <section className="bg-portal-surface border border-portal-border/60 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xs font-semibold text-white">Business premises</h2>
+            <p className="mt-1 text-[11px] text-portal-muted">JPEG, PNG, or WebP · up to 5 MB</p>
+          </div>
+          <FlatButton
+            size="sm"
+            variant="outline"
+            leftIcon="pi pi-camera"
+            loading={uploadingPremisesPhoto}
+            disabled={uploadingPremisesPhoto}
+            onClick={() => premisesPhotoInputRef.current?.click()}
+          >
+            {customer.premisesPhotoUrl ? 'Replace photo' : 'Upload photo'}
+          </FlatButton>
+        </div>
+        <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handlePremisesPhotoChange(event)} />
+        {customer.premisesPhotoUrl ? (
+          <a href={customer.premisesPhotoUrl} target="_blank" rel="noreferrer" className="mt-3 block w-fit">
+            <img src={customer.premisesPhotoUrl} alt={`${customer.businessName} premises`} className="h-40 max-w-full rounded object-cover" />
+          </a>
+        ) : <p className="mt-3 text-xs text-portal-muted">No premises photo uploaded.</p>}
+      </section>
 
       {/* ── Balance summary tiles ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

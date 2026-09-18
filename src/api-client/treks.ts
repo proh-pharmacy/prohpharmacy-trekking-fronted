@@ -120,6 +120,23 @@ export interface DriverStopProduct {
   balance?: number | null;
   notes?: string | null;
   deliveredAt?: string | null;
+  isUnplanned?: boolean;
+}
+
+export interface DriverReturn {
+  returnId: string;
+  productId: string;
+  productName: string;
+  basicUnitName: string | null;
+  packagingUnitName: string | null;
+  basicQtyReturned: number;
+  packagingQtyReturned: number | null;
+  basicUnitPrice: number;
+  packagingUnitPrice: number | null;
+  refundAmount: number | null;
+  refundMethod: PaymentMethod | null;
+  reason: string | null;
+  recordedAt: string;
 }
 
 export interface DriverStop {
@@ -138,6 +155,8 @@ export interface DriverStop {
   notes?: string | null;
   location?: string | null;
   products: DriverStopProduct[];
+  isWalkIn?: boolean;
+  returns?: DriverReturn[];
 }
 
 export interface DriverTrek {

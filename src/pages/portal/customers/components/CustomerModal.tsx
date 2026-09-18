@@ -115,6 +115,23 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [showPortraitViewer, setShowPortraitViewer] = useState(false);
   const portraitInputRef = useRef<HTMLInputElement>(null);
+  const [premisesPhotoFile, setPremisesPhotoFile] = useState<File | null>(null);
+  const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePremisesPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Choose a JPEG, PNG, or WebP premises photo.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Premises photo must be 5 MB or smaller.');
+      return;
+    }
+    setPremisesPhotoFile(file);
+  };
 
   const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -204,6 +221,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setShowMap(false);
       setPortraitFile(null);
       setPortraitPreview(null);
+      setPremisesPhotoFile(null);
     } else {
       setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null);
     }
@@ -324,11 +342,20 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             accuracyMetres: accuracy,
           },
         });
+        resetTableData();
         if (portraitFile && customer.primaryPerson?.id) {
           try {
             await customersApi.uploadPortrait(customer.id, customer.primaryPerson.id, portraitFile);
           } catch {
             toast.error('Customer updated but portrait upload failed.');
+          }
+        }
+        if (premisesPhotoFile) {
+          try {
+            await customersApi.uploadPremisesPhoto(customer.id, premisesPhotoFile);
+            resetTableData();
+          } catch {
+            toast.error('Customer updated but premises photo upload failed.');
           }
         }
         toast.success(`Customer "${businessName.trim()}" updated.`);
@@ -362,6 +389,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             accuracyMetres: accuracy,
           },
         });
+        resetTableData();
         if (portraitFile && created.primaryPerson?.id) {
           try {
             await customersApi.uploadPortrait(created.id, created.primaryPerson.id, portraitFile);
@@ -369,10 +397,17 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             toast.error('Customer created but portrait upload failed.');
           }
         }
+        if (premisesPhotoFile) {
+          try {
+            await customersApi.uploadPremisesPhoto(created.id, premisesPhotoFile);
+            resetTableData();
+          } catch {
+            toast.error('Customer created but premises photo upload failed.');
+          }
+        }
         toast.success(`Customer "${businessName.trim()}" created.`);
       }
 
-      resetTableData();
       onHide();
     } catch (err: any) {
       const msg =
@@ -489,6 +524,20 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             size="sm"
             maxLength={30}
           />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {customer?.premisesPhotoUrl && <img src={customer.premisesPhotoUrl} alt={`${customer.businessName} premises`} className="h-16 w-24 rounded object-cover" />}
+          <div>
+            <p className="text-[11px] font-medium text-portal-muted uppercase">Business premises photo</p>
+            <p className="text-[11px] text-portal-muted">JPEG, PNG, or WebP · up to 5 MB · optional</p>
+            {premisesPhotoFile && <p className="mt-1 text-xs text-portal-text">{premisesPhotoFile.name}</p>}
+          </div>
+          <FlatButton size="sm" variant="outline" leftIcon="pi pi-camera" onClick={() => premisesPhotoInputRef.current?.click()}>
+            {premisesPhotoFile || customer?.premisesPhotoUrl ? 'Change photo' : 'Choose photo'}
+          </FlatButton>
+          {premisesPhotoFile && <FlatButton size="sm" variant="ghost" onClick={() => setPremisesPhotoFile(null)}>Remove selection</FlatButton>}
+          <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePremisesPhotoChange} />
         </div>
 
         {/* ── Representative ─────────────────────────────────────── */}
