@@ -174,6 +174,47 @@ export function useFieldControl(token: string) {
     }
   }, [token, refresh, processPhotoQueue]);
 
+  const completeTrek = useCallback(async () => {
+    if (!navigator.onLine) throw new Error('Connect to the internet before completing the trek.');
+    if (!controlAvailableRef.current) throw new Error('The field control service is unavailable.');
+
+    // The completion endpoint finalises the ledger, so flush queued work first.
+    await sync();
+    const [pendingActions, pendingPhotos] = await Promise.all([
+      fieldStore.queue(token),
+      fieldStore.photoQueue(token),
+    ]);
+    if (pendingActions.some((action) => action.status === 'pending') || pendingPhotos.some((photo) => photo.status === 'pending')) {
+      throw new Error('Pending offline work could not be synced. Try Sync again before completing the trek.');
+    }
+
+    const completed = await fieldApi.completeTrek(token);
+    setTrek(completed);
+    await fieldStore.set(token, 'trek', completed);
+    const savedRegionTreks = (await fieldStore.get<RegionTrek[]>(token, 'regionTreks')) ?? [];
+    // Keep the in-memory list when the final sync response is temporarily
+    // incomplete, then upsert the completed trek so the regional table never
+    // disappears while the backend catches up.
+    const currentRegionTreks = regionTreks.length ? regionTreks : savedRegionTreks;
+    const completedSummary: RegionTrek = {
+      trekId: completed.trekId,
+      trekNumber: completed.trekNumber,
+      scheduledDate: completed.scheduledDate,
+      status: completed.status,
+      driverName: completed.driverName,
+      salesStaffName: completed.salesStaffName,
+      regionName: completed.regionName,
+      stopsCount: completed.stops.length,
+    };
+    const updatedRegionTreks = currentRegionTreks.some((item) => item.trekId === completed.trekId)
+      ? currentRegionTreks.map((item) => item.trekId === completed.trekId ? { ...item, ...completedSummary } : item)
+      : [...currentRegionTreks, completedSummary];
+    setRegionTreks(updatedRegionTreks);
+    await fieldStore.set(token, 'regionTreks', updatedRegionTreks);
+    resetTableData();
+    return completed;
+  }, [token, sync, regionTreks]);
+
   useEffect(() => {
     let alive = true;
     if (!token) { setError('Invalid field link.'); setLoading(false); return; }
@@ -232,5 +273,5 @@ export function useFieldControl(token: string) {
     await fieldStore.setQueue(token, next); setQueue(next);
   }, [token]);
 
-  return { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, queuePhoto, retry, remove };
+  return { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, queuePhoto, retry, remove };
 }

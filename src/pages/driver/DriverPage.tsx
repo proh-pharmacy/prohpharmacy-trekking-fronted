@@ -17,6 +17,7 @@ import { CockpitBackLink } from './control/CockpitBackLink';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
 import type { FieldCustomer, QueuedAction, RegionTrek } from './control/api';
+import { FlatModal } from '../../components/overlay/FlatModal';
 
 type DeliveryRow = {
   basicQtyDelivered: string;
@@ -392,7 +393,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, enqueue, queuePhoto, retry, remove } = useFieldControl(token);
+  const { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, queuePhoto, retry, remove } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingStop, setRecordingStop] = useState<string | null>(null);
@@ -402,6 +403,8 @@ export const DriverPage: React.FC = () => {
   const premisesPhotoCustomerIdRef = useRef<string | null>(null);
   const [uploadingCustomerPhotoId, setUploadingCustomerPhotoId] = useState<string | null>(null);
   const [uploadingPortraitId, setUploadingPortraitId] = useState<string | null>(null);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [completingTrek, setCompletingTrek] = useState(false);
   const handleFieldPremisesPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -454,6 +457,19 @@ export const DriverPage: React.FC = () => {
   } : null;
   const openAction = (kind: FieldActionKind, trekId?: string, stopId?: string) => {
     navigate(driverHref('actions', { kind, ...(trekId && { trekId }), ...(stopId && { stopId }), nonce: String(Date.now()) }));
+  };
+
+  const handleCompleteTrek = async () => {
+    setCompletingTrek(true);
+    try {
+      await completeTrek();
+      setCompleteDialogOpen(false);
+      toast.success('Trek completed and ledger synced.');
+    } catch (completionError) {
+      toast.error(completionError instanceof Error ? completionError.message : 'The trek could not be completed.');
+    } finally {
+      setCompletingTrek(false);
+    }
   };
 
   useEffect(() => { if (trek) setDeliveryRows(initRows(trek)); }, [trek]);
@@ -615,11 +631,18 @@ export const DriverPage: React.FC = () => {
                   <p className="text-xs text-portal-muted">{trek.regionName} · {trek.scheduledDate}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!trek.isLocked && <FlatButton
+                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
                     size="sm"
                     leftIcon="pi pi-plus"
                     onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
                   >Add walk-in stop</FlatButton>}
+                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
+                    size="sm"
+                    variant="outline"
+                    leftIcon="pi pi-check-circle"
+                    disabled={!online || syncing || completingTrek}
+                    onClick={() => setCompleteDialogOpen(true)}
+                  >Complete trek</FlatButton>}
                   <FlatButton
                     size="sm"
                     variant="outline"
@@ -997,6 +1020,28 @@ export const DriverPage: React.FC = () => {
           )}
         />
       </div>
+      <FlatModal
+        visible={completeDialogOpen}
+        onHide={() => { if (!completingTrek) setCompleteDialogOpen(false); }}
+        title="Complete trek"
+        size="sm"
+        footer={
+          <>
+            <FlatButton size="sm" variant="ghost" disabled={completingTrek} onClick={() => setCompleteDialogOpen(false)}>
+              Cancel
+            </FlatButton>
+            <FlatButton size="sm" variant="primary" loading={completingTrek} onClick={() => void handleCompleteTrek()}>
+              Complete trek
+            </FlatButton>
+          </>
+        }
+      >
+        <p className="text-sm text-portal-text">
+          This will sync any pending field actions, post the final ledger entries, and lock the trek. You cannot add stops, deliveries, sales, or returns afterwards.
+        </p>
+        {!online && <p className="mt-3 text-xs text-yellow-400">Connect to the internet before completing this trek.</p>}
+        {pendingCount > 0 && <p className="mt-3 text-xs text-portal-muted">{pendingCount} pending item{pendingCount === 1 ? '' : 's'} will be synced first.</p>}
+      </FlatModal>
     </div>
   );
 };

@@ -22,9 +22,12 @@ export default defineConfig({
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 5 * 60, // 5 minutes
+                // Keep the last successful field responses available through
+                // a multi-day trek in areas without reliable connectivity.
+                // The driver control store remains the primary offline source.
+                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
               },
-              networkTimeoutSeconds: 10,
+              networkTimeoutSeconds: 5,
               cacheableResponse: {
                 statuses: [0, 200],
               },

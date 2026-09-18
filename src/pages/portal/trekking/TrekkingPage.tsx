@@ -94,7 +94,7 @@ export const TrekkingPage: React.FC = () => {
     pageNumber: payload.pageNumber || 1,
     pageSize:   payload.pageSize   || 10,
     search:     payload.search     || undefined,
-    sort:       payload.sort       || 'scheduledDate_desc',
+    sort:       payload.sort       || 'updatedAt_desc',
     ...(payload.status     ? { status:        payload.status }     : {}),
     ...(payload.regionId   ? { regionId:      payload.regionId }   : {}),
     ...(payload.branchId   ? { branchId:      payload.branchId }   : {}),

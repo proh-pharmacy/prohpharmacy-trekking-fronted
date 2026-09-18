@@ -174,6 +174,10 @@ export const fieldApi = {
     const response = await publicApi.get<DriverTrek>(path(token, '/offline/trek'));
     return response.data;
   },
+  completeTrek: async (token: string): Promise<DriverTrek> => {
+    const response = await publicApi.post<DriverTrek>(path(token, '/complete'));
+    return response.data;
+  },
   getLegacyTrek: (token: string) => treksApi.getByDriverToken(token),
   sync: async (token: string, actions: QueuedAction[]): Promise<SyncResult[]> => {
     const response = await publicApi.post<{ results: SyncResult[] }>(path(token, '/sync'), {
