@@ -73,7 +73,7 @@ export const FlatModal: React.FC<FlatModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 select-none animate-fadeIn"
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6 select-none animate-fadeIn"
     >
       {/* Dark Obsidian Backdrop with Soft Blur */}
       <div

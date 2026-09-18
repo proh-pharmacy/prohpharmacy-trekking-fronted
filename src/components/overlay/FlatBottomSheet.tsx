@@ -65,7 +65,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end justify-center select-none"
+      className="fixed inset-0 z-[2000] flex items-end justify-center select-none"
     >
       {/* Dark Obsidian Backdrop */}
       <div

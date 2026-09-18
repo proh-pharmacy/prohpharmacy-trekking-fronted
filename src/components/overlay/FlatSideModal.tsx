@@ -79,7 +79,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex overflow-hidden select-none"
+      className="fixed inset-0 z-[2000] flex overflow-hidden select-none"
     >
       {/* Dark Obsidian Backdrop */}
       <div
