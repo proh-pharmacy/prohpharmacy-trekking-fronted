@@ -68,16 +68,14 @@ function NavRailButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`group relative flex h-[72px] w-full flex-col items-center justify-center gap-1 px-0.5 text-center transition-all sm:h-[94px] sm:gap-1.5 sm:px-1 ${
-        active
+      className={`group relative flex h-[72px] w-full flex-col items-center justify-center gap-1 px-0.5 text-center transition-all sm:h-[94px] sm:gap-1.5 sm:px-1 ${active
           ? 'bg-portal-surface/90 text-white'
           : 'text-portal-muted hover:bg-white/[0.04] hover:text-portal-text'
-      }`}
+        }`}
     >
       <i
-        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 sm:text-2xl ${
-          active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
-        }`}
+        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 sm:text-2xl ${active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
+          }`}
         aria-hidden="true"
       />
       <span className="text-[9px] font-semibold leading-tight tracking-wide sm:text-[11px]">{label}</span>
@@ -110,11 +108,10 @@ function ActionDrawerLink({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[40px] w-full items-center justify-between rounded px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${
-        danger
+      className={`flex min-h-[40px] w-full items-center justify-between rounded px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${danger
           ? 'text-red-accent hover:bg-red-500/10'
           : 'text-portal-text hover:bg-white/[0.07] hover:text-white'
-      }`}
+        }`}
     >
       <span className="flex items-center gap-2.5">
         <i className={`pi ${icon} w-4 text-center text-sm`} aria-hidden="true" />
@@ -336,11 +333,10 @@ export function DriverDashboard({
               aria-expanded={moreOpen}
               aria-controls="desktop-action-drawer"
               title="More actions"
-              className={`group flex h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded transition-all ${
-                moreOpen
+              className={`group flex h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded transition-all ${moreOpen
                   ? 'bg-portal-accent/20 text-portal-accent'
                   : 'text-portal-muted hover:bg-white/[0.05] hover:text-white'
-              }`}
+                }`}
             >
               <i className="pi pi-ellipsis-h text-base transition-transform group-hover:scale-110" />
               <span className="text-[9px] font-semibold">More</span>
@@ -351,9 +347,8 @@ export function DriverDashboard({
           <div
             id="desktop-action-drawer"
             aria-hidden={!moreOpen}
-            className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${
-              moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
-            }`}
+            className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
+              }`}
           >
             <div className="mb-2.5 flex items-center justify-between border-b border-portal-border/50 pb-2 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
               <span className="flex items-center gap-1.5 text-white">
@@ -647,7 +642,7 @@ export function DriverDashboard({
                     <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 sm:text-base">Weather</h3>
                     {weather && (
                       <span className="text-[10px] uppercase font-semibold text-portal-muted tracking-wider">
-                        Live Telemetry
+
                       </span>
                     )}
                   </div>
@@ -854,7 +849,7 @@ export function DriverDashboard({
               </div>
 
               <div className="relative h-[min(65vh,640px)] min-h-[360px] bg-portal-canvas sm:min-h-[440px]">
-                  <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive customerPins={mappedCustomers} />
+                <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive customerPins={mappedCustomers} />
                 {!mapAvailable && !online && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-portal-canvas/85 p-5 text-center text-xs text-portal-text">
                     Map not saved on this device. Connect and download it from Offline & sync.

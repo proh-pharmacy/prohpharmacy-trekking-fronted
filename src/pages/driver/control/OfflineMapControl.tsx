@@ -8,18 +8,18 @@ export function OfflineMapControl({ regionName, online }: { regionName: string; 
   const [downloading, setDownloading] = useState(false);
   useEffect(() => {
     let active = true;
-    const update = () => void isOfflineMapSaved().then((value) => { if (active) setSaved(value); });
+    const update = () => void isOfflineMapSaved(regionName).then((value) => { if (active) setSaved(value); });
     update();
     window.addEventListener('field-map-saved', update);
     return () => { active = false; window.removeEventListener('field-map-saved', update); };
-  }, []);
+  }, [regionName]);
 
   async function download() {
     setDownloading(true);
     try {
-      await downloadOfflineMap();
+      const mapType = await downloadOfflineMap(regionName);
       setSaved(true);
-      toast.success('Offline map saved on this device.');
+      toast.success(mapType === 'regional' ? `${regionName} offline map saved on this device.` : 'Regional map unavailable; Ghana fallback map saved.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Map download failed.');
     } finally {
@@ -30,7 +30,7 @@ export function OfflineMapControl({ regionName, online }: { regionName: string; 
   return <section className="bg-portal-surface border border-portal-border/60 rounded p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
     <div>
       <h2 className="text-sm font-bold text-white">Offline map</h2>
-      <p className="text-[11px] text-portal-muted mt-1">Ghana map for the {regionName} trek card · about 2.7 MB</p>
+      <p className="text-[11px] text-portal-muted mt-1">High-detail {regionName} map when available; Ghana fallback otherwise.</p>
       <p className={`text-[11px] mt-1 ${saved ? 'text-portal-accent' : 'text-portal-muted'}`}>{saved ? 'Saved on this device' : 'Download once while online'}</p>
     </div>
     <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" loading={downloading} disabled={!online || downloading} onClick={() => void download()}>{saved ? 'Update map' : 'Download map'}</FlatButton>

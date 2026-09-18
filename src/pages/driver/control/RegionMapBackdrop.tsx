@@ -72,7 +72,7 @@ export function RegionMapBackdrop({ regionName, onReady, interactive = false, cu
     let map: L.Map | null = null;
     const key = regionName.toLowerCase().replace(/\s+region\s*$/, '').trim();
     const centre = REGION_CENTRES[key] ?? [7.9, -1.05];
-    void getOfflineMap().then((blob) => {
+    void getOfflineMap(regionName).then((blob) => {
       if (cancelled || !blob || !container.current) return;
       map = L.map(container.current, {
         center: centre, zoom: 8, minZoom: 6, maxZoom: 9,
@@ -80,6 +80,10 @@ export function RegionMapBackdrop({ regionName, onReady, interactive = false, cu
         dragging: interactive, scrollWheelZoom: false, doubleClickZoom: interactive,
         boxZoom: interactive, keyboard: interactive, touchZoom: interactive,
       });
+      // Keep pinch gestures inside the map instead of letting the browser
+      // zoom the entire driver page.
+      map.getContainer().style.touchAction = interactive ? 'none' : 'auto';
+      map.getContainer().style.overscrollBehavior = 'contain';
       const archive = new PMTiles(new FileSource(new File([blob], 'ghana-z9.pmtiles')));
       // protomaps-leaflet uses Leaflet's global L when creating its layer.
       Object.assign(window, { L });
@@ -101,5 +105,5 @@ export function RegionMapBackdrop({ regionName, onReady, interactive = false, cu
     };
   }, [regionName, onReady, interactive, customerPins]);
 
-  return <div ref={container} aria-hidden={!interactive} className={`absolute inset-0 ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} />;
+  return <div ref={container} aria-hidden={!interactive} className={`absolute inset-0 ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ touchAction: interactive ? 'none' : 'auto' }} />;
 }
