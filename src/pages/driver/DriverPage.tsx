@@ -115,19 +115,19 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
           <span className="shrink-0 text-[11px] font-bold text-portal-muted">
             {stop.sequence}.
           </span>
-          <span className="min-w-0 truncate text-[13px] font-semibold text-white sm:text-sm">{stop.customerName}</span>
+          <span className="min-w-0 truncate text-[13px] font-medium text-portal-text sm:text-sm">{stop.customerName}</span>
           <span className="w-px h-3.5 bg-portal-border shrink-0" />
           <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
           {isRecorded && (
             <>
               <span className="hidden w-px h-3.5 bg-portal-border shrink-0 sm:inline" />
-              <span className="shrink-0 text-[11px] text-portal-accent flex items-center gap-1">
+                <span className="shrink-0 text-[11px] text-portal-muted flex items-center gap-1">
                 <i className="pi pi-check text-[10px]" />
                 <span>Recorded</span>
               </span>
             </>
           )}
-          {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-accent md:inline">Walk-in</span>}
+          {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Walk-in</span>}
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
@@ -202,7 +202,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   return (
                     <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="block font-medium text-white">{product.productName}</span>
+                        <span className="block font-medium text-portal-text">{product.productName}</span>
                         <span className="block text-[11px] text-portal-muted">
                           GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
                           {product.packagingUnitName && product.packagingUnitPrice != null &&
@@ -210,8 +210,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                         </span>
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <span className="block font-mono text-portal-accent font-semibold">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                        {product.packagingUnitName && <span className="block font-mono text-portal-accent font-semibold">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                        <span className="block font-mono text-portal-text font-medium">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                        {product.packagingUnitName && <span className="block font-mono text-portal-text font-medium">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
                       </td>
                       <td className="py-2.5 px-2.5 whitespace-nowrap">
                         <div className="space-y-1">
@@ -264,7 +264,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                   {/* Product title and planned quantities */}
                   <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold text-white break-words sm:text-xs">{product.productName}</p>
+                      <p className="text-[11px] font-medium text-portal-text break-words sm:text-xs">{product.productName}</p>
                       <p className="text-[11px] text-portal-muted">
                         GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
                         {product.packagingUnitName && product.packagingUnitPrice != null &&
@@ -273,8 +273,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                     </div>
                     <div className="shrink-0 text-right text-[11px]">
                       <span className="block text-portal-muted text-[10px] uppercase font-semibold">Planned</span>
-                      <span className="block font-mono text-portal-accent font-bold">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                      {product.packagingUnitName && <span className="block font-mono text-portal-accent font-bold">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
+                      <span className="block font-mono text-portal-text font-medium">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
+                      {product.packagingUnitName && <span className="block font-mono text-portal-text font-medium">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
                     </div>
                   </div>
 
@@ -627,7 +627,7 @@ export const DriverPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-sm font-bold text-white sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
+                  <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                   <p className="text-[11px] text-portal-muted sm:text-xs">{trek.regionName} · {trek.scheduledDate}</p>
                 </div>
                 <div className="flex w-full flex-col items-stretch gap-2 pb-1 sm:w-auto sm:flex-row sm:items-center sm:pb-0">
@@ -683,7 +683,7 @@ export const DriverPage: React.FC = () => {
 
               <div id="assigned-stops" className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
-                  <span className="text-sm font-bold text-white">
+                  <span className="text-sm font-semibold text-portal-text">
                     Stops Ledger <span className="text-portal-muted font-normal text-xs ml-1">({sortedStops.length + queuedStops.length})</span>
                   </span>
                   <span className="text-xs text-portal-accent font-medium">
@@ -755,7 +755,7 @@ export const DriverPage: React.FC = () => {
               <FlatDataTable<CustomerListRow>
                 data={customerRows}
                 columns={[
-                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-semibold text-white">{item.businessName}</span> },
+                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-normal text-portal-accent">{item.businessName}</span> },
                   { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
                   { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-white">{item.primaryPhoneNumber}</a> },
@@ -765,7 +765,7 @@ export const DriverPage: React.FC = () => {
                     const longitude = item.longitude ?? item.primaryLocation?.longitude;
                     const accuracy = item.accuracyMetres ?? item.primaryLocation?.accuracyMetres;
                     return latitude != null && longitude != null
-                      ? <span className="text-[11px] text-portal-accent" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
+                      ? <span className="text-[11px] text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
                       : <span className="text-[11px] text-portal-muted">No GPS captured</span>;
                   } },
                   { field: 'premisesPhotoUrl', header: 'Premises photo', body: (item) => <div className="flex items-center gap-2">

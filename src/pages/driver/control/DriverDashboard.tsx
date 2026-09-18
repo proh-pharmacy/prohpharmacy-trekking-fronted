@@ -157,6 +157,7 @@ export function DriverDashboard({
   const [moreOpen, setMoreOpen] = useState(false);
   const [confirmSos, setConfirmSos] = useState(false);
   const [loadedMapRegion, setLoadedMapRegion] = useState<string | null>(null);
+  const [mapCustomerScope, setMapCustomerScope] = useState<'trek' | 'region'>('trek');
 
   const mapAvailable = loadedMapRegion === trek.regionName;
   const recorded = trek.stops.filter(isStopRecorded).length;
@@ -167,11 +168,20 @@ export function DriverDashboard({
   const lastStop = sortedStops[sortedStops.length - 1];
   const trekCustomerNames = new Set(trek.stops.map((stop) => stop.customerName.trim().toLowerCase()));
   const trekCustomers = customers.filter((customer) => trekCustomerNames.has(customer.businessName.trim().toLowerCase()));
-  const mapCustomers = (trekCustomers.length > 0 ? trekCustomers : customers)
+  const mappedCustomers = (mapCustomerScope === 'trek' ? trekCustomers : customers)
     .flatMap((customer) => {
       const latitude = customer.latitude ?? customer.primaryLocation?.latitude;
       const longitude = customer.longitude ?? customer.primaryLocation?.longitude;
-      return latitude != null && longitude != null ? [{ id: customer.id, businessName: customer.businessName, primaryPhoneNumber: customer.primaryPhoneNumber, latitude, longitude }] : [];
+      return latitude != null && longitude != null ? [{
+        id: customer.id,
+        businessName: customer.businessName,
+        primaryPhoneNumber: customer.primaryPhoneNumber,
+        customerType: customer.customerType,
+        regionName: customer.regionName,
+        primaryContactPortraitUrl: customer.portraitUrl,
+        latitude,
+        longitude,
+      }] : [];
     });
 
   // Real telemetry metrics from device & API (zero fake fallbacks)
@@ -820,6 +830,22 @@ export function DriverDashboard({
                   <h1 className="mt-0.5 text-base font-bold text-white sm:text-lg">{trek.regionName} Region</h1>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                  <div className="flex items-center rounded border border-portal-border/60 bg-portal-canvas/60 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setMapCustomerScope('trek')}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'trek' ? 'bg-portal-accent text-portal-canvas' : 'text-portal-muted hover:text-white'}`}
+                    >
+                      Current trek ({trekCustomers.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMapCustomerScope('region')}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'region' ? 'bg-portal-accent text-portal-canvas' : 'text-portal-muted hover:text-white'}`}
+                    >
+                      All customers ({customers.length})
+                    </button>
+                  </div>
                   <span className="text-[11px] text-portal-text">
                     {recorded} of {total} stops recorded
                   </span>
@@ -828,7 +854,7 @@ export function DriverDashboard({
               </div>
 
               <div className="relative h-[min(65vh,640px)] min-h-[360px] bg-portal-canvas sm:min-h-[440px]">
-                  <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive customerPins={mapCustomers} />
+                  <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} interactive customerPins={mappedCustomers} />
                 {!mapAvailable && !online && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-portal-canvas/85 p-5 text-center text-xs text-portal-text">
                     Map not saved on this device. Connect and download it from Offline & sync.

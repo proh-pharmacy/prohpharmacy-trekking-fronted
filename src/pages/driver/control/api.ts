@@ -19,6 +19,7 @@ export interface FieldCustomer {
   businessName: string;
   primaryPhoneNumber: string;
   customerType?: string;
+  regionName?: string | null;
   primaryContactName?: string;
   primaryPersonId?: string | null;
   portraitUrl?: string | null;

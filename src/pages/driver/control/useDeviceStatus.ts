@@ -14,6 +14,69 @@ export type Weather = {
 interface PhoneAddress { label: string; latitude: number; longitude: number; resolvedAt: string }
 const WEATHER_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined;
 
+function describeWeatherCode(code: number): { condition: string; description: string } {
+  if (code === 0) return { condition: 'Clear', description: 'clear sky' };
+  if ([1, 2].includes(code)) return { condition: 'Clouds', description: 'partly cloudy' };
+  if (code === 3) return { condition: 'Clouds', description: 'overcast' };
+  if ([45, 48].includes(code)) return { condition: 'Fog', description: 'foggy' };
+  if ([51, 53, 55, 56, 57].includes(code)) return { condition: 'Drizzle', description: 'light drizzle' };
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { condition: 'Rain', description: 'rain showers' };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { condition: 'Snow', description: 'snow showers' };
+  if ([95, 96, 99].includes(code)) return { condition: 'Thunderstorm', description: 'thunderstorms' };
+  return { condition: 'Unknown', description: 'current conditions' };
+}
+
+async function fetchWeather(latitude: number, longitude: number): Promise<Weather | null> {
+  if (WEATHER_KEY) {
+    try {
+      const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude), appid: WEATHER_KEY, units: 'metric' });
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?${params}`);
+      if (response.ok) {
+        const data = await response.json() as {
+          main?: { temp?: number; humidity?: number };
+          wind?: { speed?: number };
+          weather?: { description?: string; main?: string }[];
+          clouds?: { all?: number };
+        };
+        if (data.main?.temp != null) {
+          return {
+            temperature: data.main.temp,
+            description: data.weather?.[0]?.description ?? 'Current conditions',
+            condition: data.weather?.[0]?.main ?? 'Sunny',
+            humidity: data.main.humidity,
+            windSpeed: data.wind?.speed != null ? Math.round(data.wind.speed * 3.6) : undefined,
+            precipitation: data.clouds?.all,
+          };
+        }
+      }
+    } catch {
+      // Fall through to the keyless provider when OpenWeather is unavailable.
+    }
+  }
+
+  const params = new URLSearchParams({
+    latitude: String(latitude), longitude: String(longitude),
+    current: 'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m',
+    timezone: 'auto',
+  });
+  const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+  if (!response.ok) return null;
+  const data = await response.json() as {
+    current?: { temperature_2m?: number; relative_humidity_2m?: number; precipitation?: number; weather_code?: number; wind_speed_10m?: number };
+  };
+  const current = data.current;
+  if (current?.temperature_2m == null) return null;
+  const description = describeWeatherCode(current.weather_code ?? -1);
+  return {
+    temperature: current.temperature_2m,
+    description: description.description,
+    condition: description.condition,
+    humidity: current.relative_humidity_2m,
+    windSpeed: current.wind_speed_10m,
+    precipitation: current.precipitation,
+  };
+}
+
 function currentPosition(): Promise<GeolocationPosition | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) { resolve(null); return; }
@@ -95,36 +158,23 @@ export function useDeviceStatus(token: string) {
       setLastFix(fix);
       if (!useCached) await fieldStore.set(token, 'lastFix', fix);
       if (!useCached) void resolvePhoneAddress(fix);
-      await fieldApi.reportLocation(token, fix);
-      setLocationError(null);
-      await refreshDevice();
-      if (WEATHER_KEY && !useCached && Date.now() - weatherFetchedAt.current > 10 * 60_000) {
+
+      // Weather is independent of the field backend. Fetch it before reporting
+      // GPS so a temporary device or telemetry error does not hide weather.
+      if (!useCached && Date.now() - weatherFetchedAt.current > 10 * 60_000) {
         try {
-          const params = new URLSearchParams({ lat: String(fix.latitude), lon: String(fix.longitude), appid: WEATHER_KEY, units: 'metric' });
-          const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?${params}`);
-          if (response.ok) {
-            const data = await response.json() as {
-              main?: { temp?: number; humidity?: number };
-              wind?: { speed?: number };
-              weather?: { description?: string; main?: string }[];
-              clouds?: { all?: number };
-            };
-            if (data.main?.temp != null) {
-              const nextWeather: Weather = {
-                temperature: data.main.temp,
-                description: data.weather?.[0]?.description ?? 'Current conditions',
-                condition: data.weather?.[0]?.main ?? 'Sunny',
-                humidity: data.main.humidity ?? 30,
-                windSpeed: data.wind?.speed != null ? Math.round(data.wind.speed * 3.6) : 6,
-                precipitation: data.clouds?.all ?? 10,
-              };
-              setWeather(nextWeather);
-              weatherFetchedAt.current = Date.now();
-              await fieldStore.set(token, 'weather', nextWeather);
-            }
+          const nextWeather = await fetchWeather(fix.latitude, fix.longitude);
+          if (nextWeather) {
+            setWeather(nextWeather);
+            weatherFetchedAt.current = Date.now();
+            await fieldStore.set(token, 'weather', nextWeather);
           }
         } catch { /* Weather is optional and never blocks field work. */ }
       }
+
+      await fieldApi.reportLocation(token, fix);
+      setLocationError(null);
+      await refreshDevice();
     } catch { setLocationError('Location could not be sent. The latest fix is saved on this device.'); }
     finally { setReporting(false); }
   }, [token, refreshDevice, resolvePhoneAddress]);

@@ -15,11 +15,55 @@ const REGION_CENTRES: Record<string, [number, number]> = {
   'western north': [6.3, -2.85],
 };
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+  }[character] || character));
+}
+
+function customerInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  return words.length === 1 ? words[0].slice(0, 2).toUpperCase() : `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+function makeCustomerPin(pin: {
+  businessName: string;
+  primaryContactPortraitUrl?: string | null;
+}): L.DivIcon {
+  const portrait = pin.primaryContactPortraitUrl ? escapeHtml(pin.primaryContactPortraitUrl) : null;
+  const content = portrait
+    ? `<img src="${portrait}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />`
+    : `<span style="font-size:10px;font-weight:700;color:#fff;font-family:system-ui,sans-serif;line-height:1;">${escapeHtml(customerInitials(pin.businessName))}</span>`;
+  return L.divIcon({
+    className: 'customer-pin-icon',
+    html: `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;background:#15803d;border:2px solid #f0883e;box-shadow:0 2px 8px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">${content}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -17],
+  });
+}
+
+function customerPopup(pin: {
+  businessName: string;
+  primaryPhoneNumber?: string;
+  customerType?: string | null;
+  regionName?: string | null;
+  latitude: number;
+  longitude: number;
+}): string {
+  const businessName = escapeHtml(pin.businessName);
+  const phone = pin.primaryPhoneNumber ? escapeHtml(pin.primaryPhoneNumber) : '';
+  const type = pin.customerType ? escapeHtml(pin.customerType.replace(/([A-Z])/g, ' $1').trim()) : '';
+  const region = pin.regionName ? escapeHtml(pin.regionName) : '';
+  return `<div style="min-width:180px;font-size:13px;line-height:1.5;padding:10px 12px;"><p style="font-weight:700;margin-bottom:4px;color:#ffffff;">${businessName}</p>${type ? `<p style="color:#adbac7;margin-bottom:2px;font-size:12px;">${type}</p>` : ''}${phone ? `<p style="color:#adbac7;margin-bottom:2px;font-size:12px;">${phone}</p>` : ''}${region ? `<p style="color:#768390;font-size:11px;margin-bottom:6px;">${region}</p>` : ''}<a href="https://www.google.com/maps?q=${pin.latitude},${pin.longitude}" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:10px;text-align:center;padding:6px 8px;color:#41cc84;background:rgba(65,204,132,.15);border:1px solid rgba(65,204,132,.4);border-radius:4px;text-decoration:none;font-size:11px;font-weight:600;">Open in Google Maps</a></div>`;
+}
+
 export function RegionMapBackdrop({ regionName, onReady, interactive = false, customerPins = [] }: {
   regionName: string;
   onReady: (regionName: string) => void;
   interactive?: boolean;
-  customerPins?: Array<{ id: string; businessName: string; primaryPhoneNumber?: string; latitude: number; longitude: number }>;
+  customerPins?: Array<{ id: string; businessName: string; primaryPhoneNumber?: string; customerType?: string | null; regionName?: string | null; primaryContactPortraitUrl?: string | null; latitude: number; longitude: number }>;
 }) {
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -44,13 +88,9 @@ export function RegionMapBackdrop({ regionName, onReady, interactive = false, cu
       layer.addTo(map);
       const markers = customerPins
         .filter((pin) => Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude))
-        .map((pin) => L.circleMarker([pin.latitude, pin.longitude], {
-          radius: 7,
-          color: 'var(--color-red-accent)',
-          fillColor: 'var(--color-red-accent)',
-          fillOpacity: 0.9,
-          weight: 2,
-        }).bindPopup(`<strong>${pin.businessName}</strong>${pin.primaryPhoneNumber ? `<br>${pin.primaryPhoneNumber}` : ''}`).addTo(map!));
+        .map((pin) => L.marker([pin.latitude, pin.longitude], {
+          icon: makeCustomerPin(pin),
+        }).bindPopup(customerPopup(pin)).addTo(map!));
       if (interactive && markers.length > 0) {
         map.fitBounds(L.latLngBounds(markers.map((marker) => marker.getLatLng())), { padding: [40, 40], maxZoom: 12 });
       }
