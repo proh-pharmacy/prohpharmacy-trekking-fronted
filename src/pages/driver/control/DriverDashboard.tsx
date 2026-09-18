@@ -162,13 +162,16 @@ export function DriverDashboard({
   const remaining = Math.max(0, total - recorded);
   const progress = total ? Math.round((recorded / total) * 100) : 0;
   const sortedStops = [...trek.stops].sort((a, b) => a.sequence - b.sequence);
+  const nextStop = sortedStops.find((stop) => !isStopRecorded(stop));
   const lastStop = sortedStops[sortedStops.length - 1];
   const trekCustomerNames = new Set(trek.stops.map((stop) => stop.customerName.trim().toLowerCase()));
   const trekCustomers = customers.filter((customer) => trekCustomerNames.has(customer.businessName.trim().toLowerCase()));
+  const stopCoordinates = new Map(trek.stops.map((stop) => [stop.customerName.trim().toLowerCase(), stop]));
   const mappedCustomers = (mapCustomerScope === 'trek' ? trekCustomers : customers)
     .flatMap((customer) => {
-      const latitude = customer.latitude ?? customer.primaryLocation?.latitude;
-      const longitude = customer.longitude ?? customer.primaryLocation?.longitude;
+      const stop = stopCoordinates.get(customer.businessName.trim().toLowerCase());
+      const latitude = customer.latitude ?? customer.primaryLocation?.latitude ?? stop?.latitude;
+      const longitude = customer.longitude ?? customer.primaryLocation?.longitude ?? stop?.longitude;
       return latitude != null && longitude != null ? [{
         id: customer.id,
         businessName: customer.businessName,
@@ -440,13 +443,29 @@ export function DriverDashboard({
                     <p className="text-[11px] text-portal-muted sm:text-xs">{trek.vehicleDisplayName || trek.trekNumber}</p>
 
                     {/* Link to the assigned trek's stops */}
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                       <CockpitButton
                         icon="pi-arrow-right"
                         onClick={() => setActiveView('assigned')}
                       >
                         View Trek Stops
                       </CockpitButton>
+                      {nextStop?.latitude != null && nextStop.longitude != null && (
+                        <div className="flex min-w-0 flex-col justify-center px-1 sm:min-h-9">
+                          <span className="max-w-[15rem] truncate text-[11px] font-medium text-portal-text" title={`Next: ${nextStop.customerName}`}>
+                            Next: {nextStop.customerName}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps?q=${encodeURIComponent(`${nextStop.latitude},${nextStop.longitude}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] text-portal-muted transition-colors hover:text-portal-accent"
+                          >
+                            <i className="pi pi-map-marker text-[9px]" aria-hidden="true" />
+                            Open in Maps
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 

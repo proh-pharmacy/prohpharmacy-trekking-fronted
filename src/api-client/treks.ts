@@ -34,6 +34,9 @@ export interface TrekStop {
   districtName?: string | null;
   primaryLocationLandmark?: string | null;
   primaryLocationStreet?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMetres?: number | null;
   primaryContactName?: string | null;
   primaryContactPhone?: string | null;
   notes?: string | null;
@@ -150,6 +153,9 @@ export interface DriverStop {
   districtName?: string | null;
   primaryLocationLandmark?: string | null;
   primaryLocationStreet?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMetres?: number | null;
   primaryContactName?: string | null;
   primaryContactPhone?: string | null;
   notes?: string | null;

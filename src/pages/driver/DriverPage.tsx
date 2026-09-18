@@ -159,14 +159,26 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
           <InfoRow label="Primary Contact" value={stop.primaryContactName} />
           <InfoRow label="Contact Phone"   value={stop.primaryContactPhone} mono />
           {stop.notes && <InfoRow label="Notes" value={stop.notes} />}
+          {stop.latitude != null && stop.longitude != null && (
+            <a
+              href={`https://www.google.com/maps?q=${encodeURIComponent(`${stop.latitude},${stop.longitude}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-portal-accent hover:text-white"
+            >
+              <i className="pi pi-map-marker text-[10px]" aria-hidden="true" />
+              Open in Maps
+              {stop.accuracyMetres != null && <span className="text-portal-muted">· ±{Math.round(stop.accuracyMetres)} m</span>}
+            </a>
+          )}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
         {stop.isWalkIn && <span className="text-[11px] text-portal-accent">Walk-in stop</span>}
         {!locked && <>
-          <FlatButton size="sm" variant="ghost" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
-          <FlatButton size="sm" variant="ghost" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
+          <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
+          <FlatButton size="sm" variant="ghost" className="!border-portal-orange/40 !bg-portal-orange/10 !text-portal-orange hover:!bg-portal-orange/20" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
         </>}
       </div>
       {!!stop.returns?.length && <div className="space-y-1">
