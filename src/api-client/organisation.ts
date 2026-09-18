@@ -63,11 +63,20 @@ export interface UpdateBranchPayload {
   longitude?: number | null;
 }
 
+const unwrapCollection = <T>(value: unknown): T[] => {
+  if (Array.isArray(value)) return value as T[];
+  if (!value || typeof value !== 'object') return [];
+  const record = value as { data?: unknown; items?: unknown };
+  if (Array.isArray(record.data)) return record.data as T[];
+  if (Array.isArray(record.items)) return record.items as T[];
+  if (record.data && typeof record.data === 'object') return unwrapCollection<T>(record.data);
+  return [];
+};
+
 export const organisationApi = {
   getRegions: async (): Promise<Region[]> => {
     const res = await apiClient.get<any>('/organisation/regions?pageSize=100');
-    const payload = res.data?.data || res.data;
-    return Array.isArray(payload) ? payload : [];
+    return unwrapCollection<Region>(res.data);
   },
 
   getDistricts: async (regionId?: string): Promise<District[]> => {
@@ -75,8 +84,7 @@ export const organisationApi = {
     params.set('pageSize', '100');
     if (regionId) params.set('regionId', regionId);
     const res = await apiClient.get<any>(`/organisation/districts?${params.toString()}`);
-    const payload = res.data?.data || res.data;
-    return Array.isArray(payload) ? payload : [];
+    return unwrapCollection<District>(res.data);
   },
 
   createDistrict: async (payload: CreateDistrictPayload): Promise<District> => {

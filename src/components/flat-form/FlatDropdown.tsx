@@ -66,7 +66,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
           ${errorMessage ? '!border-red-500' : ''}
           ${className}
         `}
-        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white p-dropdown-panel-${effectiveSize} ${panelClassName}`}
+        panelClassName={`rounded shadow-2xl !z-[2100] !bg-portal-surface !border !border-portal-border !text-white p-dropdown-panel-${effectiveSize} ${panelClassName}`}
         {...props}
       />
 
