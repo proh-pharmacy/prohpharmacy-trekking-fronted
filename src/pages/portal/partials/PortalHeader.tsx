@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../context/useAuth';
 
 interface PortalHeaderProps {
   onToggleMobile?: () => void;
@@ -8,8 +9,10 @@ interface PortalHeaderProps {
 
 export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) => {
   const location = useLocation();
+  const { user } = useAuth();
 
   const currentSection = location.pathname.replace('/portal/', '') || 'Overview';
+  const workspaceName = user?.branchName || 'Current workspace';
 
   return (
     <header className="h-14 bg-portal-canvas border-b border-portal-border/60 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20">
@@ -49,7 +52,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
         {/* Refresh Icon */}
         <button
           type="button"
-          onClick={() => toast.success('Feed synced with Ashaiman Hub')}
+          onClick={() => toast.success(`Feed synced with ${workspaceName}`)}
           className="p-1.5 text-portal-muted hover:text-white rounded transition cursor-pointer"
           title="Refresh Sync"
         >
@@ -67,9 +70,9 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
           <span className="absolute top-1 right-1 w-2 h-2 bg-portal-accent rounded-full shadow-[0_0_6px_var(--color-portal-accent)]" />
         </button>
 
-        {/* Hub Badge */}
+        {/* Current branch/workspace */}
         <div className="hidden sm:flex items-center px-2.5 py-1 bg-portal-surface border border-portal-border text-[11px] font-medium text-portal-text rounded">
-          <span>Ashaiman Regional Hub</span>
+          <span>{workspaceName}</span>
         </div>
       </div>
     </header>

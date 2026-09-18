@@ -268,7 +268,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
           </div>
         )}
 
-        {(!stop || editProducts) && <div>
+        {(!stop || editProducts) && <div className="rounded border border-portal-border/50 bg-portal-canvas/30 p-3">
           {stop && (
             <div className="flex items-center justify-between gap-2 mb-2">
               <p className="text-[11px] text-portal-muted">Saving product changes replaces all lines and refreshes their prices.</p>
@@ -279,13 +279,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
               }} />
             </div>
           )}
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-4 border-b border-portal-border/50 pb-3">
             <label className="text-[11px] font-medium text-portal-muted">
               Products <span className="text-red-400">*</span>
             </label>
-            <button type="button" onClick={addProductRow} className="text-[11px] text-portal-accent hover:text-portal-accent-hover flex items-center gap-1">
-              <i className="pi pi-plus text-[10px]" /> Add product
-            </button>
           </div>
           <div className="space-y-2">
             {products.map((row, i) => (
@@ -314,7 +311,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                     clearable={false}
                   />
                 </div>
-                <FlatInputNumber id={`stop-basic-${i}`} label={`Basic (${row.product?.basicUnitName || 'units'})`}
+                <FlatInputNumber id={`stop-basic-${i}`} label={row.product?.basicUnitName || 'Basic unit'}
                   min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
                   value={row.plannedBasicQuantity === '' ? null : Number(row.plannedBasicQuantity)}
                   onChange={(value) => updateProductRow(i, { plannedBasicQuantity: value == null ? '' : String(value) })} />
@@ -322,7 +319,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                   className={row.hasPackagingUnit ? '' : 'opacity-0 pointer-events-none'}
                   aria-hidden={!row.hasPackagingUnit}
                 >
-                  <FlatInputNumber id={`stop-packaging-${i}`} label={`Packaging (${row.product?.packagingUnitName || '—'})`}
+                  <FlatInputNumber id={`stop-packaging-${i}`} label={row.product?.packagingUnitName || 'Packaging unit'}
                     min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
                     value={row.plannedPackagingQuantity === '' ? null : Number(row.plannedPackagingQuantity)}
                     onChange={(value) => updateProductRow(i, { plannedPackagingQuantity: value == null ? '' : String(value) })}
@@ -335,6 +332,11 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                 )}
               </div>
             ))}
+          </div>
+          <div className="mt-5 flex justify-center">
+            <button type="button" onClick={addProductRow} className="flex items-center gap-1 text-[11px] text-portal-accent hover:text-portal-accent-hover">
+              <i className="pi pi-plus text-[10px]" /> Add additional product
+            </button>
           </div>
           {errors.products && <p className="text-[11px] text-red-400 mt-1">{errors.products}</p>}
         </div>}

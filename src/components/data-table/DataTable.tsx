@@ -756,15 +756,15 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
       {/* 2. Flat Top Bar (Heading + Action + Header Notes) styled as header card */}
       {(heading || hasAction || secondaryAction || headerNotes) && (
-        <div className="bg-portal-surface border border-portal-border/60 rounded p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-portal-surface border border-portal-border/60 rounded p-3 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
             {typeof heading === 'string' ? (
-              <h2 className="text-xl font-bold tracking-tight text-white">{heading}</h2>
+              <h2 className="text-base sm:text-xl font-bold tracking-tight text-white">{heading}</h2>
             ) : (
               heading
             )}
             {headerNotes && (
-              <p className="text-xs text-portal-muted max-w-2xl leading-relaxed mt-1">
+              <p className="text-[11px] sm:text-xs text-portal-muted max-w-2xl leading-relaxed mt-1">
                 {headerNotes}
               </p>
             )}
@@ -1006,17 +1006,17 @@ export function FlatDataTable<TData extends Record<string, any>>({
               {tableDataList.map((item, rowIdx) => (
                 <div
                   key={rowIdx}
-                  className="p-4 space-y-2 hover:bg-white/[0.02] transition-colors bg-portal-surface"
+                  className="p-3 space-y-3 hover:bg-white/[0.02] transition-colors bg-portal-surface"
                 >
                   {columns.map((col) => (
                     <div
                       key={col.field}
-                      className="grid grid-cols-3 gap-2 items-baseline text-xs"
+                      className="grid grid-cols-3 gap-2 items-baseline text-[11px]"
                     >
-                      <span className="font-bold text-white uppercase tracking-wider">
+                      <span className="font-semibold text-[10px] text-portal-muted uppercase tracking-wide">
                         {col.header}
                       </span>
-                      <div className="col-span-2 text-portal-text break-words font-medium">
+                      <div className="col-span-2 text-[11px] text-portal-text break-words font-normal leading-snug">
                         {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
                       </div>
                     </div>

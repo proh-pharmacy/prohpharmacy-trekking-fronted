@@ -23,7 +23,7 @@ export function CockpitButton({
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className={`group inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold text-portal-muted hover:text-white transition-colors disabled:opacity-40 ${className}`}
+        className={`group inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-semibold text-portal-muted hover:text-white transition-colors disabled:opacity-40 sm:text-xs ${className}`}
         {...rest}
       >
         <span>{children}</span>
@@ -43,7 +43,7 @@ export function CockpitButton({
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className={`group inline-flex items-center gap-2.5 rounded-full border border-portal-border/80 bg-portal-canvas/70 px-4 py-2 text-xs font-semibold text-portal-text backdrop-blur-md transition-all duration-300 hover:border-portal-border hover:bg-portal-surface hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+        className={`group inline-flex items-center gap-2.5 rounded-full border border-portal-border/80 bg-portal-canvas/70 px-4 py-2 text-[11px] font-semibold text-portal-text backdrop-blur-md transition-all duration-300 hover:border-portal-border hover:bg-portal-surface hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${className}`}
         {...rest}
       >
         <span>{children}</span>
@@ -63,7 +63,7 @@ export function CockpitButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-portal-accent/40 bg-gradient-to-r from-portal-accent/15 via-portal-accent/10 to-transparent px-4 py-2 text-xs font-semibold tracking-wide text-white shadow-[0_0_14px_rgba(65,204,132,0.15)] backdrop-blur-md transition-all duration-300 hover:border-portal-accent/80 hover:bg-portal-accent/25 hover:shadow-[0_0_22px_rgba(65,204,132,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-portal-accent/40 bg-gradient-to-r from-portal-accent/15 via-portal-accent/10 to-transparent px-4 py-2 text-[11px] font-semibold tracking-wide text-white shadow-[0_0_14px_rgba(65,204,132,0.15)] backdrop-blur-md transition-all duration-300 hover:border-portal-accent/80 hover:bg-portal-accent/25 hover:shadow-[0_0_22px_rgba(65,204,132,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${className}`}
       {...rest}
     >
       {/* Subtle glowing sweep effect on hover */}

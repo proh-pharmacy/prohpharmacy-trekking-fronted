@@ -115,7 +115,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
           <span className="shrink-0 text-[11px] font-bold text-portal-muted">
             {stop.sequence}.
           </span>
-          <span className="min-w-0 truncate text-sm font-semibold text-white">{stop.customerName}</span>
+          <span className="min-w-0 truncate text-[13px] font-semibold text-white sm:text-sm">{stop.customerName}</span>
           <span className="w-px h-3.5 bg-portal-border shrink-0" />
           <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
           {isRecorded && (
@@ -259,12 +259,12 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
               return (
                 <div
                   key={spId}
-                  className="p-3.5 space-y-2.5 bg-portal-canvas/50 border border-portal-border/60 rounded hover:bg-white/[0.02] transition-colors"
+                  className="p-3 space-y-3 bg-portal-canvas/50 border border-portal-border/60 rounded hover:bg-white/[0.02] transition-colors"
                 >
                   {/* Product title and planned quantities */}
                   <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-white break-words">{product.productName}</p>
+                      <p className="text-[11px] font-semibold text-white break-words sm:text-xs">{product.productName}</p>
                       <p className="text-[11px] text-portal-muted">
                         GHS {Number(product.basicUnitPrice).toFixed(2)} / {product.basicUnitName || 'basic unit'}
                         {product.packagingUnitName && product.packagingUnitPrice != null &&
@@ -272,7 +272,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                       </p>
                     </div>
                     <div className="shrink-0 text-right text-[11px]">
-                      <span className="block text-portal-muted text-[10px] uppercase font-bold">Planned</span>
+                      <span className="block text-portal-muted text-[10px] uppercase font-semibold">Planned</span>
                       <span className="block font-mono text-portal-accent font-bold">{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
                       {product.packagingUnitName && <span className="block font-mono text-portal-accent font-bold">{product.plannedPackagingQuantity ?? 0} {product.packagingUnitName}</span>}
                     </div>
@@ -280,11 +280,11 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
 
                   {/* Horizontal entry rows just as DataTable mobile layout */}
                   <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                         Basic delivered ({product.basicUnitName || 'units'})
                       </span>
-                      <div className="col-span-2">
+                      <div className="col-span-2 text-[11px]">
                         <FlatInputNumber id={`${spId}-basic-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
                           value={numberInputValue(row.basicQtyDelivered)} disabled={locked} placeholder="0"
                           onChange={(value) => onRowChange(spId, 'basicQtyDelivered', numberRowValue(value))} />
@@ -292,11 +292,11 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                     </div>
 
                     {product.packagingUnitName && (
-                      <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                        <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                      <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                        <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                           Packaging delivered ({product.packagingUnitName})
                         </span>
-                        <div className="col-span-2">
+                        <div className="col-span-2 text-[11px]">
                           <FlatInputNumber id={`${spId}-packaging-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
                             value={numberInputValue(row.packagingQtyDelivered)} disabled={locked} placeholder="0"
                             onChange={(value) => onRowChange(spId, 'packagingQtyDelivered', numberRowValue(value))} />
@@ -304,44 +304,44 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, recording, onRo
                       </div>
                     )}
 
-                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                         Payment
                       </span>
-                      <div className="col-span-2">
+                      <div className="col-span-2 text-[11px]">
                         <FlatDropdown id={`${spId}-payment-mobile`} options={PAYMENT_OPTIONS}
                           value={row.paymentMethod ?? ''} disabled={locked}
                           onChange={(value) => onRowChange(spId, 'paymentMethod', value ?? '')} size="sm" />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                         Amt Paid
                       </span>
-                      <div className="col-span-2">
+                      <div className="col-span-2 text-[11px]">
                         <FlatInputNumber id={`${spId}-amt-paid-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
                           value={numberInputValue(row.amtPaid)} disabled={locked} placeholder="0.00"
                           onChange={(value) => onRowChange(spId, 'amtPaid', numberRowValue(value))} />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                         Balance
                       </span>
-                      <div className="col-span-2">
+                      <div className="col-span-2 text-[11px]">
                         <FlatInputNumber id={`${spId}-balance-mobile`} min={0} maxFractionDigits={2} useGrouping={false} size="sm"
                           value={numberInputValue(row.balance)} disabled={locked} placeholder="0.00"
                           onChange={(value) => onRowChange(spId, 'balance', numberRowValue(value))} />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 items-center text-xs">
-                      <span className="text-[11px] font-bold text-portal-muted uppercase tracking-wider">
+                    <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                      <span className="text-[10px] font-semibold text-portal-muted uppercase tracking-wide">
                         Notes
                       </span>
-                      <div className="col-span-2">
+                      <div className="col-span-2 text-[11px]">
                         <FlatInputText id={`${spId}-notes-mobile`} value={row.notes ?? ''} disabled={locked}
                           placeholder="Optional notes..." onChange={(e) => onRowChange(spId, 'notes', e.target.value)} size="sm" />
                       </div>
@@ -627,19 +627,21 @@ export const DriverPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-lg font-bold text-white">{trek.trekNumber} · Assigned Stops</h1>
-                  <p className="text-xs text-portal-muted">{trek.regionName} · {trek.scheduledDate}</p>
+                  <h1 className="text-sm font-bold text-white sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
+                  <p className="text-[11px] text-portal-muted sm:text-xs">{trek.regionName} · {trek.scheduledDate}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-col items-stretch gap-2 pb-1 sm:w-auto sm:flex-row sm:items-center sm:pb-0">
                   {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
                     size="sm"
                     leftIcon="pi pi-plus"
+                    className="w-full shrink-0 sm:w-auto"
                     onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
                   >Add walk-in stop</FlatButton>}
                   {!trek.isLocked && trek.status === 'InProgress' && <FlatButton
                     size="sm"
                     variant="outline"
                     leftIcon="pi pi-check-circle"
+                    className="w-full shrink-0 sm:w-auto"
                     disabled={!online || syncing || completingTrek}
                     onClick={() => setCompleteDialogOpen(true)}
                   >Complete trek</FlatButton>}
@@ -647,11 +649,14 @@ export const DriverPage: React.FC = () => {
                     size="sm"
                     variant="outline"
                     leftIcon="pi pi-download"
+                    className="w-full shrink-0 sm:w-auto"
                     onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
                   >
                     Download PDF Sheet
                   </FlatButton>
-                  <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
+                  <span className="hidden shrink-0 sm:inline-flex">
+                    <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
+                  </span>
                 </div>
               </div>
 
@@ -794,13 +799,6 @@ export const DriverPage: React.FC = () => {
           )}
           renderTreksView={() => (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-portal-border/60 pb-3">
-                <div>
-                  <h1 className="text-lg font-bold text-white">Regional Treks</h1>
-                  <p className="text-xs text-portal-muted">Active routes in {trek.regionName}</p>
-                </div>
-                <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
-              </div>
               <FlatDataTable<RegionTrek>
                 data={visibleTreks}
                 columns={[
@@ -863,7 +861,7 @@ export const DriverPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-lg font-bold text-white">Field Actions</h1>
+                  <h1 className="text-base font-bold text-white sm:text-lg">Field Actions</h1>
                 </div>
                 <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
               </div>
@@ -883,7 +881,7 @@ export const DriverPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <div className="flex items-center justify-between border-b border-portal-border/60 pb-3">
                 <div>
-                  <h1 className="text-lg font-bold text-white">Offline & Sync Center</h1>
+                  <h1 className="text-base font-bold text-white sm:text-lg">Offline & Sync Center</h1>
                   <p className="text-xs text-portal-muted">Local IndexedDB database & sync status</p>
                 </div>
                 <CockpitBackLink onClick={() => navigate(driverHref(undefined))} />
@@ -907,7 +905,7 @@ export const DriverPage: React.FC = () => {
                       key={item.label}
                       className="bg-portal-canvas/70 rounded p-3 border border-portal-border/40"
                     >
-                      <p className="text-xl font-bold text-white">{item.value}</p>
+                      <p className="text-lg font-bold text-white sm:text-xl">{item.value}</p>
                       <p className="text-[11px] text-portal-muted mt-0.5">{item.label}</p>
                     </div>
                   ))}

@@ -283,7 +283,6 @@ export const TrekDetailPage: React.FC = () => {
               {STATUS_LABELS[trek.status]}
             </span>
           </div>
-          <p className="text-xs text-portal-muted">{trek.regionName} · {trek.scheduledDate}</p>
           {isDeliveryLocked && (
             <p className="flex items-center gap-1.5 text-[11px] text-portal-muted italic mt-0.5">
               <i className="pi pi-info-circle shrink-0" />
@@ -496,33 +495,30 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 const StopCard: React.FC<StopCardProps> = ({
   stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecord, recording, onEdit, onRemove,
 }) => {
+  const [expanded, setExpanded] = useState(false);
   const hasProducts  = stop.products.length > 0;
   const isRecorded   = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
   const landmark     = stop.primaryLocationLandmark?.trim() || null;
   const street       = stop.primaryLocationStreet?.trim() || null;
 
   return (
-    <div className="px-5 py-4 space-y-4">
+    <div className="px-4 py-3 sm:px-5 sm:py-4">
       {/* Stop header */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+        >
+          <i className={`pi ${expanded ? 'pi-chevron-down' : 'pi-chevron-right'} shrink-0 text-[10px] text-portal-muted`} aria-hidden="true" />
           <span className="shrink-0 text-[11px] font-bold text-portal-muted">{stop.sequence}.</span>
-          <span className="text-sm font-semibold text-white">{stop.customerName}</span>
-          <span className="w-px h-3.5 bg-portal-border shrink-0" />
-          <span className="font-mono text-[11px] text-portal-muted">{stop.customerCode}</span>
-          {isRecorded && (
-            <>
-              <span className="w-px h-3.5 bg-portal-border shrink-0" />
-              <span className="text-[11px] text-portal-accent">Recorded</span>
-            </>
-          )}
-          {stop.customerType && (
-            <>
-              <span className="w-px h-3.5 bg-portal-border shrink-0" />
-              <span className="text-[11px] text-portal-muted">{stop.customerType.replace(/([A-Z])/g, ' $1').trim()}</span>
-            </>
-          )}
-        </div>
+          <span className="truncate text-sm font-semibold text-white">{stop.customerName}</span>
+          <span className="hidden w-px h-3.5 bg-portal-border shrink-0 sm:block" />
+          <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
+          {isRecorded && <span className="shrink-0 text-[11px] text-portal-accent">Recorded</span>}
+          {stop.customerType && <span className="hidden text-[11px] text-portal-muted md:inline">{stop.customerType.replace(/([A-Z])/g, ' $1').trim()}</span>}
+        </button>
         {!isLocked && (
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={onEdit}
@@ -539,6 +535,9 @@ const StopCard: React.FC<StopCardProps> = ({
         )}
       </div>
 
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+      <div className="min-h-0 overflow-hidden">
+      <div className="mt-4 space-y-4">
       {/* Info grid */}
       <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
         <div>
@@ -646,6 +645,9 @@ const StopCard: React.FC<StopCardProps> = ({
           )}
         </div>
       )}
+      </div>
+      </div>
+      </div>
     </div>
   );
 };

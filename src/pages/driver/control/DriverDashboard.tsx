@@ -110,7 +110,7 @@ function ActionDrawerLink({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[40px] w-full items-center justify-between rounded px-3 py-2 text-left text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`flex min-h-[40px] w-full items-center justify-between rounded px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${
         danger
           ? 'text-red-accent hover:bg-red-500/10'
           : 'text-portal-text hover:bg-white/[0.07] hover:text-white'
@@ -242,6 +242,7 @@ export function DriverDashboard({
               disabled={syncing || !online}
               onClick={() => void onSync()}
               title={!online ? 'Connect to sync pending work' : 'Sync pending work'}
+              className="text-[11px] sm:text-xs"
             >
               {syncing ? 'Syncing…' : `Sync ${pendingCount}`}
             </FlatButton>
@@ -253,7 +254,7 @@ export function DriverDashboard({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Navigation Rail (matches image) */}
         <aside
-          className="relative z-20 flex h-full w-[64px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:w-[96px]"
+          className="relative z-[1000] flex h-full w-[64px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:w-[96px]"
           aria-label="Desktop control rail"
         >
           {/* Back Arrow Button */}
@@ -340,7 +341,7 @@ export function DriverDashboard({
           <div
             id="desktop-action-drawer"
             aria-hidden={!moreOpen}
-            className={`absolute bottom-2 left-full z-40 w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${
+            className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${
               moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
             }`}
           >
@@ -430,8 +431,8 @@ export function DriverDashboard({
                 {/* Driver and vehicle info (left) with speedometer (right) */}
                 <div className="relative z-10 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-bold text-white mt-1.5">{trek.driverName}</p>
-                    <p className="text-xs text-portal-muted">{trek.vehicleDisplayName || trek.trekNumber}</p>
+                    <p className="mt-1.5 text-sm font-bold text-white sm:text-base">{trek.driverName}</p>
+                    <p className="text-[11px] text-portal-muted sm:text-xs">{trek.vehicleDisplayName || trek.trekNumber}</p>
 
                     {/* Link to the assigned trek's stops */}
                     <div className="mt-4">
@@ -501,28 +502,28 @@ export function DriverDashboard({
                   {/* Timeline Track with Nodes */}
                   <div className="relative flex items-start justify-between gap-2">
                     {/* Node 1: Route Start */}
-                    <div className="flex max-w-[30%] flex-col items-start">
+                    <div className="hidden max-w-[30%] flex-col items-start sm:flex">
                       <div className="flex items-center gap-1.5 text-cyan-400">
-                        <span className="text-xs font-bold text-white">Route Start</span>
+                        <span className="text-[11px] font-bold text-white sm:text-xs">Route Start</span>
                       </div>
-                      <span className="text-[10px] text-portal-muted mt-0.5">Origin</span>
+                      <span className="mt-0.5 text-[9px] text-portal-muted sm:text-[10px]">Origin</span>
                     </div>
 
                     {/* Node 2: Delivery Progress */}
-                    <div className="flex max-w-[40%] flex-col items-center text-center">
-                      <span className="text-xs font-bold text-portal-accent">
+                    <div className="flex max-w-full flex-1 flex-col items-center text-center sm:max-w-[40%] sm:flex-none">
+                      <span className="text-[11px] font-bold text-portal-accent sm:text-xs">
                         {recorded} of {total} stops completed
                       </span>
                     </div>
 
                     {/* Node 3: Destination / Final Stop */}
-                    <div className="flex max-w-[30%] flex-col items-end text-right">
+                    <div className="hidden max-w-[30%] flex-col items-end text-right sm:flex">
                       <div className="flex items-center gap-1.5 text-portal-muted">
-                        <span className="text-xs font-bold text-white truncate">
+                        <span className="truncate text-[11px] font-bold text-white sm:text-xs">
                           {lastStop ? `Stop ${total}: ${lastStop.customerName}` : `${trek.regionName} Base`}
                         </span>
                       </div>
-                      <span className="text-[10px] text-portal-muted mt-0.5">Destination</span>
+                      <span className="mt-0.5 text-[9px] text-portal-muted sm:text-[10px]">Destination</span>
                     </div>
                   </div>
 
@@ -552,7 +553,7 @@ export function DriverDashboard({
                 {/* BOTTOM LEFT CARD: BATTERY */}
                 <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold uppercase tracking-wider text-white/90">Battery</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 sm:text-base">Battery</h3>
                     {device?.ignition != null && (
                       <span className={`text-[11px] font-medium ${device.ignition ? 'text-emerald-400' : 'text-portal-muted'}`}>
                         {device.ignition ? 'Ignition ON' : 'Ignition OFF'}
@@ -592,21 +593,21 @@ export function DriverDashboard({
                     {/* Key Telemetry Metrics (Right) */}
                     <div className="space-y-4">
                       <div>
-                        <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
                           {remaining}
                         </p>
                         <p className="text-xs text-portal-muted">stops remaining</p>
                       </div>
 
                       <div>
-                        <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
                           {recorded}
                         </p>
                         <p className="text-xs text-portal-muted">stops completed</p>
                       </div>
 
                       <div>
-                        <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                        <p className="text-xl font-bold tracking-tight text-white sm:text-3xl">
                           {total}
                         </p>
                         <p className="text-xs text-portal-muted">total planned stops</p>
@@ -633,7 +634,7 @@ export function DriverDashboard({
                 {/* BOTTOM RIGHT CARD: WEATHER & ENVIRONMENT */}
                 <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold uppercase tracking-wider text-white/90">Weather</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/90 sm:text-base">Weather</h3>
                     {weather && (
                       <span className="text-[10px] uppercase font-semibold text-portal-muted tracking-wider">
                         Live Telemetry
@@ -735,7 +736,7 @@ export function DriverDashboard({
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">
                     Telemetry Diagnostics
                   </p>
-                  <h1 className="mt-1 text-xl font-bold text-white">
+                  <h1 className="mt-1 text-base font-bold text-white sm:text-xl">
                     {trek.vehicleDisplayName || `Vehicle for Trek ${trek.trekNumber}`}
                   </h1>
                 </div>
@@ -745,7 +746,7 @@ export function DriverDashboard({
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracker Battery</p>
-                  <p className="mt-1 text-3xl font-bold text-white">{battery}%</p>
+                  <p className="mt-1 text-2xl font-bold text-white sm:text-3xl">{battery}%</p>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-portal-border/40">
                     <div className="h-full rounded-full bg-portal-accent" style={{ width: `${battery}%` }} />
                   </div>
@@ -753,7 +754,7 @@ export function DriverDashboard({
 
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Motion & Ignition</p>
-                  <p className="mt-1 text-lg font-bold text-white capitalize">
+                  <p className="mt-1 text-base font-bold text-white capitalize sm:text-lg">
                     {device?.motion ? 'Vehicle Moving' : 'Vehicle Stopped'}
                   </p>
                   <p className="text-xs text-portal-muted mt-1">
@@ -763,7 +764,7 @@ export function DriverDashboard({
 
                 <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracking Service</p>
-                  <p className="mt-1 text-lg font-bold text-white capitalize">
+                  <p className="mt-1 text-base font-bold text-white capitalize sm:text-lg">
                     {device?.traccarStatus || 'Connected'}
                   </p>
                   <p className="text-xs text-portal-muted mt-1">
@@ -799,6 +800,7 @@ export function DriverDashboard({
                     loading={reporting}
                     disabled={!online}
                     onClick={() => void reportLocation()}
+                    className="text-[11px] sm:text-xs"
                   >
                     Send GPS Fix Now
                   </FlatButton>
@@ -815,7 +817,7 @@ export function DriverDashboard({
               <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-portal-border/50 sm:px-5 sm:py-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">Offline Map</p>
-                  <h1 className="mt-0.5 text-lg font-bold text-white">{trek.regionName} Region</h1>
+                  <h1 className="mt-0.5 text-base font-bold text-white sm:text-lg">{trek.regionName} Region</h1>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <span className="text-[11px] text-portal-text">
@@ -845,7 +847,7 @@ export function DriverDashboard({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 border-t border-portal-border/50 text-[11px] sm:px-5">
-                <span className="text-portal-muted">Offline PMTiles vector tiles active</span>
+                <span className="hidden text-portal-muted sm:inline">Offline PMTiles vector tiles active</span>
                 <button
                   type="button"
                   onClick={() => setActiveView('offline')}
@@ -890,7 +892,7 @@ export function DriverDashboard({
         size="sm"
         footer={
           <>
-            <FlatButton size="sm" variant="ghost" onClick={() => setConfirmSos(false)}>
+            <FlatButton size="sm" variant="ghost" className="text-[11px] sm:text-xs" onClick={() => setConfirmSos(false)}>
               Cancel
             </FlatButton>
             <FlatButton
@@ -898,6 +900,7 @@ export function DriverDashboard({
               variant="danger"
               loading={sendingSos}
               onClick={() => void confirmAndSendSos()}
+              className="text-[11px] sm:text-xs"
             >
               Send SOS Alert
             </FlatButton>
