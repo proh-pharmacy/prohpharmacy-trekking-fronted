@@ -14,6 +14,7 @@ interface Props {
   customers: FieldCustomer[];
   regionalCount: number | null;
   pendingCount: number;
+  controlAvailable: boolean;
   syncing: boolean;
   onSync: () => Promise<void>;
   online: boolean;
@@ -130,6 +131,7 @@ export function DriverDashboard({
   customers,
   regionalCount,
   pendingCount,
+  controlAvailable,
   syncing,
   onSync,
   online,
@@ -251,7 +253,7 @@ export function DriverDashboard({
               variant="primary"
               leftIcon={syncing ? 'pi pi-spin pi-spinner' : 'pi pi-cloud-upload'}
               loading={syncing}
-              disabled={syncing || !online}
+              disabled={syncing || !online || !controlAvailable}
               onClick={() => void onSync()}
               title={!online ? 'Connect to sync pending work' : 'Sync pending work'}
               className="text-[11px] sm:text-xs"
@@ -302,20 +304,20 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
+              icon="pi-sitemap"
+              label="Treks"
+              active={activeView === 'treks'}
+              onClick={() => {
+                setActiveView('treks');
+                setMoreOpen(false);
+              }}
+            />
+            <NavRailButton
               icon="pi-users"
               label="Customers"
               active={activeView === 'customers'}
               onClick={() => {
                 setActiveView('customers');
-                setMoreOpen(false);
-              }}
-            />
-            <NavRailButton
-              icon="pi-plus-circle"
-              label="Field actions"
-              active={activeView === 'actions'}
-              onClick={() => {
-                setActiveView('actions');
                 setMoreOpen(false);
               }}
             />
@@ -379,12 +381,10 @@ export function DriverDashboard({
                 }}
               />
               <ActionDrawerLink
-                icon="pi-sitemap"
-                label="Regional treks list"
-                badge={regionalCount}
-                badgeBorderless
+                icon="pi-plus-circle"
+                label="Field actions"
                 onClick={() => {
-                  setActiveView('treks');
+                  setActiveView('actions');
                   setMoreOpen(false);
                 }}
               />
@@ -577,7 +577,7 @@ export function DriverDashboard({
               {/* BOTTOM TWO CARDS: BATTERY & WEATHER */}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* BOTTOM LEFT CARD: BATTERY */}
-                <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
+                <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-portal-surface p-3 shadow-xl sm:p-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Battery</h3>
                     {device?.ignition != null && (
@@ -660,7 +660,7 @@ export function DriverDashboard({
                 {/* BOTTOM RIGHT CARD: WEATHER & ENVIRONMENT */}
                 <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Weather</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-portal-text sm:text-base">Weather</h3>
                     {weather && (
                       <span className="text-[10px] uppercase font-semibold text-portal-muted tracking-wider">
 
@@ -670,32 +670,32 @@ export function DriverDashboard({
 
                   {weather ? (
                     /* 3 Columns Layout (Matches reference image with genuine telemetry) */
-                    <div className="my-auto grid grid-cols-3 gap-2 py-4 text-center sm:gap-4">
+                    <div className="my-auto grid grid-cols-3 gap-1 py-3 text-center sm:gap-4 sm:py-4">
                       {/* Column 1: Condition & Wind */}
                       <div className="flex flex-col items-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/15 text-amber-400">
-                          <i className="pi pi-sun text-2xl drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/15 text-amber-400 sm:h-10 sm:w-10">
+                          <i className="pi pi-sun text-lg drop-shadow-[0_0_6px_rgba(245,158,11,0.6)] sm:text-2xl" />
                         </div>
-                        <p className="mt-3 text-sm font-semibold text-portal-text capitalize truncate max-w-full">
+                        <p className="mt-2 max-w-full truncate text-[11px] font-semibold capitalize text-portal-text sm:mt-3 sm:text-sm">
                           {weather.condition || weather.description}
                         </p>
                         <p className="text-[10px] text-portal-muted uppercase">condition</p>
 
-                        <p className="mt-4 text-sm font-semibold text-portal-text">{weather.windSpeed ?? 0} km/h</p>
+                        <p className="mt-3 text-xs font-semibold text-portal-text sm:mt-4 sm:text-sm">{weather.windSpeed ?? 0} km/h</p>
                         <p className="text-[10px] text-portal-muted uppercase">wind</p>
                       </div>
 
                       {/* Column 2: Ambient Outside Temperature */}
                       <div className="flex flex-col items-center border-x border-portal-border/40 px-1 sm:px-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/15 text-orange-400">
-                          <i className="pi pi-sliders-v text-xl text-orange-400" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/15 text-orange-400 sm:h-10 sm:w-10">
+                          <i className="pi pi-sliders-v text-lg text-orange-400 sm:text-xl" />
                         </div>
-                        <p className="mt-3 text-2xl font-bold text-portal-text">
+                        <p className="mt-2 text-lg font-bold text-portal-text sm:mt-3 sm:text-2xl">
                           {Math.round(weather.temperature)}°C
                         </p>
                         <p className="text-[10px] text-portal-muted uppercase">ambient</p>
 
-                        <p className="mt-4 text-xs font-semibold text-portal-text capitalize truncate max-w-full">
+                        <p className="mt-3 max-w-full truncate text-[11px] font-semibold capitalize text-portal-text sm:mt-4 sm:text-xs">
                           {weather.description}
                         </p>
                         <p className="text-[10px] text-portal-muted uppercase">forecast</p>
@@ -703,33 +703,33 @@ export function DriverDashboard({
 
                       {/* Column 3: Humidity & Precipitation */}
                       <div className="flex flex-col items-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-400">
-                          <i className="pi pi-cloud text-xl drop-shadow-[0_0_6px_rgba(56,189,248,0.6)]" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-400 sm:h-10 sm:w-10">
+                          <i className="pi pi-cloud text-lg drop-shadow-[0_0_6px_rgba(56,189,248,0.6)] sm:text-xl" />
                         </div>
-                        <p className="mt-3 text-sm font-semibold text-portal-text">{weather.humidity ?? 0}%</p>
+                        <p className="mt-2 text-xs font-semibold text-portal-text sm:mt-3 sm:text-sm">{weather.humidity ?? 0}%</p>
                         <p className="text-[10px] text-portal-muted uppercase">humidity</p>
 
-                        <p className="mt-4 text-sm font-semibold text-portal-text">{weather.precipitation ?? 0}%</p>
+                        <p className="mt-3 text-xs font-semibold text-portal-text sm:mt-4 sm:text-sm">{weather.precipitation ?? 0}%</p>
                         <p className="text-[10px] text-portal-muted uppercase">cloud cover</p>
                       </div>
                     </div>
                   ) : (
                     /* Elegant Offline / Telemetry Pending State */
-                    <div className="my-auto flex flex-col items-center justify-center py-6 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-portal-canvas border border-portal-border/60 text-portal-muted">
-                        <i className="pi pi-cloud text-xl" />
+                    <div className="my-auto flex flex-col items-center justify-center py-4 text-center sm:py-6">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-portal-border/60 bg-portal-canvas text-portal-muted sm:h-12 sm:w-12">
+                        <i className="pi pi-cloud text-lg sm:text-xl" />
                       </div>
-                      <p className="mt-3 text-sm font-semibold text-portal-text">
+                      <p className="mt-2 text-xs font-semibold text-portal-text sm:mt-3 sm:text-sm">
                         Weather telemetry offline
                       </p>
-                      <p className="mt-1 max-w-xs text-xs text-portal-muted">
+                      <p className="mt-1 max-w-xs text-[11px] text-portal-muted sm:text-xs">
                         Connects with active GPS fixes when reporting online.
                       </p>
                       <button
                         type="button"
                         onClick={() => void reportLocation()}
                         disabled={!online || reporting}
-                        className="mt-3 text-xs font-medium text-portal-accent hover:underline disabled:opacity-40"
+                        className="mt-3 text-[11px] font-medium text-portal-accent hover:underline disabled:opacity-40 sm:text-xs"
                       >
                         {reporting ? 'Reporting GPS…' : 'Report location now'}
                       </button>
@@ -737,7 +737,7 @@ export function DriverDashboard({
                   )}
 
                   {/* Footer metadata */}
-                  <div className="flex items-center justify-between border-t border-white/10 pt-3 text-[11px] text-portal-muted">
+                  <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3 text-[10px] text-portal-muted sm:text-[11px]">
                     <span>{weather?.description || `${trek.regionName} Area`}</span>
                     <button
                       type="button"

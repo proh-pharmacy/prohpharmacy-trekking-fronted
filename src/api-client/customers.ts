@@ -49,13 +49,17 @@ export interface CustomerPerson {
 
 export interface CustomerLocation {
   id: string;
-  latitude: number;
-  longitude: number;
-  accuracyMetres: number;
-  landmarkAndDirections: string;
-  streetAddress: string;
-  regionName: string;
-  districtName: string;
+  locationId?: string;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMetres: number | null;
+  landmarkAndDirections: string | null;
+  streetAddress: string | null;
+  regionId?: string | null;
+  districtId?: string | null;
+  regionName: string | null;
+  districtName: string | null;
+  locationType?: LocationType;
   captureMethod: string;
   verificationStatus: string;
   isPrimary: boolean;
@@ -84,6 +88,8 @@ export interface Customer {
   updatedAt?: string | null;
   primaryPerson?: CustomerPerson;
   primaryLocation?: CustomerLocation;
+  locations?: CustomerLocation[];
+  additionalLocations?: CustomerLocation[];
 }
 
 // ── Request payloads ───────────────────────────────────────────────────
@@ -107,9 +113,9 @@ export interface CreateCustomerPayload {
     districtId: string;
     streetAddress: string;
     landmarkAndDirections: string;
-    latitude: number;
-    longitude: number;
-    accuracyMetres: number;
+    latitude?: number;
+    longitude?: number;
+    accuracyMetres?: number;
   };
 }
 
@@ -142,13 +148,15 @@ export interface AddLocationPayload {
   locationType?: LocationType;
   regionId: string;
   districtId: string;
-  landmarkAndDirections: string;
+  landmarkAndDirections?: string;
   streetAddress?: string;
   latitude?: number;
   longitude?: number;
   accuracyMetres?: number;
   isPrimary?: boolean;
 }
+
+export type UpdateLocationPayload = Partial<Omit<AddLocationPayload, 'regionId'>> & { regionId?: string };
 
 export type LedgerEntryType = 'Debit' | 'Credit';
 
@@ -208,6 +216,7 @@ export interface AddLedgerEntryPayload {
 }
 
 export interface CustomerMapPin {
+  locationId: string;
   customerAccountId: string;
   customerCode: string;
   businessName: string;
@@ -217,6 +226,7 @@ export interface CustomerMapPin {
   primaryPhoneNumber: string;
   latitude: number;
   longitude: number;
+  isPrimary: boolean;
   accuracyMetres?: number;
   streetAddress?: string;
   landmarkAndDirections?: string;
@@ -294,6 +304,13 @@ export const customersApi = {
     const res = await apiClient.post(`/customers/${customerId}/locations`, payload);
     return res.data;
   },
+  updateLocation: async (customerId: string, locationId: string, payload: UpdateLocationPayload) => {
+    const res = await apiClient.patch(`/customers/${customerId}/locations/${locationId}`, payload);
+    return res.data;
+  },
+  deleteLocation: async (customerId: string, locationId: string) => {
+    await apiClient.delete(`/customers/${customerId}/locations/${locationId}`);
+  },
 
   uploadPortrait: async (customerId: string, personId: string, file: File) => {
     const formData = new FormData();
@@ -301,7 +318,7 @@ export const customersApi = {
     const res = await apiClient.post(
       `/customers/${customerId}/people/${personId}/portrait`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { Accept: 'application/json', 'Content-Type': 'multipart/form-data' } }
     );
     return res.data;
   },
@@ -312,7 +329,7 @@ export const customersApi = {
     const res = await apiClient.post<{ customerId: string; premisesPhotoUrl: string }>(
       `/customers/${customerId}/premises-photo`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { Accept: 'application/json', 'Content-Type': 'multipart/form-data' } }
     );
     return res.data;
   },

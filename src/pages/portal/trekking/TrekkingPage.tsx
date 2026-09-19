@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
+import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
-import { type Trek, type TrekStatus, organisationApi } from '../../../api-client';
+import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
+import { type Trek, type TrekStatus, organisationApi, treksApi } from '../../../api-client';
 import { CreateTrekModal } from './components/CreateTrekModal';
+import toast from 'react-hot-toast';
 
 const STATUS_STYLES: Record<TrekStatus, string> = {
   Draft:      'text-portal-muted',
@@ -30,6 +32,9 @@ const STATUS_FILTER_OPTIONS = [
 export const TrekkingPage: React.FC = () => {
   const navigate = useNavigate();
   const [createVisible, setCreateVisible] = useState(false);
+  const [createdTrek, setCreatedTrek] = useState<Trek | null>(null);
+  const [trekToDelete, setTrekToDelete] = useState<Trek | null>(null);
+  const [deletingTrek, setDeletingTrek] = useState(false);
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Regions', value: '' },
   ]);
@@ -101,6 +106,21 @@ export const TrekkingPage: React.FC = () => {
     ...(payload.scheduledDate ? { scheduledDate: payload.scheduledDate } : {}),
   }), []);
 
+  const handleDeleteTrek = async () => {
+    if (!trekToDelete || (trekToDelete.status !== 'Draft' && trekToDelete.status !== 'Scheduled')) return;
+    setDeletingTrek(true);
+    try {
+      await treksApi.deleteTrek(trekToDelete.id);
+      resetTableData();
+      setTrekToDelete(null);
+      toast.success('Trek deleted.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Failed to delete trek.');
+    } finally {
+      setDeletingTrek(false);
+    }
+  };
+
   const columns: ColumnDef<Trek>[] = useMemo(() => [
     {
       field: 'trekNumber',
@@ -158,17 +178,27 @@ export const TrekkingPage: React.FC = () => {
       field: 'actions',
       header: 'Actions',
       headerStyle: { textAlign: 'right' },
-      style: { width: '80px', textAlign: 'right' },
+      style: { width: '100px', textAlign: 'right' },
       body: (row) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
           <FlatButton
             variant="outline"
-            size="sm"
+            size="icon-sm"
             leftIcon="pi pi-eye"
+            aria-label={`View ${row.trekNumber}`}
+            title="View trek"
             onClick={() => navigate(`/portal/trekking/${row.id}`)}
-          >
-            View
-          </FlatButton>
+          />
+          {(row.status === 'Draft' || row.status === 'Scheduled') && (
+            <FlatButton
+              variant="danger-outline"
+              size="icon-sm"
+              leftIcon="pi pi-trash"
+              aria-label={`Delete ${row.trekNumber}`}
+              title="Delete trek"
+              onClick={() => setTrekToDelete(row)}
+            />
+          )}
         </div>
       ),
     },
@@ -224,7 +254,51 @@ export const TrekkingPage: React.FC = () => {
       <CreateTrekModal
         visible={createVisible}
         onHide={() => setCreateVisible(false)}
+        onSuccess={setCreatedTrek}
       />
+
+      <FlatConfirmDialog
+        visible={!!trekToDelete}
+        onHide={() => setTrekToDelete(null)}
+        onConfirm={handleDeleteTrek}
+        loading={deletingTrek}
+        title="Delete Trek"
+        message={
+          <span>
+            Delete <span className="font-mono text-red-accent">{trekToDelete?.trekNumber}</span>? This permanently removes the trek and its planned stops and products.
+          </span>
+        }
+        confirmLabel="Delete Trek"
+        variant="danger"
+      />
+
+      <FlatModal
+        visible={!!createdTrek}
+        onHide={() => setCreatedTrek(null)}
+        title="Trek Created"
+        size="sm"
+        footer={
+          <div className="flex w-full items-center justify-end gap-3">
+            <FlatButton variant="outline" size="sm" onClick={() => setCreatedTrek(null)}>Close</FlatButton>
+            <FlatButton
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (!createdTrek) return;
+                const trekId = createdTrek.id;
+                setCreatedTrek(null);
+                navigate(`/portal/trekking/${trekId}`);
+              }}
+            >
+              View Trek
+            </FlatButton>
+          </div>
+        }
+      >
+        <p className="text-sm text-portal-text">
+          <span className="font-mono text-portal-accent">{createdTrek?.trekNumber}</span> is saved as a draft. View it to add stops and products.
+        </p>
+      </FlatModal>
     </div>
   );
 };

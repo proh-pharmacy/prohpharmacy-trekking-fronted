@@ -87,7 +87,7 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
         <span
           className={cn(
             iconConfig.spinnerClass,
-            'border-current border-t-transparent animate-spin inline-block shrink-0',
+            'flat-button-spinner border-current border-t-transparent animate-spin inline-block shrink-0',
             content ? iconConfig.gapLeft : ''
           )}
           style={{ borderRadius: '50%' }}

@@ -1067,73 +1067,18 @@ export const UsersAndRolesPage: React.FC = () => {
               <p className="text-xs text-portal-muted">No roles found matching "{roleSearch}"</p>
             </div>
           ) : roleViewMode === 'table' ? (
-            /* Cohesive Table View - Sleek & Low Cognitive Load */
-            <div className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-portal-border/60 bg-portal-canvas/40 text-[11px] font-medium text-portal-muted uppercase tracking-wider">
-                      <th className="py-3 px-5">Role</th>
-                      <th className="py-3 px-5">Scope & Description</th>
-                      <th className="py-3 px-5">Type</th>
-                      <th className="py-3 px-5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-portal-border/40">
-                    {filteredRoles.map((role) => {
-                      const isSystem =
-                        role.isSystem ??
-                        (role.name === 'SuperAdmin' ||
-                          role.name === 'Admin' ||
-                          role.name === 'BranchManager' ||
-                          role.name === 'OperationsManager' ||
-                          role.name === 'Driver' ||
-                          role.name === 'FieldStaff' ||
-                          role.name === 'CreditOfficer' ||
-                          role.name === 'Auditor');
-
-                      return (
-                        <tr
-                          key={role.id || role.name}
-                          className="hover:bg-white/[0.02] transition"
-                        >
-                          <td className="py-3.5 px-5">
-                            <span className="text-xs text-portal-text">
-                              {role.name}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-5">
-                            <p className="text-xs text-portal-muted max-w-xl leading-relaxed">
-                              {role.description || 'System authority scope.'}
-                            </p>
-                          </td>
-                          <td className="py-3.5 px-5">
-                            <span
-                              className={`text-[11px] font-mono ${
-                                isSystem ? 'text-portal-muted' : 'text-portal-accent'
-                              }`}
-                            >
-                              {isSystem ? 'System' : 'Custom'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-5 text-right">
-                            <FlatButton
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              leftIcon="pi pi-sliders-h"
-                              onClick={() => setEditingRole(role)}
-                            >
-                              Edit Permissions
-                            </FlatButton>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <FlatDataTable
+              data={filteredRoles}
+              enablePaginator={false}
+              enableTableFilter={false}
+              emptyDataText="No roles found."
+              columns={[
+                { field: 'name', header: 'Role', body: (role) => <span className="text-xs text-portal-text">{role.name}</span> },
+                { field: 'description', header: 'Scope & Description', body: (role) => <p className="max-w-xl text-xs leading-relaxed text-portal-muted">{role.description || 'System authority scope.'}</p> },
+                { field: 'type', header: 'Type', body: (role) => { const isSystem = role.isSystem ?? ['SuperAdmin', 'Admin', 'BranchManager', 'OperationsManager', 'Driver', 'FieldStaff', 'CreditOfficer', 'Auditor'].includes(role.name); return <span className={`text-[11px] font-mono ${isSystem ? 'text-portal-muted' : 'text-portal-accent'}`}>{isSystem ? 'System' : 'Custom'}</span>; } },
+                { field: 'actions', header: 'Actions', body: (role) => <FlatButton type="button" variant="outline" size="sm" leftIcon="pi pi-sliders-h" onClick={() => setEditingRole(role)}>Edit Permissions</FlatButton> },
+              ]}
+            />
           ) : (
             /* Streamlined Cards View - Without Duplicate Noise */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

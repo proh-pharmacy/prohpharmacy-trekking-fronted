@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse } from '../../../api-client';
+import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
-import { resetTableData } from '../../../components/data-table';
+import { FlatDataTable, resetTableData } from '../../../components/data-table';
 import { EditTrekModal } from './components/EditTrekModal';
 import { AddStopModal } from './components/AddStopModal';
 import toast from 'react-hot-toast';
@@ -96,6 +96,7 @@ export const TrekDetailPage: React.FC = () => {
   const [priceUpdateMenuOpen, setPriceUpdateMenuOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState<TrekStatus | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [openingDriverLink, setOpeningDriverLink] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,8 @@ export const TrekDetailPage: React.FC = () => {
   const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
   const [removingStop, setRemovingStop] = useState<TrekStop | null>(null);
   const [confirmComplete, setConfirmComplete] = useState(false);
+  const [confirmStart, setConfirmStart] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   const loadTrek = useCallback(async (silent = false) => {
     if (!trekId) return;
@@ -165,7 +168,7 @@ export const TrekDetailPage: React.FC = () => {
           packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined,
           paymentMethod: row.paymentMethod as PaymentMethod,
           ...(row.amtPaid !== '' && row.amtPaid != null
-            ? { amtPaid: parseFloat(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseFloat(row.amtPaid)) }
+            ? { amtPaid: parseNumericInput(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseNumericInput(row.amtPaid)) }
             : {}),
           notes: row.notes || undefined,
         }],
@@ -182,18 +185,64 @@ export const TrekDetailPage: React.FC = () => {
     }
   };
 
+  const handleRecordReturn = async (stop: TrekStop, payload: RecordReturnPayload): Promise<boolean> => {
+    if (!trek) return false;
+    try {
+      await treksApi.recordReturn(trek.id, stop.stopId, payload);
+      resetTableData();
+      await loadTrek(true);
+      toast.success('Return saved.');
+      return true;
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to save return.');
+      return false;
+    }
+  };
+
+  const handleVoidReturn = async (stop: TrekStop, item: DriverReturn): Promise<boolean> => {
+    if (!trek) return false;
+    try {
+      await treksApi.voidReturn(trek.id, stop.stopId, item.returnId);
+      resetTableData();
+      await loadTrek(true);
+      toast.success('Return removed.');
+      return true;
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to remove return.');
+      return false;
+    }
+  };
+
   const handleStatusChange = async (status: TrekStatus) => {
     if (!trek) return;
     setChangingStatus(status);
     try {
       await treksApi.changeStatus(trek.id, status);
-      await loadTrek(true);
       resetTableData();
-      toast.success(`Trek ${STATUS_LABELS[status].toLowerCase()}.`);
+      await loadTrek(true);
+      toast.success(status === 'InProgress'
+        ? 'Trek started.'
+        : `Trek ${STATUS_LABELS[status].toLowerCase()}.`);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to update status.');
     } finally {
       setChangingStatus(null);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!trek) return;
+    const staffIds = [trek.driverStaffId, trek.salesStaffId].filter((id): id is string => Boolean(id));
+    if (!staffIds.length) return;
+    setResendingEmail(true);
+    setShareOpen(false);
+    try {
+      await treksApi.sendEmail(trek.id, staffIds);
+      toast.success('Trek sheet and driver link resent.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to resend trek email.');
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -209,6 +258,21 @@ export const TrekDetailPage: React.FC = () => {
       toast.error('Failed to generate link.');
     } finally {
       setGeneratingLink(false);
+    }
+  };
+
+  const handleOpenDriverLink = async () => {
+    if (!trek) return;
+    setOpeningDriverLink(true);
+    setShareOpen(false);
+    try {
+      const result = await treksApi.generateLink(trek.id);
+      const opened = window.open(result.url, '_blank', 'noopener,noreferrer');
+      if (!opened) window.location.assign(result.url);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to open driver link.');
+    } finally {
+      setOpeningDriverLink(false);
     }
   };
 
@@ -300,7 +364,7 @@ export const TrekDetailPage: React.FC = () => {
   const isStructureLocked = isLocked || trek?.status === 'InProgress';
   const isDeliveryLocked = trek?.status !== 'InProgress';
   const nextStatuses = trek ? (NEXT_STATUSES[trek.status] ?? []) : [];
-  const sortedStops = trek ? [...trek.stops].sort((a, b) => a.sequence - b.sequence) : [];
+  const sortedStops = trek ? [...trek.stops].sort((a, b) => b.sequence - a.sequence) : [];
 
   // ── Loading ────────────────────────────────────────────────────────
   if (loading) {
@@ -333,13 +397,10 @@ export const TrekDetailPage: React.FC = () => {
               {STATUS_LABELS[trek.status]}
             </span>
           </div>
-          {isDeliveryLocked && (
+          {isLocked && (
             <p className="flex items-center gap-1.5 text-[11px] text-portal-muted italic mt-0.5">
               <i className="pi pi-info-circle shrink-0" />
-              {isLocked
-                ? <span>This trek is <span className={`font-medium not-italic ${STATUS_COLORS[trek.status]}`}>{STATUS_LABELS[trek.status]}</span> — no further changes can be made.</span>
-                : <span>Delivery details can only be recorded once the trek is <span className="text-yellow-400 font-medium not-italic">In Progress</span>.</span>
-              }
+              <span>This trek is <span className={`font-medium not-italic ${STATUS_COLORS[trek.status]}`}>{STATUS_LABELS[trek.status]}</span> — no further changes can be made.</span>
             </p>
           )}
         </div>
@@ -405,7 +466,27 @@ export const TrekDetailPage: React.FC = () => {
                   <i className="pi pi-link text-portal-accent text-[11px]" />
                   {generatingLink ? 'Generating...' : 'Copy Driver Link'}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleOpenDriverLink}
+                  disabled={openingDriverLink}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <i className="pi pi-external-link text-portal-accent text-[11px]" />
+                  {openingDriverLink ? 'Opening...' : 'Open Driver Link'}
+                </button>
                 <div className="border-t border-portal-border/60 mx-2" />
+                {trek.status === 'InProgress' && (
+                  <button
+                    type="button"
+                    onClick={handleResendEmail}
+                    disabled={resendingEmail}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <i className="pi pi-envelope text-portal-accent text-[11px]" />
+                    {resendingEmail ? 'Sending...' : 'Resend Sheet & Link'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
@@ -425,7 +506,7 @@ export const TrekDetailPage: React.FC = () => {
               variant={s === 'Cancelled' ? 'danger-outline' : s === 'Completed' ? 'primary' : 'outline'}
               size="sm"
               label={changingStatus === s ? 'Updating...' : (NEXT_LABELS[s] ?? s)}
-              onClick={() => s === 'Completed' ? setConfirmComplete(true) : handleStatusChange(s)}
+              onClick={() => s === 'Completed' ? setConfirmComplete(true) : s === 'InProgress' ? setConfirmStart(true) : handleStatusChange(s)}
               loading={changingStatus === s}
               disabled={!!changingStatus}
             />
@@ -475,14 +556,16 @@ export const TrekDetailPage: React.FC = () => {
         ) : (
           <div className="divide-y divide-portal-border/40">
             {sortedStops.map((stop) => (
-              <StopCard
+          <StopCard
                 key={stop.stopId}
                 stop={stop}
                 isLocked={isStructureLocked}
                 isDeliveryLocked={isDeliveryLocked}
                 deliveryRows={deliveryRows}
                 updateRow={updateRow}
-                onRecordProduct={handleRecordProduct}
+            onRecordProduct={handleRecordProduct}
+            onRecordReturn={handleRecordReturn}
+            onVoidReturn={handleVoidReturn}
                 recordingProduct={recordingProduct}
                 onEdit={() => setEditingStop(stop)}
                 onRemove={() => setRemovingStop(stop)}
@@ -535,6 +618,16 @@ export const TrekDetailPage: React.FC = () => {
         }
         confirmLabel="Remove Stop"
         variant="danger"
+      />
+
+      <FlatConfirmDialog
+        visible={confirmStart}
+        onHide={() => setConfirmStart(false)}
+        onConfirm={() => { setConfirmStart(false); return handleStatusChange('InProgress'); }}
+        title="Start Trek"
+        message="This will mark the trek as In Progress."
+        confirmLabel="Start Trek"
+        variant="primary"
       />
 
       <FlatConfirmDialog
@@ -615,6 +708,8 @@ interface StopCardProps {
   deliveryRows: Record<string, DeliveryRow>;
   updateRow: (stopProductId: string, field: keyof DeliveryRow, value: string) => void;
   onRecordProduct: (product: TrekStopProduct) => Promise<boolean>;
+  onRecordReturn: (stop: TrekStop, payload: RecordReturnPayload) => Promise<boolean>;
+  onVoidReturn: (stop: TrekStop, item: DriverReturn) => Promise<boolean>;
   recordingProduct: string | null;
   onEdit: () => void;
   onRemove: () => void;
@@ -631,14 +726,31 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = ({
-  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, recordingProduct, onEdit, onRemove,
+  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [activeStopTab, setActiveStopTab] = useState<'products' | 'details'>('products');
+  const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<TrekStopProduct | null>(null);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnProductId, setReturnProductId] = useState('');
+  const [returnBasicQty, setReturnBasicQty] = useState('');
+  const [returnPackagingQty, setReturnPackagingQty] = useState('');
+  const [returnMethod, setReturnMethod] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [savingReturn, setSavingReturn] = useState(false);
+  const [voidingReturn, setVoidingReturn] = useState<DriverReturn | null>(null);
   const isRecorded = stop.products.length > 0 && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
   const landmark = stop.primaryLocationLandmark?.trim() || null;
   const street = stop.primaryLocationStreet?.trim() || null;
+  const selectedReturnProduct = stop.products.find((product) => product.productId === returnProductId);
+  const returnTotal = selectedReturnProduct
+    ? parseNumericInput(returnBasicQty) * Number(selectedReturnProduct.basicUnitPrice || 0)
+      + parseNumericInput(returnPackagingQty) * Number(selectedReturnProduct.packagingUnitPrice || 0)
+    : 0;
+  const resetReturnForm = () => {
+    setReturnProductId(''); setReturnBasicQty(''); setReturnPackagingQty('');
+    setReturnMethod(''); setReturnReason('');
+  };
 
   return (
     <div className="px-4 py-3 sm:px-5 sm:py-4">
@@ -676,12 +788,46 @@ const StopCard: React.FC<StopCardProps> = ({
         )}
       </div>
 
+      {stop.products.length > 0 && (
+        <div
+          aria-hidden={expanded}
+          className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="ml-8 mt-3 divide-y divide-portal-border/30 sm:ml-10">
+              {stop.products.map((product) => {
+                const quantities = [
+                  product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0
+                    ? `${product.plannedPackagingQuantity} ${product.packagingUnitName}` : null,
+                  Number(product.plannedBasicQuantity || 0) > 0
+                    ? `${product.plannedBasicQuantity} ${product.basicUnitName || 'basic units'}` : null,
+                ].filter(Boolean).join(' · ');
+                return (
+                  <button
+                    key={product.stopProductId}
+                    type="button"
+                    disabled={expanded}
+                    onClick={() => { setActiveStopTab('products'); setExpanded(true); }}
+                    aria-label={`View ${product.productName} in ${stop.customerName} products`}
+                    className="group flex w-full cursor-pointer flex-wrap gap-x-1.5 py-1.5 text-left text-[11px] first:pt-0 last:pb-0"
+                  >
+                    <span className="text-portal-text transition-colors group-hover:text-portal-accent">{product.productName}</span>
+                    {quantities && <span className="text-portal-muted">· {quantities}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="min-h-0 overflow-hidden">
       <div className="mt-4 space-y-4">
       <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
         <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
         <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
       </div>
       {/* Info grid */}
       {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
@@ -701,72 +847,46 @@ const StopCard: React.FC<StopCardProps> = ({
               </div>
             </div>}
 
+            {activeStopTab === 'returns' && (
+              <div className="ml-0 sm:ml-10">
+                <div className="mb-3 flex justify-end">
+                  <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>
+                </div>
+                <FlatDataTable
+                  data={[...(stop.returns ?? [])].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())}
+                  enablePaginator={false}
+                  enableTableFilter={false}
+                  emptyDataText="No returns recorded for this stop."
+                  columns={[
+                    { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
+                    { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
+                    { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
+                    { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
+                    { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
+                    { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+                    { field: 'actions', header: 'Action', body: (item) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> },
+                  ]}
+                />
+              </div>
+            )}
+
             {/* Products table */}
             {activeStopTab === 'products' && stop.products.length > 0 && (
-              <div className="overflow-x-auto ml-0 sm:ml-10 border border-portal-border/60 bg-portal-canvas/30 rounded">
-                <table className="min-w-[760px] w-full text-xs">
-                  <thead className="bg-portal-canvas border-b border-portal-border/60">
-                    <tr>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 w-44 max-w-44 whitespace-nowrap">Product</th>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Qty Delivered</th>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Payment</th>
-                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Total</th>
-                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2 w-12">Record</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-portal-border/30">
-              {stop.products.map((product, productIndex) => {
-                const row = deliveryRows[product.stopProductId] ?? {};
-                const plannedPackaging = Boolean(product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0);
-                const plannedBasic = Number(product.plannedBasicQuantity || 0) > 0;
-                const deliveredPackaging = Boolean(product.packagingUnitName && parseNumericInput(row.packagingQtyDelivered) > 0);
-                const deliveredBasic = parseNumericInput(row.basicQtyDelivered) > 0;
-
-                      return (
-                  <tr key={`${product.stopProductId}-${product.productId}-${productIndex}`} className="group">
-                          <td className="py-2 pl-3 pr-4 w-44 max-w-44">
-                            <span className="block truncate font-medium text-white" title={product.productName}>{product.productName}</span>
-                      <span className="mt-1.5 block text-[11px] text-portal-muted">
-                              {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
-                              {product.packagingUnitName && product.packagingUnitPrice != null &&
-                                ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
-                            </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="flex flex-wrap items-center gap-x-2 text-portal-text">
-                        {plannedPackaging && <span>{product.plannedPackagingQuantity} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span></span>}
-                        {plannedPackaging && plannedBasic && <span className="text-portal-muted">·</span>}
-                        {plannedBasic && <span>{product.plannedBasicQuantity} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>}
-                        {!plannedPackaging && !plannedBasic && <span>—</span>}
-                      </div>
-                            <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? (Number(product.plannedBasicQuantity || 0) * Number(product.basicUnitPrice || 0) + Number(product.plannedPackagingQuantity || 0) * Number(product.packagingUnitPrice || 0))))}</span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="flex flex-wrap items-center gap-x-2 text-portal-text">
-                        {deliveredPackaging && <span>{row.packagingQtyDelivered} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span></span>}
-                        {deliveredPackaging && deliveredBasic && <span className="text-portal-muted">·</span>}
-                        {deliveredBasic && <span>{row.basicQtyDelivered} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>}
-                        {!deliveredPackaging && !deliveredBasic && <span>—</span>}
-                      </div>
-                    </td>
-                          <td className="py-2 px-3">
-                            <span className="text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === row.paymentMethod)?.label || '—'}</span>
-                          </td>
-                          <td className="py-2 px-3">
-                            <span className="text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))}</span>
-                          </td>
-                    <td className="py-2 px-2 text-center">
-                            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}>
-                              <i className="pi pi-pencil text-xs" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
+              <div className="ml-0 sm:ml-10">
+                <FlatDataTable
+                  data={stop.products}
+                  enablePaginator={false}
+                  enableTableFilter={false}
+                  emptyDataText="No products recorded for this stop."
+                  columns={[
+                    { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
+                    { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
+                    { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = deliveryRows[product.stopProductId] ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
+                    { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (deliveryRows[product.stopProductId] ?? {}).paymentMethod)?.label || '—'}</span> },
+                    { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, deliveryRows[product.stopProductId] ?? {}))}</span> },
+                    { field: 'actions', header: 'Record', body: (product) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> },
+                  ]}
+                />
               </div>
             )}
           </div>
@@ -817,6 +937,43 @@ const StopCard: React.FC<StopCardProps> = ({
           </FlatModal>
         );
       })()}
+
+      <FlatModal
+        visible={returnModalOpen}
+        onHide={() => { if (!savingReturn) { setReturnModalOpen(false); resetReturnForm(); } }}
+        title="Record return"
+        subtitle="Log products returned at this stop"
+        size="md"
+        footer={<div className="flex justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => { setReturnModalOpen(false); resetReturnForm(); }} disabled={savingReturn}>Cancel</FlatButton><FlatButton size="sm" loading={savingReturn} disabled={savingReturn || returnTotal <= 0} onClick={async () => {
+          if (!selectedReturnProduct || !returnBasicQty || parseNumericInput(returnBasicQty) <= 0) { toast.error('Select a product and enter a positive basic quantity.'); return; }
+          if (returnTotal <= 0) { toast.error('The calculated refund must be greater than zero.'); return; }
+          setSavingReturn(true);
+          const saved = await onRecordReturn(stop, { productId: selectedReturnProduct.productId, basicQtyReturned: parseNumericInput(returnBasicQty), ...(returnPackagingQty && { packagingQtyReturned: parseNumericInput(returnPackagingQty) }), refundAmount: returnTotal, ...(returnMethod && { refundMethod: returnMethod as PaymentMethod }), ...(returnReason.trim() ? { reason: returnReason.trim() } : {}) });
+          setSavingReturn(false);
+          if (saved) { setReturnModalOpen(false); resetReturnForm(); }
+        }}>Save return</FlatButton></div>}
+      >
+        <div className="space-y-3">
+          <FlatDropdown id={`${stop.stopId}-return-product`} label="Product" options={stop.products.map((product) => ({ label: product.productName, value: product.productId }))} value={returnProductId} onChange={(value) => { setReturnProductId(value ?? ''); setReturnBasicQty(''); setReturnPackagingQty(''); }} size="sm" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FlatInputNumber id={`${stop.stopId}-return-basic`} label={`${selectedReturnProduct?.basicUnitName || 'Basic'} quantity`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(returnBasicQty)} onChange={(value) => setReturnBasicQty(numberRowValue(value))} onInput={(event) => setReturnBasicQty((event.target as HTMLInputElement).value)} />
+            {selectedReturnProduct?.packagingUnitName && <FlatInputNumber id={`${stop.stopId}-return-packaging`} label={`${selectedReturnProduct.packagingUnitName} quantity`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(returnPackagingQty)} onChange={(value) => setReturnPackagingQty(numberRowValue(value))} onInput={(event) => setReturnPackagingQty((event.target as HTMLInputElement).value)} />}
+            <FlatDropdown id={`${stop.stopId}-return-method`} label="Refund method" options={PAYMENT_OPTIONS} value={returnMethod} onChange={(value) => setReturnMethod(value ?? '')} size="sm" />
+          </div>
+          <div className="rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] uppercase tracking-wider text-portal-muted">Calculated refund</span><span className="ml-2 text-sm font-semibold text-portal-accent">{fmtGhs(returnTotal)}</span></div>
+          <FlatInputText id={`${stop.stopId}-return-reason`} label="Reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} placeholder="Optional reason..." size="sm" />
+          <p className="text-[11px] text-portal-muted">Refunds are calculated automatically from the returned quantities and snapshotted prices.</p>
+        </div>
+      </FlatModal>
+
+      <FlatConfirmDialog
+        visible={Boolean(voidingReturn)}
+        title="Remove return?"
+        message="This will remove the selected return from this stop."
+        onHide={() => setVoidingReturn(null)}
+        onConfirm={async () => { if (!voidingReturn) return; const saved = await onVoidReturn(stop, voidingReturn); if (saved) setVoidingReturn(null); }}
+        confirmLabel="Remove"
+      />
 
     </div>
   );

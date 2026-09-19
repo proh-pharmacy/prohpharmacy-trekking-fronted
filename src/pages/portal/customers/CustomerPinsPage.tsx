@@ -17,7 +17,7 @@ const FitBounds: React.FC<{ pins: CustomerMapPin[]; trigger: number }> = ({ pins
     const coords = pins.map((p) => [p.latitude, p.longitude] as L.LatLngTuple);
     const bounds = L.latLngBounds(coords);
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-  }, [trigger, map]);
+  }, [pins, trigger, map]);
   return null;
 };
 
@@ -41,13 +41,14 @@ function makePin(pin: CustomerMapPin, pinSize: PinSize = 'normal'): L.DivIcon {
   const conf = PIN_SIZES[pinSize] || PIN_SIZES.normal;
   const portrait = pin.primaryContactPortraitUrl;
   const initials = getInitials(pin.businessName);
+  const borderColor = pin.isPrimary ? '#f0883e' : '#768390';
 
   if (portrait) {
     return L.divIcon({
       className: 'customer-pin-icon',
       html: `<div style="
         width:${conf.size}px;height:${conf.size}px;border-radius:50%;overflow:hidden;
-        border:${conf.border}px solid #f0883e;
+        border:${conf.border}px solid ${borderColor};
         box-shadow:0 2px 8px rgba(0,0,0,0.5);
         box-sizing:border-box;
       "><img src="${portrait}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`,
@@ -61,8 +62,8 @@ function makePin(pin: CustomerMapPin, pinSize: PinSize = 'normal'): L.DivIcon {
     className: 'customer-pin-icon',
     html: `<div style="
       width:${conf.size}px;height:${conf.size}px;border-radius:50%;
-      background:#15803d;
-      border:${conf.border}px solid #f0883e;
+      background:${pin.isPrimary ? '#15803d' : '#2d333b'};
+      border:${conf.border}px solid ${borderColor};
       box-shadow:0 2px 8px rgba(0,0,0,0.5);
       display:flex;align-items:center;justify-content:center;
       box-sizing:border-box;
@@ -123,7 +124,7 @@ export const CustomerPinsPage: React.FC = () => {
           <span className="text-xs font-bold uppercase tracking-wider text-white">Customer Pins</span>
           {!loading && (
             <span className="text-[11px] text-portal-muted">
-              {pins.length} customer{pins.length !== 1 ? 's' : ''} with GPS location
+              {pins.length} location pin{pins.length !== 1 ? 's' : ''}
             </span>
           )}
           {loading && (
@@ -203,7 +204,7 @@ export const CustomerPinsPage: React.FC = () => {
           <FitBounds pins={pins} trigger={fitTrigger} />
           {pins.map((pin) => (
             <Marker
-              key={`${pin.customerAccountId}-${pinSize}`}
+              key={`${pin.locationId || `${pin.customerAccountId}-${pin.latitude}-${pin.longitude}`}-${pinSize}`}
               position={[pin.latitude, pin.longitude]}
               icon={makePin(pin, pinSize)}
               eventHandlers={{

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../components/flat-form';
@@ -7,8 +7,11 @@ import {
   type DriverTrek,
   type DriverStop,
   type DriverStopProduct,
+  type DriverReturn,
   type PaymentMethod,
 } from '../../api-client';
+import type { Product } from '../../api-client/products';
+import type { Customer, CustomerLocation } from '../../api-client/customers';
 import { FlatDataTable, resetTableData } from '../../components/data-table';
 import { baseURL } from '../../api-client/api';
 import { useFieldControl } from './control/useFieldControl';
@@ -16,8 +19,10 @@ import { FieldActions, type FieldActionKind, type FieldActionRequest } from './c
 import { DriverDashboard } from './control/DriverDashboard';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
-import type { FieldCustomer, QueuedAction, RegionTrek } from './control/api';
+import { fieldApi, type FieldCustomer, type QueuedAction, type RegionTrek } from './control/api';
+import { FlatConfirmDialog } from '../../components/overlay/FlatConfirmDialog';
 import { FlatModal } from '../../components/overlay/FlatModal';
+import { CustomerModal, CustomerLocationModal } from '../portal/customers/components/CustomerModal';
 import { fmtGhs, parseNumericInput } from '../../lib/utils';
 
 type DeliveryRow = {
@@ -30,6 +35,63 @@ type DeliveryRow = {
 };
 
 type CustomerListRow = FieldCustomer & { syncStatus?: 'pending' | 'conflict'; syncReason?: string };
+type ProductLedgerRow = DriverStopProduct & { queuedSale?: QueuedAction };
+type ReturnLedgerRow = DriverReturn & { queuedReturn?: QueuedAction; queuedVoid?: QueuedAction };
+
+function customerForModal(customer: FieldCustomer, districts: { id: string; name: string; regionId: string }[]): Customer {
+  const location = customer.primaryLocation ?? (customer.districtId || customer.streetAddress || customer.landmarkAndDirections
+    || customer.latitude != null || customer.longitude != null ? {
+      districtId: customer.districtId,
+      streetAddress: customer.streetAddress,
+      landmarkAndDirections: customer.landmarkAndDirections,
+      latitude: customer.latitude,
+      longitude: customer.longitude,
+      accuracyMetres: customer.accuracyMetres,
+    } : null);
+  const mapLocation = (item: NonNullable<FieldCustomer['primaryLocation']>, primary: boolean): CustomerLocation => ({
+    id: item.id || '',
+    locationType: (item.locationType || 'BusinessPremises') as CustomerLocation['locationType'],
+    regionId: item.regionId ?? customer.regionId ?? districts.find((district) => district.id === item.districtId)?.regionId ?? null,
+    regionName: item.regionName ?? customer.regionName ?? null,
+    districtId: item.districtId ?? null,
+    districtName: item.districtName ?? districts.find((district) => district.id === item.districtId)?.name ?? null,
+    streetAddress: item.streetAddress ?? null,
+    landmarkAndDirections: item.landmarkAndDirections ?? null,
+    latitude: item.latitude ?? null,
+    longitude: item.longitude ?? null,
+    accuracyMetres: item.accuracyMetres ?? null,
+    captureMethod: item.captureMethod || '',
+    verificationStatus: item.verificationStatus || '',
+    isPrimary: primary,
+  });
+  const representativeName = [customer.primaryContactFirstName, customer.primaryContactMiddleName, customer.primaryContactLastName]
+    .filter(Boolean).join(' ') || customer.primaryContactName || '';
+  return {
+    id: customer.id,
+    customerCode: customer.customerCode || '',
+    businessName: customer.businessName,
+    tradingName: customer.tradingName || undefined,
+    customerType: (customer.customerType || 'Other') as Customer['customerType'],
+    registrationStatus: (customer.registrationStatus || 'Active') as Customer['registrationStatus'],
+    primaryPhoneNumber: customer.primaryPhoneNumber,
+    whatsAppNumber: customer.whatsAppNumber || undefined,
+    regionId: customer.regionId || districts[0]?.regionId || '',
+    regionName: customer.regionName || '',
+    createdAt: '',
+    premisesPhotoUrl: customer.premisesPhotoUrl,
+    primaryPerson: customer.primaryPerson || (representativeName ? {
+      id: customer.primaryPersonId || '',
+      fullName: representativeName,
+      relationshipType: (customer.primaryContactRelationshipType || 'Owner') as NonNullable<Customer['primaryPerson']>['relationshipType'],
+      primaryPhoneNumber: customer.primaryContactPhone || '',
+      isPrimaryContact: true,
+      isCreditResponsiblePerson: false,
+      portraitUrl: customer.portraitUrl || undefined,
+    } : undefined),
+    primaryLocation: location ? mapLocation(location, true) : undefined,
+    additionalLocations: (customer.additionalLocations ?? customer.locations ?? []).map((item) => mapLocation(item, false)),
+  };
+}
 
 const PAYMENT_OPTIONS = [
   { label: '—', value: '' },
@@ -55,6 +117,20 @@ const STATUS_LABELS: Record<string, string> = {
 const numberInputValue = (value?: string) => value ? parseNumericInput(value) : null;
 const numberRowValue = (value: number | null) => value == null ? '' : String(value);
 
+function queuedActionSummary(action: QueuedAction): string {
+  const payload = action.payload;
+  if (action.type === 'RecordDelivery') return `Product ${String(payload.stopProductId || '')} · ${String(payload.basicQtyDelivered ?? 0)} basic units`;
+  if (action.type === 'RecordUnplannedSale') return `Product ${String(payload.productId || '')} · ${String(payload.basicQtyDelivered ?? 0)} basic units`;
+  if (action.type === 'RecordReturn') return `Product ${String(payload.productId || '')} · ${String(payload.basicQtyReturned ?? 0)} basic units`;
+  if (action.type === 'AddWalkInStop') return `Sequence ${String(payload.sequence || '')}`;
+  if (action.type === 'RegisterCustomer') return String(payload.businessName || 'New customer');
+  if (action.type === 'UpdateCustomer') return `Customer ${String(payload.customerId || '')}`;
+  if (action.type === 'AddCustomerLocation') return `Customer location ${String(payload.customerId || payload.customerClientId || '')}`;
+  if (action.type === 'UpdateCustomerLocation') return `Location ${String(payload.locationId || payload.locationClientId || '')}`;
+  if (action.type === 'VoidReturn') return `Return ${String(payload.returnId || payload.returnClientId || '')}`;
+  return '';
+}
+
 const calculateDeliveredAmount = (product: DriverStop['products'][number], row: Partial<DeliveryRow>) => {
   const basic = parseNumericInput(row.basicQtyDelivered);
   const packaging = parseNumericInput(row.packagingQtyDelivered);
@@ -62,18 +138,22 @@ const calculateDeliveredAmount = (product: DriverStop['products'][number], row: 
     + (Number.isFinite(packaging) ? packaging : 0) * Number(product.packagingUnitPrice || 0);
 };
 
+function deliveryRowFromProduct(p: DriverStopProduct): DeliveryRow {
+  return {
+    basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
+    packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
+    paymentMethod: p.paymentMethod ?? '',
+    amtPaid: p.amtPaid != null ? String(p.amtPaid) : '',
+    balance: p.balance != null ? String(p.balance) : '',
+    notes: p.notes ?? '',
+  };
+}
+
 function initRows(trek: DriverTrek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
   trek.stops.forEach((stop) =>
     stop.products.forEach((p) => {
-      rows[p.stopProductId] = {
-        basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
-        packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
-        paymentMethod: p.paymentMethod ?? '',
-        amtPaid:       p.amtPaid != null ? String(p.amtPaid) : '',
-        balance:       p.balance != null ? String(p.balance) : '',
-        notes:         p.notes ?? '',
-      };
+      rows[p.stopProductId] = deliveryRowFromProduct(p);
     })
   );
   return rows;
@@ -98,17 +178,89 @@ interface StopCardProps {
   onRowChange: (spId: string, field: keyof DeliveryRow, value: string) => void;
   onRecordProduct: (product: DriverStopProduct) => Promise<boolean>;
   recordingProduct: string | null;
-  onVoid: (stopId: string, returnId: string) => void;
+  onVoid: (stopId: string, returnId: string) => void | Promise<void>;
   onFieldAction: (kind: FieldActionKind, stopId: string) => void;
   queuedReturns: QueuedAction[];
+  queuedVoids: QueuedAction[];
+  queuedSales: QueuedAction[];
+  queuedDeliveries: QueuedAction[];
+  queuedStop?: QueuedAction;
+  products: Product[];
+  onRemoveQueued: (clientId: string) => Promise<void>;
+  onCancelQueuedDelivery: (product: DriverStopProduct, actions: QueuedAction[]) => Promise<void>;
+  syncing: boolean;
 }
 
-const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns }) => {
-  const [expanded, setExpanded] = useState(false);
+const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing }) => {
+  const [expanded, setExpanded] = useState(Boolean(queuedStop));
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
+  const [returnToRemove, setReturnToRemove] = useState<{ stopId: string; returnId: string; productName: string } | null>(null);
   const hasProducts = stop.products.length > 0;
   const isRecorded = hasProducts && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
+  const pendingActionCount = queuedSales.length + queuedReturns.length + queuedDeliveries.length + queuedVoids.length;
+  const pendingDeliveryFor = (product: DriverStopProduct) => queuedDeliveries.filter(
+    (action) => action.payload.stopProductId === product.stopProductId);
+  const displayRowFor = (product: DriverStopProduct): Partial<DeliveryRow> => {
+    const pending = pendingDeliveryFor(product).at(-1);
+    if (!pending) return rows[product.stopProductId] ?? {};
+    const payload = pending.payload;
+    return {
+      ...deliveryRowFromProduct(product),
+      ...(payload.basicQtyDelivered != null ? { basicQtyDelivered: String(payload.basicQtyDelivered) } : {}),
+      ...(payload.packagingQtyDelivered != null ? { packagingQtyDelivered: String(payload.packagingQtyDelivered) } : {}),
+      ...(payload.paymentMethod != null ? { paymentMethod: String(payload.paymentMethod) } : {}),
+      ...(payload.amtPaid != null ? { amtPaid: String(payload.amtPaid) } : { amtPaid: '' }),
+      ...(payload.notes != null ? { notes: String(payload.notes) } : {}),
+    };
+  };
+  const productRows: ProductLedgerRow[] = [
+    ...stop.products,
+    ...queuedSales.map((action): ProductLedgerRow => {
+      const product = products.find((item) => item.id === action.payload.productId);
+      return {
+        stopProductId: action.clientId,
+        productName: product?.name || 'Product',
+        basicUnitName: product?.basicUnitName || 'basic units',
+        packagingUnitName: product?.packagingUnitName || null,
+        basicUnitPrice: Number(product?.basicUnitPrice ?? 0),
+        packagingUnitPrice: product?.packagingUnitPrice ?? null,
+        plannedBasicQuantity: 0,
+        plannedPackagingQuantity: null,
+        basicQtyDelivered: Number(action.payload.basicQtyDelivered ?? 0),
+        packagingQtyDelivered: action.payload.packagingQtyDelivered == null ? null : Number(action.payload.packagingQtyDelivered),
+        paymentMethod: (action.payload.paymentMethod as PaymentMethod) || null,
+        isUnplanned: true,
+        queuedSale: action,
+      };
+    }),
+  ];
+  const returnRows: ReturnLedgerRow[] = [
+    ...(stop.returns ?? []).map((item) => ({
+      ...item,
+      queuedVoid: queuedVoids.find((action) => action.payload.returnId === item.returnId),
+    })),
+    ...queuedReturns.map((action): ReturnLedgerRow => {
+      const product = products.find((item) => item.id === action.payload.productId);
+      return {
+        returnId: action.clientId,
+        productId: String(action.payload.productId || ''),
+        productName: product?.name || 'Product',
+        basicUnitName: product?.basicUnitName || 'basic units',
+        packagingUnitName: product?.packagingUnitName || null,
+        basicQtyReturned: Number(action.payload.basicQtyReturned ?? 0),
+        packagingQtyReturned: action.payload.packagingQtyReturned == null ? null : Number(action.payload.packagingQtyReturned),
+        basicUnitPrice: Number(product?.basicUnitPrice ?? 0),
+        packagingUnitPrice: product?.packagingUnitPrice ?? null,
+        refundAmount: action.payload.refundAmount == null ? null : Number(action.payload.refundAmount),
+        refundMethod: (action.payload.refundMethod as PaymentMethod) || null,
+        reason: action.payload.reason == null ? null : String(action.payload.reason),
+        recordedAt: action.occurredAt,
+        queuedReturn: action,
+        queuedVoid: queuedVoids.find((item) => item.payload.returnClientId === action.clientId),
+      };
+    }),
+  ].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
 
   return (
     <div className="px-4 sm:px-5 py-3">
@@ -125,6 +277,8 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
             {stop.sequence}.
           </span>
           <span className="min-w-0 truncate text-[13px] font-medium text-portal-text sm:text-sm">{stop.customerName}</span>
+          {queuedStop && <span className={`shrink-0 text-[11px] ${queuedStop.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={queuedStop.reason}>{queuedStop.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span>}
+          {pendingActionCount > 0 && <span className="shrink-0 text-[11px] text-portal-muted">{pendingActionCount} pending</span>}
           <span className="w-px h-3.5 bg-portal-border shrink-0" />
           <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
           {isRecorded && (
@@ -139,6 +293,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
+        {queuedStop && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
       </div>
 
@@ -151,7 +306,6 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
       <div className="flex flex-wrap gap-2 items-center">
-        {stop.isWalkIn && <span className="text-[11px] text-portal-accent">Additional stop</span>}
         {!locked && <>
           <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
           <FlatButton size="sm" variant="ghost" className="!border-portal-orange/40 !bg-portal-orange/10 !text-portal-orange hover:!bg-portal-orange/20" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
@@ -160,7 +314,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
       <div className="flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
         <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
         <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-orange text-portal-orange' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{(stop.returns?.length || queuedReturns.length) ? ` (${(stop.returns?.length || 0) + queuedReturns.length})` : ''}</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-orange text-portal-orange' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{returnRows.length ? ` (${returnRows.length})` : ''}</button>
       </div>
       {activeStopTab === 'details' && <>
       {/* Info grid */}
@@ -199,108 +353,58 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
 
       {activeStopTab === 'products' && <>
       {/* Products listing */}
-      {hasProducts && (
-        <div className="space-y-3">
-          {/* Desktop Table View (hidden on small screens) */}
-          <div className="hidden md:block border border-portal-border/60 bg-portal-canvas/30 rounded overflow-x-auto">
-            <table className="min-w-[760px] w-full text-xs">
-              <thead className="bg-portal-canvas border-b border-portal-border/60">
-                <tr>
-                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">Product</th>
-                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-28 whitespace-nowrap">Planned</th>
-                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-32 whitespace-nowrap">Delivered</th>
-                  <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-36 whitespace-nowrap">Payment</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-24 whitespace-nowrap">Total</th>
-                  <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-2.5 w-16 whitespace-nowrap">Record</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-portal-border/30">
-                {stop.products.map((product) => {
-                  const row  = rows[product.stopProductId] ?? {};
-                  const spId = product.stopProductId;
-                  return (
-                    <tr key={spId} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="block font-medium text-portal-text">{product.productName}</span>
-                        <span className="mt-1.5 block text-[11px] text-portal-muted">
-                          {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
-                          {product.packagingUnitName && product.packagingUnitPrice != null &&
-                            ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        {product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 && <span className="text-portal-text">{product.plannedPackagingQuantity} <span className="text-[11px] text-portal-muted">{product.packagingUnitName}</span> · </span>}
-                        <span className="text-portal-text">{product.plannedBasicQuantity} <span className="text-[11px] text-portal-muted">{product.basicUnitName || 'basic units'}</span></span>
-                        <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? (Number(product.plannedBasicQuantity || 0) * Number(product.basicUnitPrice || 0) + Number(product.plannedPackagingQuantity || 0) * Number(product.packagingUnitPrice || 0))))}</span>
-                      </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <span className="text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <span className="text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === row.paymentMethod)?.label || '—'}</span>
-                      </td>
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
-                        <span className="text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))}</span>
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center">
-                        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} aria-label={`Record ${product.productName} delivery`} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View (just as we have for the data table) */}
-          <div className="md:hidden space-y-3">
-            {stop.products.map((product) => {
-              const row  = rows[product.stopProductId] ?? {};
-              const spId = product.stopProductId;
-              return (
-                <div
-                  key={spId}
-                  className="p-3 space-y-3 bg-portal-canvas/50 border border-portal-border/60 rounded hover:bg-white/[0.02] transition-colors"
-                >
-                  {/* Product title and planned quantities */}
-                  <div className="flex items-start justify-between gap-2 pb-2 border-b border-portal-border/40">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-portal-text break-words sm:text-xs">{product.productName}</p>
-                      <p className="text-[11px] text-portal-muted">
-                        {fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}
-                        {product.packagingUnitName && product.packagingUnitPrice != null &&
-                          ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}`}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right text-[11px]">
-                      <span className="block text-portal-muted text-[10px] uppercase font-semibold">Planned</span>
-                      <span className="block text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span>
-                      <span className="block mt-1 text-[10px] text-portal-text/80">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 border-t border-portal-border/30 pt-2 text-[11px]">
-                    <div className="min-w-0 text-portal-text">
-                      <span>{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>
-                      <span className="block text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, row))} total</span>
-                    </div>
-                    <button type="button" className="inline-flex h-8 shrink-0 items-center gap-1 rounded border border-portal-border px-2.5 text-[11px] text-portal-text hover:border-portal-accent hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-[10px]" /> Record</button>
-                  </div>
+      {!!productRows.length && (
+        <FlatDataTable
+          data={productRows}
+          enablePaginator={false}
+          enableTableFilter={false}
+          emptyDataText="No products recorded for this stop."
+          columns={[
+            { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
+            { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
+            { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
+            { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : displayRowFor(product).paymentMethod))?.label || '—'}</span> },
+            { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : displayRowFor(product)))}</span> },
+            { field: 'actions', header: 'Record', body: (product) => {
+              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button></div>;
+              const pending = pendingDeliveryFor(product);
+              return pending.length ? (
+                <div className="flex flex-col items-start gap-1">
+                  <span className={`text-[11px] ${pending.some((action) => action.status === 'conflict') ? 'text-red-accent' : 'text-portal-accent'}`}>
+                    {pending.some((action) => action.status === 'conflict') ? 'Needs review' : 'Awaiting sync'}
+                  </span>
+                  <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onCancelQueuedDelivery(product, pending)}>Cancel</button>
                 </div>
-              );
-            })}
-          </div>
-
-        </div>
+              ) : <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} aria-label={`Record ${product.productName} delivery`} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>;
+            } },
+          ]}
+        />
       )}
+      {!productRows.length && <p className="py-6 text-center text-[11px] text-portal-muted">No products recorded for this stop.</p>}
       </>}
       {activeStopTab === 'returns' && <div className="space-y-3">
-        {!!stop.returns?.length ? <div className="space-y-1">
-          {stop.returns.map((item) => <div key={item.returnId} className="flex items-center justify-between gap-2 text-xs text-portal-text"><span>{item.productName} · {item.basicQtyReturned} {item.basicUnitName}{item.packagingQtyReturned ? ` · ${item.packagingQtyReturned} ${item.packagingUnitName}` : ''}</span>{!locked && <FlatButton size="sm" variant="ghost" onClick={() => onVoid(stop.stopId, item.returnId)}>Void</FlatButton>}</div>)}
-        </div> : <p className="text-[11px] text-portal-muted">No returns recorded for this stop.</p>}
-        {!!queuedReturns.length && <p className="text-[11px] text-portal-muted">{queuedReturns.length} return action(s) saved on this device.</p>}
+        <FlatDataTable
+          data={returnRows}
+          enablePaginator={false}
+          enableTableFilter={returnRows.length > 4}
+          filterablePlaceholder="Search returns..."
+          emptyDataText="No returns recorded for this stop."
+          columns={[
+            { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
+            { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
+            { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
+            { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
+            { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
+            { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+            { field: 'actions', header: 'Action', body: (item) => {
+              if (item.queuedReturn || item.queuedVoid) {
+                const action = item.queuedReturn || item.queuedVoid!;
+                return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${action.status === 'conflict' ? 'text-red-accent' : 'text-portal-orange'}`}>{action.status === 'conflict' ? 'Needs review' : item.queuedVoid ? 'Removal pending' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(action.clientId)}>Cancel</button></div>;
+              }
+              return !locked ? <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-accent/10 hover:text-red-accent" title="Remove return" aria-label={`Remove return for ${item.productName}`} onClick={() => setReturnToRemove({ stopId: stop.stopId, returnId: item.returnId, productName: item.productName })}><i className="pi pi-trash text-xs" /></button> : null;
+            } },
+          ]}
+        />
       </div>}
           </div>
         </div>
@@ -326,6 +430,20 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           </div>
         </FlatModal>;
       })()}
+      <FlatConfirmDialog
+        visible={returnToRemove !== null}
+        onHide={() => setReturnToRemove(null)}
+        onConfirm={async () => {
+          if (!returnToRemove) return;
+          await onVoid(returnToRemove.stopId, returnToRemove.returnId);
+          setReturnToRemove(null);
+        }}
+        title="Remove return?"
+        message={`Remove the recorded return for ${returnToRemove?.productName ?? 'this product'}? This action cannot be undone.`}
+        confirmLabel="Remove return"
+        variant="danger"
+        icon="pi pi-trash"
+      />
     </div>
   );
 };
@@ -344,60 +462,38 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, customers, regionTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, queuePhoto, retry, remove } = useFieldControl(token);
+  const { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
   const [assignedStopRequest, setAssignedStopRequest] = useState<FieldActionRequest | null>(null);
-  const [stopsTab, setStopsTab] = useState<'current' | 'regional'>('current');
   const [customerRequest, setCustomerRequest] = useState<FieldActionRequest | null>(null);
-  const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
-  const premisesPhotoCustomerIdRef = useRef<string | null>(null);
-  const [uploadingCustomerPhotoId, setUploadingCustomerPhotoId] = useState<string | null>(null);
-  const [uploadingPortraitId, setUploadingPortraitId] = useState<string | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<FieldCustomer | null>(null);
+  const editingCustomerModal = useMemo(() => editingCustomer ? customerForModal(editingCustomer, districts) : null, [editingCustomer, districts]);
+  const [locationCustomer, setLocationCustomer] = useState<FieldCustomer | null>(null);
+  const [editingLocation, setEditingLocation] = useState<CustomerLocation | null>(null);
+  const [trekListTab, setTrekListTab] = useState<'mine' | 'region'>('region');
+  const [trekToSwitch, setTrekToSwitch] = useState<RegionTrek | null>(null);
+  const [switchingTrek, setSwitchingTrek] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completingTrek, setCompletingTrek] = useState(false);
-  const handleFieldPremisesPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    const customerId = premisesPhotoCustomerIdRef.current;
-    if (!file || !customerId) return;
-    if (!online) { toast.error('Connect to upload a premises photo.'); return; }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Choose a JPEG, PNG, or WebP photo.'); return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Premises photo must be 5 MB or smaller.'); return;
-    }
-    setUploadingCustomerPhotoId(customerId);
+  const switchTrek = async (trekId: string): Promise<boolean> => {
+    if (!navigator.onLine) { toast.error('Online required to switch.'); return false; }
     try {
-      await uploadCustomerPremisesPhoto(customerId, file);
-      toast.success('Premises photo uploaded.');
-    } catch (uploadError: any) {
-      toast.error(uploadError.response?.data?.message || uploadError.response?.data?.detail || 'Could not upload premises photo.');
-    } finally {
-      setUploadingCustomerPhotoId(null);
-      premisesPhotoCustomerIdRef.current = null;
+      const result = await fieldApi.generateTrekToken(token, trekId);
+      window.location.assign(result.url);
+      return true;
+    } catch (switchError: any) {
+      toast.error(switchError.response?.data?.detail || switchError.response?.data?.message || 'Could not open this trek.');
+      return false;
     }
   };
-  const handleFieldPortraitChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    const customer = customers.find((item) => item.id === premisesPhotoCustomerIdRef.current);
-    if (!file || !customer || !customer.primaryPersonId) return;
-    if (!online) { toast.error('Connect to upload a representative photo.'); return; }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('Choose a JPEG, PNG, or WebP photo.'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('Representative photo must be 5 MB or smaller.'); return; }
-    setUploadingPortraitId(customer.id);
+  const confirmTrekSwitch = async () => {
+    if (!trekToSwitch) return;
+    setSwitchingTrek(true);
     try {
-      await uploadCustomerPortrait(customer.id, customer.primaryPersonId, file);
-      toast.success('Representative photo uploaded.');
-    } catch (uploadError: any) {
-      toast.error(uploadError.response?.data?.message || uploadError.response?.data?.detail || 'Could not upload representative photo.');
-    } finally {
-      setUploadingPortraitId(null);
-      premisesPhotoCustomerIdRef.current = null;
-    }
+      if (await switchTrek(trekToSwitch.trekId)) setTrekToSwitch(null);
+    } finally { setSwitchingTrek(false); }
   };
   useEffect(() => { if (view !== 'assigned') setAssignedStopRequest(null); }, [view]);
   useEffect(() => { if (view !== 'customers') setCustomerRequest(null); }, [view]);
@@ -407,10 +503,6 @@ export const DriverPage: React.FC = () => {
     stopId: searchParams.get('stopId') || undefined,
     nonce: Number(searchParams.get('nonce') || 0),
   } : null;
-  const openAction = (kind: FieldActionKind, trekId?: string, stopId?: string) => {
-    navigate(driverHref('actions', { kind, ...(trekId && { trekId }), ...(stopId && { stopId }), nonce: String(Date.now()) }));
-  };
-
   const handleCompleteTrek = async () => {
     setCompletingTrek(true);
     try {
@@ -429,6 +521,11 @@ export const DriverPage: React.FC = () => {
   const updateRow = useCallback((spId: string, field: keyof DeliveryRow, value: string) => {
     setDeliveryRows((prev) => ({ ...prev, [spId]: { ...prev[spId], [field]: value } }));
   }, []);
+
+  const cancelQueuedDelivery = useCallback(async (product: DriverStopProduct, actions: QueuedAction[]) => {
+    for (const action of actions) await remove(action.clientId);
+    setDeliveryRows((prev) => ({ ...prev, [product.stopProductId]: deliveryRowFromProduct(product) }));
+  }, [remove]);
 
   const handleRecordProduct = useCallback(async (product: DriverStopProduct): Promise<boolean> => {
     const row = deliveryRows[product.stopProductId] ?? {};
@@ -484,10 +581,25 @@ export const DriverPage: React.FC = () => {
   }
 
   const sortedStops = [...trek.stops].sort((a, b) => a.sequence - b.sequence);
-  const queuedStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status === 'pending' && action.payload.trekId === trek.trekId);
+  const queuedStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status !== 'synced' && action.payload.trekId === trek.trekId);
+  const registeredCustomerActions = queue
+    .filter((action) => action.type === 'RegisterCustomer')
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  const locallyCreatedCustomerIds = new Map(
+    registeredCustomerActions
+      .filter((action) => action.serverId)
+      .map((action, index) => [action.serverId as string, index])
+  );
+  const orderedCustomers = [...customers].sort((a, b) => {
+    const aIndex = locallyCreatedCustomerIds.get(a.id);
+    const bIndex = locallyCreatedCustomerIds.get(b.id);
+    if (aIndex == null && bIndex == null) return 0;
+    if (aIndex == null) return 1;
+    if (bIndex == null) return -1;
+    return aIndex - bIndex;
+  });
   const customerRows: CustomerListRow[] = [
-    ...customers,
-    ...queue.filter((action) => action.type === 'RegisterCustomer' && action.status !== 'synced').map((action) => ({
+    ...registeredCustomerActions.filter((action) => action.status !== 'synced').map((action) => ({
       id: action.clientId,
       businessName: String(action.payload.businessName || ''),
       primaryPhoneNumber: String(action.payload.primaryPhoneNumber || ''),
@@ -503,12 +615,13 @@ export const DriverPage: React.FC = () => {
       syncStatus: action.status as 'pending' | 'conflict',
       syncReason: action.reason,
     })),
+    ...orderedCustomers,
   ];
   const nextStopSequence = Math.max(0, ...sortedStops.map((stop) => stop.sequence), ...queuedStops.map((action) => Number(action.payload.sequence) || 0)) + 1;
   const visibleTreks = regionTreks.length ? regionTreks : [{ trekId: trek.trekId, trekNumber: trek.trekNumber, scheduledDate: trek.scheduledDate,
     status: trek.status, driverName: trek.driverName, salesStaffName: trek.salesStaffName, regionName: trek.regionName, stopsCount: trek.stops.length }];
   const pendingCount = queue.filter((action) => action.status === 'pending').length + photoQueue.filter((photo) => photo.status === 'pending').length;
-  const isStopRecorded = (s: DriverStop) =>
+const isStopRecorded = (s: DriverStop) =>
     s.products.length > 0 &&
     s.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
 
@@ -520,6 +633,7 @@ export const DriverPage: React.FC = () => {
           customers={customers}
           regionalCount={regionTreks.length || null}
           pendingCount={pendingCount}
+          controlAvailable={controlAvailable}
           syncing={syncing}
           onSync={sync}
           online={online}
@@ -539,16 +653,7 @@ export const DriverPage: React.FC = () => {
           }}
           renderStopsView={() => (
             <div className="space-y-4">
-              <div className="flex items-center gap-1 border-b border-portal-border/60">
-                <button type="button" onClick={() => setStopsTab('current')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${stopsTab === 'current' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>
-                  Current trek
-                </button>
-                <button type="button" onClick={() => setStopsTab('regional')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${stopsTab === 'regional' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>
-                  Regional treks
-                </button>
-              </div>
-
-              {stopsTab === 'current' && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">
                 <div>
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
@@ -557,32 +662,7 @@ export const DriverPage: React.FC = () => {
                   {!trek.isLocked && trek.status === 'InProgress' && <FlatButton size="sm" variant="outline" leftIcon="pi pi-check-circle" className="w-full shrink-0 sm:w-auto" disabled={!online || syncing || completingTrek} onClick={() => setCompleteDialogOpen(true)}>Complete trek</FlatButton>}
                   <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" className="w-full shrink-0 sm:w-auto" onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}>Download PDF Sheet</FlatButton>
                 </div>
-              </div>}
-
-              {stopsTab === 'regional' ? (
-                <FlatDataTable<RegionTrek>
-                  data={visibleTreks}
-                  columns={[
-                    { field: 'trekNumber', header: 'Trek ID', body: (item) => <span className="text-xs font-semibold text-portal-text">{item.trekNumber}</span> },
-                    { field: 'regionName', header: 'Trekking Region' },
-                    { field: 'scheduledDate', header: 'Date' },
-                    { field: 'status', header: 'Status', body: (item) => <span className={STATUS_STYLES[item.status] ?? 'text-portal-muted'}>{STATUS_LABELS[item.status] ?? item.status}</span> },
-                    { field: 'driverName', header: 'Driver' },
-                    { field: 'salesStaffName', header: 'Sales Staff', body: (item) => item.salesStaffName || '—' },
-                    { field: 'stopsCount', header: 'Stops' },
-                    { field: 'actions', header: 'Actions', body: (item) => item.status !== 'Completed' && item.status !== 'Cancelled' ? <FlatButton size="sm" variant="ghost" onClick={() => openAction('stop', item.trekId)}>Add stop</FlatButton> : null },
-                  ]}
-                  heading={`Treks in ${trek.regionName}`}
-                  headerNotes={<span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>}
-                  filterablePlaceholder="Search trek, driver or region..."
-                  enableTableFilter
-                  enablePaginator
-                  initialPageSize={10}
-                  emptyDataText="No regional treks available."
-                />
-              ) : (
-              <>
-
+              </div>
               {trek.isLocked && (
                 <p className="text-[11px] text-portal-muted italic border-l-2 border-portal-border pl-3">
                   <i className="pi pi-lock mr-1.5" />
@@ -594,6 +674,7 @@ export const DriverPage: React.FC = () => {
                 trek={trek}
                 products={products}
                 customers={customers}
+                districts={districts}
                 queue={queue}
                 enqueue={enqueue}
                 queuePhoto={queuePhoto}
@@ -629,38 +710,162 @@ export const DriverPage: React.FC = () => {
                         recordingProduct={recordingProduct}
                         onVoid={handleVoid}
                         onFieldAction={(kind, stopId) => setAssignedStopRequest({ kind, stopId, nonce: Date.now() })}
+                        products={products}
                         queuedReturns={queue.filter(
                           (action) =>
                             action.type === 'RecordReturn' &&
                             action.status !== 'synced' &&
                             action.payload.stopId === stop.stopId
                         )}
+                        queuedVoids={queue.filter((action) => action.type === 'VoidReturn' && action.status !== 'synced'
+                          && ((stop.returns ?? []).some((item) => item.returnId === action.payload.returnId)
+                            || queue.some((item) => item.type === 'RecordReturn' && item.payload.stopId === stop.stopId
+                              && item.clientId === action.payload.returnClientId)))}
+                        queuedSales={queue.filter((action) => action.type === 'RecordUnplannedSale' && action.status !== 'synced' && action.payload.stopId === stop.stopId)}
+                        queuedDeliveries={queue.filter((action) => action.type === 'RecordDelivery' && action.status !== 'synced' && stop.products.some((product) => product.stopProductId === action.payload.stopProductId))}
+                        onRemoveQueued={remove}
+                        onCancelQueuedDelivery={cancelQueuedDelivery}
+                        syncing={syncing}
                       />
                     ))}
                     {queuedStops.map((action) => {
                       const customer = customers.find((item) => item.id === action.payload.customerId);
                       const queuedCustomer = queue.find((item) => item.type === 'RegisterCustomer' && item.clientId === action.payload.customerClientId);
-                      return <div key={action.clientId} className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs sm:px-5">
-                        <span className="font-semibold text-portal-text">{String(action.payload.sequence)}. {customer?.businessName || String(queuedCustomer?.payload.businessName || 'Additional stop customer')}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-portal-accent">Saved on device · awaiting sync</span>
-                          {!trek.isLocked && <FlatButton size="sm" variant="ghost" onClick={() => setAssignedStopRequest({ kind: 'sale', stopClientId: action.clientId, nonce: Date.now() })}>Unplanned sale</FlatButton>}
-                        </div>
-                      </div>;
+                      const queuedSales = queue.filter((queuedAction) => queuedAction.type === 'RecordUnplannedSale'
+                        && queuedAction.status !== 'synced'
+                        && queuedAction.payload.stopClientId === action.clientId);
+                      const queuedReturnsForStop = queue.filter((queuedAction) => queuedAction.type === 'RecordReturn'
+                        && queuedAction.status !== 'synced'
+                        && queuedAction.payload.stopClientId === action.clientId);
+                      const stop: DriverStop = {
+                        stopId: action.clientId,
+                        sequence: Number(action.payload.sequence) || 0,
+                        customerName: customer?.businessName || String(queuedCustomer?.payload.businessName || 'Additional stop customer'),
+                        customerCode: customer?.customerCode || '',
+                        primaryPhoneNumber: customer?.primaryPhoneNumber || String(queuedCustomer?.payload.primaryPhoneNumber || ''),
+                        regionName: customer?.regionName || trek.regionName,
+                        districtName: customer?.primaryLocation?.districtName || '',
+                        primaryLocationLandmark: customer?.primaryLocation?.landmarkAndDirections || '',
+                        primaryLocationStreet: customer?.primaryLocation?.streetAddress || '',
+                        latitude: customer?.primaryLocation?.latitude ?? null,
+                        longitude: customer?.primaryLocation?.longitude ?? null,
+                        accuracyMetres: customer?.primaryLocation?.accuracyMetres ?? null,
+                        products: [],
+                        returns: [],
+                        isWalkIn: true,
+                      };
+                      return <StopCard
+                        key={action.clientId}
+                        stop={stop}
+                        rows={deliveryRows}
+                        locked={trek.isLocked || action.status === 'conflict'}
+                        onRowChange={updateRow}
+                        onRecordProduct={handleRecordProduct}
+                        recordingProduct={recordingProduct}
+                        onVoid={handleVoid}
+                        onFieldAction={(kind) => setAssignedStopRequest({ kind, stopClientId: action.clientId, nonce: Date.now() })}
+                        products={products}
+                        queuedReturns={queuedReturnsForStop}
+                        queuedVoids={queue.filter((item) => item.type === 'VoidReturn' && item.status !== 'synced'
+                          && queuedReturnsForStop.some((queuedReturn) => queuedReturn.clientId === item.payload.returnClientId))}
+                        queuedSales={queuedSales}
+                        queuedDeliveries={[]}
+                        queuedStop={action}
+                        onRemoveQueued={remove}
+                        onCancelQueuedDelivery={cancelQueuedDelivery}
+                        syncing={syncing}
+                      />;
                     })}
                   </div>
                 )}
               </div>
-              </>
-              )}
             </div>
           )}
           renderCustomersView={() => (
             <div className="space-y-4">
+              {editingCustomer && <CustomerModal
+                visible
+                onHide={() => setEditingCustomer(null)}
+                customer={editingCustomerModal}
+                onAddLocation={() => { setEditingLocation(null); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
+                onEditLocation={(location) => { setEditingLocation(location); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
+                pendingLocationIds={queue.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending')
+                  .map((action) => String(action.payload.locationId || action.payload.locationClientId || ''))}
+                driverMode={{ districts, region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName }, onSubmit: async (payload, photos) => {
+                  const { districtId, streetAddress, landmarkAndDirections, gps, ...customerFields } = payload;
+                  await enqueue('UpdateCustomer', customerFields);
+                  const currentLocation = editingCustomer.primaryLocation;
+                  const locationChanges: Record<string, unknown> = {};
+                  if (typeof districtId === 'string' && districtId !== (currentLocation?.districtId || '')) locationChanges.districtId = districtId;
+                  if (typeof streetAddress === 'string' && streetAddress !== (currentLocation?.streetAddress || '')) locationChanges.streetAddress = streetAddress;
+                  if (typeof landmarkAndDirections === 'string' && landmarkAndDirections !== (currentLocation?.landmarkAndDirections || '')) locationChanges.landmarkAndDirections = landmarkAndDirections;
+                  if (gps && typeof gps === 'object') {
+                    const fix = gps as { latitude?: number; longitude?: number; accuracyMetres?: number };
+                    if (fix.latitude !== currentLocation?.latitude || fix.longitude !== currentLocation?.longitude || fix.accuracyMetres !== currentLocation?.accuracyMetres) locationChanges.gps = fix;
+                  }
+                  if (Object.keys(locationChanges).length) {
+                    await enqueue(currentLocation?.id ? 'UpdateCustomerLocation' : 'AddCustomerLocation', {
+                      ...(currentLocation?.id ? { locationId: currentLocation.id } : { customerId: editingCustomer.id, isPrimary: true }),
+                      ...locationChanges,
+                    });
+                  }
+                  if (photos.premises) { if (!online) throw new Error('Connect to upload customer photos.'); await uploadCustomerPremisesPhoto(editingCustomer.id, photos.premises); }
+                  if (photos.portrait) { if (!online || !editingCustomer.primaryPersonId) throw new Error('Representative photo upload requires an online representative record.'); await uploadCustomerPortrait(editingCustomer.id, editingCustomer.primaryPersonId, photos.portrait); }
+                  toast.success('Customer update saved on this device.');
+                }}}
+              />}
+              {locationCustomer && <CustomerLocationModal
+                visible
+                onHide={() => { setLocationCustomer(null); setEditingLocation(null); }}
+                customerName={locationCustomer.businessName}
+                location={editingLocation}
+                region={{ id: '', name: locationCustomer.regionName || trek.regionName }}
+                districts={districts}
+                districtRequired={false}
+                includeRegion={false}
+                regionLocked
+                driverEdit={Boolean(editingLocation)}
+                online={online}
+                onSubmit={async (payload) => {
+                  if (editingLocation) {
+                    const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
+                    const added = queue.find((action) => action.type === 'AddCustomerLocation' && action.clientId === editingLocation.id);
+                    const reference = added?.status === 'pending' ? { locationClientId: added.clientId }
+                      : { locationId: added?.serverId || editingLocation.id };
+                    await enqueue('UpdateCustomerLocation', {
+                      ...reference,
+                      ...locationFields,
+                      ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
+                        ? { gps: { latitude, longitude, accuracyMetres } } : {}),
+                    });
+                    resetTableData();
+                    toast.success('Location update saved on this device.');
+                    return;
+                  }
+                  if (!online) {
+                    const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
+                    await enqueue('AddCustomerLocation', {
+                      ...(locationCustomer.clientGeneratedId && !locationCustomer.id ? { customerClientId: locationCustomer.clientGeneratedId } : { customerId: locationCustomer.id }),
+                      ...locationFields,
+                      ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
+                        ? { gps: { latitude, longitude, accuracyMetres } } : {}),
+                    });
+                    resetTableData();
+                    toast.success('Location saved on this device. It will sync when connected.');
+                    return;
+                  }
+                  const savedLocation = await fieldApi.addCustomerLocation(token, locationCustomer.id, payload);
+                  await rememberCustomerLocation(locationCustomer.id, savedLocation as Record<string, unknown>);
+                  resetTableData();
+                  await refresh(true);
+                  toast.success('Additional location added.');
+                }}
+              />}
               <FieldActions
                 trek={trek}
                 products={products}
                 customers={customers}
+                districts={districts}
                 queue={queue}
                 enqueue={enqueue}
                 queuePhoto={queuePhoto}
@@ -669,9 +874,8 @@ export const DriverPage: React.FC = () => {
                 modalOnly
                 onClose={() => setCustomerRequest(null)}
               />
-              <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handleFieldPremisesPhotoChange(event)} />
-              <input id="driver-portrait-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handleFieldPortraitChange(event)} />
               <FlatDataTable<CustomerListRow>
+                key={`customers-${customerRows.length}`}
                 data={customerRows}
                 columns={[
                   { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-normal text-portal-accent">{item.businessName}</span> },
@@ -687,21 +891,10 @@ export const DriverPage: React.FC = () => {
                       ? <span className="text-[11px] text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
                       : <span className="text-[11px] text-portal-muted">No GPS captured</span>;
                   } },
-                  { field: 'premisesPhotoUrl', header: 'Premises photo', body: (item) => <div className="flex items-center gap-2">
-                    {item.premisesPhotoUrl && <a href={item.premisesPhotoUrl} target="_blank" rel="noreferrer"><img src={item.premisesPhotoUrl} alt={`${item.businessName} premises`} className="h-9 w-12 rounded object-cover" /></a>}
-                    {item.syncStatus ? <span className="text-[11px] text-portal-muted">{item.syncStatus === 'conflict' ? 'Resolve sync first' : 'Upload after sync'}</span>
-                      : online ? <FlatButton size="sm" variant="ghost" loading={uploadingCustomerPhotoId === item.id} disabled={uploadingCustomerPhotoId !== null} onClick={() => { premisesPhotoCustomerIdRef.current = item.id; premisesPhotoInputRef.current?.click(); }}>{item.premisesPhotoUrl ? 'Replace' : 'Upload'}</FlatButton>
-                        : <span className="text-[11px] text-portal-muted">Connect to upload</span>}
-                  </div> },
-                  { field: 'portraitUrl', header: 'Representative', body: (item) => <div className="flex items-center gap-2">
-                    {item.portraitUrl && <a href={item.portraitUrl} target="_blank" rel="noreferrer"><img src={item.portraitUrl} alt={`${item.primaryContactName || item.businessName} portrait`} className="h-9 w-9 rounded-full object-cover" /></a>}
-                    {item.syncStatus ? <span className="text-[11px] text-portal-muted">Upload after sync</span>
-                      : item.primaryPersonId && online ? <FlatButton size="sm" variant="ghost" loading={uploadingPortraitId === item.id} disabled={uploadingPortraitId !== null} onClick={() => { premisesPhotoCustomerIdRef.current = item.id; document.getElementById('driver-portrait-upload')?.click(); }}>{item.portraitUrl ? 'Replace' : 'Upload'}</FlatButton>
-                        : <span className="text-[11px] text-portal-muted">{item.primaryPersonId ? 'Connect to upload' : 'Person ID unavailable'}</span>}
-                  </div> },
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
                     ? <span className={`text-[11px] ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
                     : <span className="text-[11px] text-portal-muted">Available offline</span> },
+                  { field: 'actions', header: 'Action', body: (item) => item.syncStatus ? null : <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
                 heading={`Customers in ${trek.regionName}`}
                 headerNotes={<span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>}
@@ -718,8 +911,12 @@ export const DriverPage: React.FC = () => {
           )}
           renderTreksView={() => (
             <div className="space-y-4">
+              <div className="flex items-center gap-1 border-b border-portal-border/60">
+                <button type="button" onClick={() => setTrekListTab('region')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${trekListTab === 'region' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Regional Treks</button>
+                <button type="button" onClick={() => setTrekListTab('mine')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${trekListTab === 'mine' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Assigned treks</button>
+              </div>
               <FlatDataTable<RegionTrek>
-                data={visibleTreks}
+                data={trekListTab === 'mine' ? (assignedTreks.length ? assignedTreks : [visibleTreks.find((item) => item.trekId === trek.trekId) ?? visibleTreks[0]]) : visibleTreks}
                 columns={[
                   {
                     field: 'trekNumber',
@@ -750,24 +947,19 @@ export const DriverPage: React.FC = () => {
                   {
                     field: 'actions',
                     header: 'Actions',
-                    body: (item) =>
-                      item.status !== 'Completed' && item.status !== 'Cancelled' ? (
-                        <FlatButton size="sm" variant="ghost" onClick={() => openAction('stop', item.trekId)}>
-                          Add stop
-                        </FlatButton>
-                      ) : null,
+                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-[11px] text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-white/[0.08] !text-white !border-portal-border hover:!bg-white/[0.12]" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
                   },
                 ]}
-                heading={`Treks in ${trek.regionName}`}
-                headerNotes={
-                  !regionTreks.length ? (
-                    <span className="text-[11px] text-yellow-400">
-                      Regional list not downloaded; showing your assigned trek.
-                    </span>
+                heading={trekListTab === 'mine' ? 'Assigned treks' : `Treks in ${trek.regionName}`}
+                headerNotes={<div className="flex flex-col gap-1">
+                  {trekListTab === 'mine' && !assignedTreks.length ? (
+                    <span className="text-[11px] text-yellow-400">Assigned trek list not downloaded; showing your current trek.</span>
+                  ) : trekListTab === 'region' && !regionTreks.length ? (
+                    <span className="text-[11px] text-yellow-400">Regional list not downloaded; showing your assigned trek.</span>
                   ) : (
                     <span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>
-                  )
-                }
+                  )}
+                </div>}
                 filterablePlaceholder="Search trek, driver or region..."
                 enableTableFilter
                 enablePaginator
@@ -787,6 +979,7 @@ export const DriverPage: React.FC = () => {
                 trek={trek}
                 products={products}
                 customers={customers}
+                districts={districts}
                 queue={queue}
                 enqueue={enqueue}
                 queuePhoto={queuePhoto}
@@ -812,10 +1005,11 @@ export const DriverPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-3 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-4 sm:gap-3">
                   {[
                     { label: 'Products Cached', value: products.length },
                     { label: 'Customers Cached', value: customers.length },
+                    { label: 'Districts Cached', value: districts.length },
                     { label: 'Pending Sync Actions', value: pendingCount },
                   ].map((item) => (
                     <div
@@ -828,8 +1022,13 @@ export const DriverPage: React.FC = () => {
                   ))}
                 </div>
 
+                <div className="flex items-center gap-2 border-t border-portal-border/40 pt-3 text-[11px] text-portal-muted">
+                  <i className="pi pi-map-marker text-portal-accent" aria-hidden="true" />
+                  <span>Active region cached: <strong className="font-medium text-portal-text">{trek.regionName || 'Unavailable'}</strong></span>
+                </div>
+
                 <p className="text-[11px] text-portal-muted">
-                  Last full sync: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
+                  Last data refresh: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
                 </p>
 
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -838,9 +1037,15 @@ export const DriverPage: React.FC = () => {
                     variant="outline"
                     leftIcon="pi pi-download"
                     loading={refreshing}
-                    onClick={() => void refresh(false)}
+                    disabled={!online || refreshing || syncing}
+                    onClick={() => void refresh(false)
+                      .then((complete) => {
+                        if (complete) toast.success('All offline data refreshed on this device.');
+                        else toast.error('Some offline data could not be refreshed.');
+                      })
+                      .catch(() => toast.error('Offline data refresh failed.'))}
                   >
-                    Download All Offline Data
+                    Force Full Refresh
                   </FlatButton>
                   <FlatButton
                     size="sm"
@@ -859,12 +1064,15 @@ export const DriverPage: React.FC = () => {
                     size="sm"
                     leftIcon="pi pi-refresh"
                     loading={syncing}
-                    disabled={!controlAvailable || !online}
+                    disabled={!controlAvailable || !online || pendingCount === 0}
                     onClick={sync}
                   >
                     Upload Queued Actions {pendingCount ? `(${pendingCount})` : ''}
                   </FlatButton>
                 </div>
+                <p className="text-[11px] text-portal-muted">
+                  Downloads fresh trek, product, customer, district and trek list data without using the last refresh date. Queued uploads stay saved.
+                </p>
 
                 {!controlAvailable && (
                   <p className="text-[11px] text-yellow-400">
@@ -886,17 +1094,19 @@ export const DriverPage: React.FC = () => {
                         className="flex flex-wrap items-center justify-between gap-2 text-xs border-t border-portal-border/40 pt-2.5"
                       >
                         <span className="text-portal-text">
-                          {action.type.replace(/([a-z])([A-Z])/g, '$1 $2')} ·{' '}
-                          {new Date(action.occurredAt).toLocaleTimeString()}
+                          <span className="block">{action.type.replace(/([a-z])([A-Z])/g, '$1 $2')} · {new Date(action.occurredAt).toLocaleTimeString()}</span>
+                          <span className="block text-[11px] text-portal-muted">{queuedActionSummary(action)}</span>
                         </span>
                         <span className="flex items-center gap-2">
                           <span
                             className={
-                              action.status === 'conflict' ? 'text-red-400' : 'text-portal-accent'
+                              action.status === 'conflict' || action.reason ? 'text-red-400' : 'text-portal-accent'
                             }
                           >
                             {action.status === 'conflict'
                               ? `Conflict: ${action.reason || 'Review required'}`
+                              : action.reason
+                              ? action.reason
                               : controlAvailable
                               ? 'Ready to sync'
                               : 'Waiting for connection'}
@@ -910,6 +1120,11 @@ export const DriverPage: React.FC = () => {
                                 Dismiss
                               </FlatButton>
                             </>
+                          )}
+                          {action.status === 'pending' && (
+                            <FlatButton size="sm" variant="ghost" onClick={() => void remove(action.clientId)}>
+                              Remove
+                            </FlatButton>
                           )}
                           {action.type === 'RecordReturn' &&
                             action.status === 'pending' &&
@@ -931,10 +1146,36 @@ export const DriverPage: React.FC = () => {
                     ))}
                 </div>
               )}
+              {photoQueue.some((photo) => photo.status !== 'uploaded') && (
+                <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-3 shadow-md">
+                  <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
+                  {photoQueue.filter((photo) => photo.status !== 'uploaded').map((photo) => (
+                    <div key={photo.photoId} className="flex flex-wrap items-center justify-between gap-2 border-t border-portal-border/40 pt-2.5 text-xs">
+                      <span className="text-portal-text">{photo.kind === 'premises' ? 'Premises photo' : 'Representative photo'}<span className="ml-2 text-[11px] text-portal-muted">{photo.file.name}</span></span>
+                      <span className="flex items-center gap-2"><span className={photo.status === 'conflict' || photo.reason?.startsWith('Upload failed:') ? 'text-red-400' : 'text-portal-accent'}>{photo.reason || 'Awaiting sync'}</span>{photo.status !== 'conflict' && <FlatButton size="sm" variant="ghost" onClick={() => void retryPhoto(photo.photoId)}>Retry</FlatButton>}<FlatButton size="sm" variant="ghost" onClick={() => void removePhoto(photo.photoId)}>Remove</FlatButton></span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         />
       </div>
+      <FlatModal
+        visible={trekToSwitch !== null}
+        onHide={() => { if (!switchingTrek) setTrekToSwitch(null); }}
+        title={online ? 'Switch primary trek workspace' : 'Internet connection required'}
+        size="sm"
+        footer={online
+          ? <div className="flex justify-end gap-2"><FlatButton size="sm" variant="outline" onClick={() => setTrekToSwitch(null)} disabled={switchingTrek}>Cancel</FlatButton><FlatButton size="sm" onClick={() => void confirmTrekSwitch()} loading={switchingTrek} disabled={switchingTrek}>Switch workspace</FlatButton></div>
+          : <div className="flex justify-end"><FlatButton size="sm" variant="outline" onClick={() => setTrekToSwitch(null)}>Close</FlatButton></div>}
+      >
+        {online ? <>
+          <p className="text-sm text-portal-text">Switch to <span className="font-semibold text-portal-accent">{trekToSwitch?.trekNumber}</span>?</p>
+          <p className="mt-2 text-[11px] text-portal-muted">This trek will become your primary workspace. New activity will be recorded there.</p>
+        </> : <p className="text-sm text-portal-text">Connect to the internet to switch workspace.</p>}
+      </FlatModal>
+
       <FlatModal
         visible={completeDialogOpen}
         onHide={() => { if (!completingTrek) setCompleteDialogOpen(false); }}

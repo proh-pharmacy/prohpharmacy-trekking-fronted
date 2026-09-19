@@ -57,6 +57,7 @@ export interface UpdateStaffPayload {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  emailAddress?: string;
   branchId: string;
   role?: string;
 }

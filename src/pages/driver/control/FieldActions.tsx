@@ -4,8 +4,9 @@ import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay/FlatModal';
-import { captureGps, type ActionType, type FieldCustomer, type QueuedAction } from './api';
+import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction } from './api';
 import { fmtGhs, parseNumericInput } from '../../../lib/utils';
+import { CustomerModal } from '../../portal/customers/components/CustomerModal';
 
 export type FieldActionKind = 'customer' | 'stop' | 'sale' | 'return';
 export interface FieldActionRequest { kind: FieldActionKind; trekId?: string; stopId?: string; stopClientId?: string; sequence?: number; nonce: number }
@@ -19,6 +20,7 @@ interface Props {
   trek: DriverTrek;
   products: Product[];
   customers: FieldCustomer[];
+  districts: FieldDistrict[];
   queue: QueuedAction[];
   enqueue: (type: ActionType, payload: Record<string, unknown>) => Promise<string>;
   queuePhoto: (customerClientId: string, kind: 'premises' | 'portrait', file: File) => Promise<string>;
@@ -50,13 +52,16 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, customers, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ trek, products, customers, districts, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'capturing' | 'captured' | 'unavailable'>('idle');
   const [premisesPhoto, setPremisesPhoto] = useState<File | null>(null);
   const [portraitPhoto, setPortraitPhoto] = useState<File | null>(null);
+  const [premisesPreview, setPremisesPreview] = useState<string | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  const [customerGps, setCustomerGps] = useState<Awaited<ReturnType<typeof captureGps>>>(null);
   const set = (field: string, value: string) => setValues((prev) => ({ ...prev, [field]: value }));
   const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="sm" />;
   const number = (field: string, label: string, required = false, min = 0) => (
@@ -107,13 +112,14 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
       + (parseNumericInput(values.packagingQty) * Number(selectedProduct.packagingUnitPrice || 0))
     : 0;
   const selectedStop = values.stopId ?? '';
-  const close = () => { setKind(null); setValues({}); setGpsStatus('idle'); setPremisesPhoto(null); setPortraitPhoto(null); onClose?.(); };
-  const choosePhoto = (setter: (file: File | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
+  const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
+  const choosePhoto = (setter: (file: File | null) => void, previewSetter: (preview: string | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('Choose a JPEG, PNG, or WebP photo.'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be 5 MB or smaller.'); return; }
+    previewSetter(URL.createObjectURL(file));
     setter(file);
   };
 
@@ -124,16 +130,17 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
       if (kind === 'customer') {
         if (!values.businessName?.trim() || !values.primaryPhoneNumber?.trim() || !values.customerType ||
           !values.firstName?.trim() || !values.lastName?.trim() || !values.relationshipType || !values.representativePhone?.trim()) throw new Error('Complete the required customer and representative fields.');
-        setGpsStatus('capturing');
-        const gps = await captureGps();
-        setGpsStatus(gps ? 'captured' : 'unavailable');
         const customerClientId = await enqueue('RegisterCustomer', {
           businessName: values.businessName.trim(), primaryPhoneNumber: values.primaryPhoneNumber.trim(), customerType: values.customerType,
           ...(values.tradingName && { tradingName: values.tradingName.trim() }),
           ...(values.whatsAppNumber && { whatsAppNumber: values.whatsAppNumber.trim() }),
           representative: { firstName: values.firstName.trim(), lastName: values.lastName.trim(), relationshipType: values.relationshipType,
-            primaryPhoneNumber: values.representativePhone.trim(), ...(values.middleName && { middleName: values.middleName.trim() }) },
-          gps,
+            primaryPhoneNumber: values.representativePhone.trim(), ...(values.middleName && { middleName: values.middleName.trim() }),
+            ...(values.ghanaCardNumber && { ghanaCardNumber: values.ghanaCardNumber.trim() }) },
+          ...(values.districtId && { districtId: values.districtId }),
+          ...(values.streetAddress?.trim() && { streetAddress: values.streetAddress.trim() }),
+          ...(values.landmarkAndDirections?.trim() && { landmarkAndDirections: values.landmarkAndDirections.trim() }),
+          gps: customerGps,
         });
         if (premisesPhoto) await queuePhoto(customerClientId, 'premises', premisesPhoto);
         if (portraitPhoto) await queuePhoto(customerClientId, 'portrait', portraitPhoto);
@@ -147,18 +154,20 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
           ...(values.notes && { notes: values.notes.trim() }), ...(gps && { gps }) });
       } else if (kind === 'sale' || kind === 'return') {
         if (!selectedStop || !values.productId || !values.basicQty || parseNumericInput(values.basicQty) <= 0) throw new Error('Select a stop, product and positive basic quantity.');
+        if (kind === 'return' && calculatedReturnAmount <= 0) throw new Error('The calculated refund must be greater than zero.');
         const stopReference = selectedStop.startsWith('client:') ? { stopClientId: selectedStop.slice(7) } : { stopId: selectedStop.slice(3) };
         if (kind === 'sale') {
           await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId, basicQtyDelivered: parseNumericInput(values.basicQty),
             ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
             ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
-            amtPaid: parseNumericInput(values.amount), balance: parseNumericInput(values.balance),
+            ...((values.amount ?? '').trim() ? { amtPaid: parseNumericInput(values.amount), balance: parseNumericInput(values.balance) } : {}),
             ...(values.notes && { notes: values.notes.trim() }) });
         } else {
           const gps = await captureGps();
           await enqueue('RecordReturn', { ...stopReference, productId: values.productId, basicQtyReturned: parseNumericInput(values.basicQty),
             ...(values.packagingQty && { packagingQtyReturned: parseNumericInput(values.packagingQty) }),
-            refundAmount: parseNumericInput(values.amount), ...(values.paymentMethod && { refundMethod: values.paymentMethod }),
+            refundAmount: calculatedReturnAmount,
+            ...(values.paymentMethod && { refundMethod: values.paymentMethod }),
             ...(values.notes && { reason: values.notes.trim() }), ...(gps && { gps }) });
         }
       }
@@ -169,6 +178,12 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
   }
 
   return <>
+    {kind === 'customer' && <CustomerModal visible onHide={close} customer={null} driverMode={{ districts, region: { id: districts[0]?.regionId || '', name: trek.regionName }, onSubmit: async (payload, photos) => {
+      const customerClientId = await enqueue('RegisterCustomer', payload);
+      if (photos.premises) await queuePhoto(customerClientId, 'premises', photos.premises);
+      if (photos.portrait) await queuePhoto(customerClientId, 'portrait', photos.portrait);
+      toast.success('Customer saved on this device. It will sync when connected.');
+    } }} />}
     {!modalOnly && <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ActionTile icon="pi-user-plus" title="Register customer" description="Add a customer in this trekking region." onClick={() => open('customer')} />
@@ -180,33 +195,51 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
       </div>
       <p className="flex items-center gap-2 text-[11px] text-portal-muted"><i className="pi pi-database text-portal-accent" aria-hidden="true" />{backendReady ? 'Saved on this device · syncs when connected' : 'Saved on this device · upload when the backend is available'}</p>
     </div>}
-    <FlatModal visible={kind !== null} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale', return: 'Record return' }[kind ?? 'customer']} size="md"
-      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving}>Save action</FlatButton></>}>
+    <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale', return: 'Record return' }[kind ?? 'customer']} size="md"
+      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (kind === 'return' && calculatedReturnAmount <= 0)}>Save action</FlatButton></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {kind === 'stop' && !customerChoices.length && <p className="col-span-full text-xs text-yellow-400">Customer list is empty. Download offline customers or register a new customer first.</p>}
         {(kind === 'sale' || kind === 'return') && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
-        {kind === 'customer' && <>
-          <div className="col-span-full flex items-center gap-2 text-[11px] text-portal-muted">
-            <i className={`pi ${gpsStatus === 'capturing' ? 'pi-spin pi-spinner' : gpsStatus === 'captured' ? 'pi-check-circle text-portal-accent' : gpsStatus === 'unavailable' ? 'pi-exclamation-circle text-yellow-400' : 'pi-map-marker'}`} />
-            <span>{gpsStatus === 'capturing' ? 'Capturing device location…' : gpsStatus === 'captured' ? 'Device location captured and will be saved with this customer.' : gpsStatus === 'unavailable' ? 'Location unavailable. Customer will still be saved without GPS.' : 'Device location is captured automatically when you save.'}</span>
+        {kind === 'customer' && <div className="col-span-full space-y-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
+          <div className="h-px bg-portal-border" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {text('businessName', 'Business name', true)} {text('primaryPhoneNumber', 'Customer phone', true)}
+            {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}
+            {text('whatsAppNumber', 'WhatsApp number')}
           </div>
-          <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
-              <span><span className="block text-[11px] font-medium uppercase text-portal-muted">Premises photo</span><span className="block text-[11px] text-portal-text">{premisesPhoto?.name || 'Optional · queued with customer'}</span></span>
-              <span className="text-xs text-portal-accent">Choose<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => choosePhoto(setPremisesPhoto, event)} /></span>
-            </label>
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
-              <span><span className="block text-[11px] font-medium uppercase text-portal-muted">Representative photo</span><span className="block text-[11px] text-portal-text">{portraitPhoto?.name || 'Optional · queued with customer'}</span></span>
-              <span className="text-xs text-portal-accent">Choose<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => choosePhoto(setPortraitPhoto, event)} /></span>
-            </label>
+          <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Representative</p>
+          <div className="h-px bg-portal-border" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {text('firstName', 'First name', true)} {text('middleName', 'Middle name')} {text('lastName', 'Last name', true)}
+            {text('ghanaCardNumber', 'Ghana Card number')}
+            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} {text('representativePhone', 'Representative phone', true)}
           </div>
-          {text('businessName', 'Business name', true)} {text('primaryPhoneNumber', 'Customer phone', true)}
-          {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}
-          {text('whatsAppNumber', 'WhatsApp number')}
-          <p className="col-span-full text-xs font-semibold text-portal-text pt-2">Representative</p>
-          {text('firstName', 'First name', true)} {text('middleName', 'Middle name')} {text('lastName', 'Last name', true)}
-          {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} {text('representativePhone', 'Representative phone', true)}
-        </>}
+          <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Location</p>
+          <div className="h-px bg-portal-border" />
+          {select('districtId', 'District', districts.map((district) => ({ label: district.name, value: district.id })))}
+          {text('streetAddress', 'Street address')} {text('landmarkAndDirections', 'Landmark and directions')}
+          <div className="flex flex-col gap-3 rounded border border-portal-border/60 bg-portal-canvas/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-[11px] text-portal-muted"><i className={`pi ${gpsStatus === 'capturing' ? 'pi-spin pi-spinner' : gpsStatus === 'captured' ? 'pi-check-circle text-portal-accent' : gpsStatus === 'unavailable' ? 'pi-exclamation-circle text-yellow-400' : 'pi-map-marker'}`} /><span>{gpsStatus === 'captured' ? 'Device location captured and will be saved with this customer.' : gpsStatus === 'unavailable' ? 'Location unavailable. Customer can still be saved without GPS.' : 'Capture the customer location when you are ready.'}</span></div>
+            <FlatButton size="sm" variant="outline" leftIcon="pi pi-map-marker" onClick={async () => { setGpsStatus('capturing'); const gps = await captureGps(); setCustomerGps(gps); setGpsStatus(gps ? 'captured' : 'unavailable'); }} loading={gpsStatus === 'capturing'} disabled={gpsStatus === 'capturing'}>Capture location</FlatButton>
+          </div>
+          <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Attachments</p>
+          <div className="h-px bg-portal-border" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              { title: 'Business premises photo', file: premisesPhoto, preview: premisesPreview, setFile: setPremisesPhoto, setPreview: setPremisesPreview },
+              { title: 'Representative photo', file: portraitPhoto, preview: portraitPreview, setFile: setPortraitPhoto, setPreview: setPortraitPreview },
+            ].map((photo) => <div key={photo.title} className="rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-dashed border-portal-border bg-portal-canvas">
+                  {photo.preview ? <img src={photo.preview} alt={`${photo.title} preview`} className="h-full w-full object-cover" /> : <i className="pi pi-camera text-lg text-portal-muted" aria-hidden="true" />}
+                </div>
+                <div className="min-w-0 flex-1"><p className="text-xs font-medium text-portal-text">{photo.title}</p><p className="mt-1 text-[11px] text-portal-muted">JPEG, PNG or WebP · Max 5 MB · Optional</p><div className="mt-2 flex items-center gap-3"><label className="cursor-pointer text-[11px] text-portal-accent hover:text-portal-accent-hover">{photo.file ? 'Change photo' : 'Choose photo'}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => choosePhoto(photo.setFile, photo.setPreview, event)} /></label>{photo.file && <button type="button" className="text-[11px] text-red-400 hover:text-red-300" onClick={() => { photo.setFile(null); photo.setPreview(null); }}>Remove</button>}</div></div>
+              </div>
+              {!photo.file && <p className="mt-2 text-[11px] text-portal-muted">Uploaded after this customer receives a server ID.</p>}
+            </div>)}
+          </div>
+        </div>}
         {kind === 'stop' && <>
           {select('customer', 'Customer', customerChoices, true)} {number('sequence', 'Stop sequence', true, 1)} {text('notes', 'Notes')}
         </>}
@@ -218,7 +251,7 @@ export function FieldActions({ trek, products, customers, queue, enqueue, queueP
           {kind === 'sale' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
           {kind === 'return' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated return amount</span><span className="text-sm font-semibold text-portal-orange">{fmtGhs(calculatedReturnAmount)}</span></div>}
           {select('paymentMethod', kind === 'sale' ? 'Payment method' : 'Refund method', options(PAYMENTS))}
-          {number('amount', kind === 'sale' ? 'Amount paid' : 'Refund amount')}
+          {kind === 'sale' && number('amount', 'Amount paid')}
           {kind === 'sale' && number('balance', 'Balance')}
           {text('notes', kind === 'sale' ? 'Notes' : 'Reason')}
         </>}

@@ -356,9 +356,9 @@ export function FlatDataTable<TData extends Record<string, any>>({
     // 1. If staticData is supplied directly
     if (staticData) {
       const totalCount = staticData.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / currentPagination.pageSize));
+      const totalPages = enablePaginator ? Math.max(1, Math.ceil(totalCount / currentPagination.pageSize)) : 1;
       const start = (currentPagination.pageNumber - 1) * currentPagination.pageSize;
-      const pageSlice = staticData.slice(start, start + currentPagination.pageSize);
+      const pageSlice = enablePaginator ? staticData.slice(start, start + currentPagination.pageSize) : staticData;
 
       return {
         totalCount,
@@ -457,10 +457,10 @@ export function FlatDataTable<TData extends Record<string, any>>({
         )
       ) : staticData;
       const totalCount = filtered.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / pagination.pageSize));
+      const totalPages = enablePaginator ? Math.max(1, Math.ceil(totalCount / pagination.pageSize)) : 1;
       const currentPage = Math.min(pagination.pageNumber, totalPages);
       const start = (currentPage - 1) * pagination.pageSize;
-      const pageSlice = filtered.slice(start, start + pagination.pageSize);
+      const pageSlice = enablePaginator ? filtered.slice(start, start + pagination.pageSize) : filtered;
 
       return {
         totalCount,
@@ -942,11 +942,11 @@ export function FlatDataTable<TData extends Record<string, any>>({
               column: {
                 headerCell: {
                   className:
-                    'bg-portal-canvas text-portal-muted text-xs font-medium uppercase tracking-wider py-3.5 px-4 border-b border-portal-border whitespace-nowrap text-left rounded-none',
+                    'bg-portal-canvas text-portal-muted text-[10px] font-bold uppercase tracking-wider py-2.5 px-2.5 border-b border-portal-border whitespace-nowrap text-left rounded-none',
                 },
                 bodyCell: {
                   className:
-                    'py-3.5 px-4 text-xs text-portal-text border-b border-portal-border/40 font-normal rounded-none',
+                    'py-2.5 px-2.5 text-xs text-portal-text border-b border-portal-border/40 font-normal rounded-none',
                 },
               },
             }}

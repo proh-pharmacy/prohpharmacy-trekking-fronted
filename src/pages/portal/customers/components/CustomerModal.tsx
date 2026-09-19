@@ -3,15 +3,17 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatInputText, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
+import { FlatButton, FlatInputText, FlatDropdown, FlatTextarea, FlatCheckbox } from '../../../../components/flat-form';
 import {
   customersApi,
   organisationApi,
   type Customer,
+  type CustomerLocation,
   type CustomerType,
   type RelationshipType,
   type Region,
   type District,
+  type LocationType,
 } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
@@ -67,14 +69,30 @@ interface CustomerModalProps {
   visible: boolean;
   onHide: () => void;
   customer: Customer | null;
+  driverMode?: {
+    districts: District[];
+    region?: { id: string; name: string };
+    onSubmit: (payload: Record<string, unknown>, photos: { premises?: File; portrait?: File }) => Promise<void>;
+  };
+  onAddLocation?: () => void;
+  onEditLocation?: (location: CustomerLocation) => void;
+  onDeleteLocation?: (location: CustomerLocation) => void;
+  pendingLocationIds?: string[];
 }
 
 export const CustomerModal: React.FC<CustomerModalProps> = ({
   visible,
   onHide,
   customer,
+  driverMode,
+  onAddLocation,
+  onEditLocation,
+  onDeleteLocation,
+  pendingLocationIds = [],
 }) => {
   const isEditing = Boolean(customer);
+  const additionalLocations = customer?.additionalLocations ?? customer?.locations ?? [];
+  const [showAdditionalLocations, setShowAdditionalLocations] = useState(false);
 
   // ── Business fields ───────────────────────────────────────────────
   const [businessName, setBusinessName] = useState('');
@@ -83,6 +101,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [primaryPhone, setPrimaryPhone] = useState('');
   const [whatsAppNumber, setWhatsAppNumber] = useState('');
   const [regionId, setRegionId] = useState('');
+  const [locationRegionId, setLocationRegionId] = useState('');
 
   // ── Representative fields (create only) ───────────────────────────
   const [repFirstName, setRepFirstName] = useState('');
@@ -116,6 +135,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [showPortraitViewer, setShowPortraitViewer] = useState(false);
   const portraitInputRef = useRef<HTMLInputElement>(null);
   const [premisesPhotoFile, setPremisesPhotoFile] = useState<File | null>(null);
+  const [premisesPreview, setPremisesPreview] = useState<string | null>(null);
+  const [showPremisesViewer, setShowPremisesViewer] = useState(false);
   const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePremisesPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +152,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       return;
     }
     setPremisesPhotoFile(file);
+    setPremisesPreview(URL.createObjectURL(file));
   };
 
   const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,38 +214,48 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     if (!visible) return;
     let mounted = true;
     setLoadingRegions(true);
-    organisationApi
-      .getRegions()
+    (driverMode ? Promise.resolve([] as Region[]) : organisationApi.getRegions())
       .then((r) => { if (mounted) setRegions(r); })
       .catch(() => {})
       .finally(() => { if (mounted) setLoadingRegions(false); });
     return () => { mounted = false; };
-  }, [visible]);
+  }, [visible, driverMode]);
 
   // Fetch districts when regionId changes
   useEffect(() => {
-    if (!regionId) {
+    if (driverMode) {
+      setRegionId(driverMode.region?.id || '');
+      setLocationRegionId(driverMode.region?.id || '');
+      setDistricts(driverMode.districts);
+      return;
+    }
+    if (!locationRegionId) {
       setDistricts([]);
       return;
     }
     let mounted = true;
     setLoadingDistricts(true);
+    setDistricts([]);
     organisationApi
-      .getDistricts(regionId)
+      .getDistricts(locationRegionId)
       .then((d) => { if (mounted) setDistricts(d); })
       .catch(() => {})
       .finally(() => { if (mounted) setLoadingDistricts(false); });
     return () => { mounted = false; };
-  }, [regionId]);
+  }, [locationRegionId, driverMode?.region?.id, driverMode?.districts]);
 
   useEffect(() => {
     if (!visible) {
       setShowMap(false);
+      setShowPremisesViewer(false);
+      setShowAdditionalLocations(false);
       setPortraitFile(null);
       setPortraitPreview(null);
       setPremisesPhotoFile(null);
+      setPremisesPreview(null);
     } else {
       setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null);
+      setPremisesPreview(customer?.premisesPhotoUrl ?? null);
     }
   }, [visible, customer]);
 
@@ -231,12 +263,18 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   useEffect(() => {
     if (!visible) return;
     if (customer) {
+      // Keep the persisted premises image visible when opening an existing
+      // customer, even when the selected row was refreshed independently of
+      // the modal visibility state.
+      setPremisesPreview(customer.premisesPhotoUrl ?? null);
+      setPortraitPreview(customer.primaryPerson?.portraitUrl ?? null);
       setBusinessName(customer.businessName || '');
       setTradingName(customer.tradingName || '');
       setCustomerType(customer.customerType || '');
       setPrimaryPhone(customer.primaryPhoneNumber || '');
       setWhatsAppNumber(customer.whatsAppNumber || '');
-      setRegionId(customer.regionId || '');
+      setRegionId(driverMode?.region?.id || customer.regionId || '');
+      setLocationRegionId(driverMode?.region?.id || customer.primaryLocation?.regionId || customer.regionId || '');
       // Rep — split fullName into parts
       const parts = (customer.primaryPerson?.fullName || '').split(' ').filter(Boolean);
       setRepFirstName(parts[0] || '');
@@ -246,7 +284,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setRepPhone(customer.primaryPerson?.primaryPhoneNumber || '');
       setRepGhanaCard('');
       // Location
-      setDistrictId(''); // resolved by effect once districts load
+      setDistrictId(customer.primaryLocation?.districtId || '');
       setStreetAddress(customer.primaryLocation?.streetAddress || '');
       setLandmark(customer.primaryLocation?.landmarkAndDirections || '');
       setLatitude(customer.primaryLocation?.latitude ?? null);
@@ -258,7 +296,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setCustomerType('');
       setPrimaryPhone('');
       setWhatsAppNumber('');
-      setRegionId('');
+      setRegionId(driverMode?.region?.id || '');
+      setLocationRegionId(driverMode?.region?.id || '');
       setRepFirstName('');
       setRepMiddleName('');
       setRepLastName('');
@@ -277,12 +316,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   // Auto-match district by name when editing
   useEffect(() => {
     if (!customer?.primaryLocation?.districtName || !districts.length) return;
+    if (locationRegionId !== (customer.primaryLocation.regionId || customer.regionId)) return;
     setDistrictId((prev) => {
       if (prev) return prev;
       const match = districts.find((d) => d.name === customer.primaryLocation!.districtName);
       return match?.id ?? '';
     });
-  }, [districts, customer]);
+  }, [districts, customer, locationRegionId]);
 
   const regionOptions = useMemo(
     () => regions.map((r) => ({ label: r.name, value: r.id })),
@@ -290,8 +330,15 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   );
 
   const districtOptions = useMemo(
-    () => districts.map((d) => ({ label: d.name, value: d.id })),
-    [districts]
+    () => {
+      const options = districts.map((d) => ({ label: d.name, value: d.id }));
+      const selected = customer?.primaryLocation;
+      if (driverMode && selected?.districtId && !options.some((option) => option.value === selected.districtId)) {
+        options.unshift({ label: selected.districtName || 'Current district', value: selected.districtId });
+      }
+      return options;
+    },
+    [districts, driverMode, customer?.primaryLocation]
   );
 
   // ── Submit ─────────────────────────────────────────────────────────
@@ -300,7 +347,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
     if (!businessName.trim()) { toast.error('Business name is required.'); return; }
     if (!customerType) { toast.error('Customer type is required.'); return; }
-    if (!regionId) { toast.error('Region is required.'); return; }
+    if (!driverMode && !regionId) { toast.error('Region is required.'); return; }
     if (!primaryPhone.trim()) { toast.error('Primary phone number is required.'); return; }
     if (!repFirstName.trim() || !repLastName.trim()) {
       toast.error('Representative first and last name are required.');
@@ -308,16 +355,26 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     }
     if (!repRelationship) { toast.error('Representative relationship type is required.'); return; }
     if (!repPhone.trim()) { toast.error('Representative phone number is required.'); return; }
-    if (!districtId) { toast.error('District is required.'); return; }
+    if (!driverMode && !districtId) { toast.error('District is required.'); return; }
 
     setSubmitting(true);
     try {
+      if (driverMode) {
+        await driverMode.onSubmit({
+          ...(isEditing && customer ? { customerId: customer.id } : {}),
+          businessName: businessName.trim(), primaryPhoneNumber: primaryPhone.trim(), customerType,
+          ...(tradingName.trim() && { tradingName: tradingName.trim() }), ...(whatsAppNumber.trim() && { whatsAppNumber: whatsAppNumber.trim() }),
+          ...(districtId && { districtId }),
+          ...(isEditing ? { streetAddress: streetAddress.trim(), landmarkAndDirections: landmark.trim() }
+            : { ...(streetAddress.trim() && { streetAddress: streetAddress.trim() }), ...(landmark.trim() && { landmarkAndDirections: landmark.trim() }) }),
+          representative: { firstName: repFirstName.trim(), ...(repMiddleName.trim() && { middleName: repMiddleName.trim() }), lastName: repLastName.trim(), relationshipType: repRelationship, primaryPhoneNumber: repPhone.trim(), ...(repGhanaCard.trim() && { ghanaCardNumber: repGhanaCard.trim() }) },
+          gps: latitude !== null && longitude !== null && accuracy !== null ? { latitude, longitude, accuracyMetres: accuracy } : null,
+        }, { premises: premisesPhotoFile || undefined, portrait: portraitFile || undefined });
+        resetTableData();
+        onHide();
+        return;
+      }
       if (isEditing && customer) {
-        if (latitude === null || longitude === null || accuracy === null) {
-          toast.error('GPS coordinates are required. Please capture location.');
-          setSubmitting(false);
-          return;
-        }
         await customersApi.updateCustomer(customer.id, {
           businessName: businessName.trim(),
           tradingName: tradingName.trim() || undefined,
@@ -337,15 +394,16 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             districtId,
             streetAddress: streetAddress.trim() || undefined,
             landmarkAndDirections: landmark.trim() || undefined,
-            latitude,
-            longitude,
-            accuracyMetres: accuracy,
+            ...(latitude !== null && longitude !== null && accuracy !== null
+              ? { latitude, longitude, accuracyMetres: accuracy }
+              : {}),
           },
         });
         resetTableData();
         if (portraitFile && customer.primaryPerson?.id) {
           try {
             await customersApi.uploadPortrait(customer.id, customer.primaryPerson.id, portraitFile);
+            resetTableData();
           } catch {
             toast.error('Customer updated but portrait upload failed.');
           }
@@ -360,11 +418,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         }
         toast.success(`Customer "${businessName.trim()}" updated.`);
       } else {
-        if (latitude === null || longitude === null || accuracy === null) {
-          toast.error('GPS coordinates are required. Please capture location.');
-          setSubmitting(false);
-          return;
-        }
         const created = await customersApi.createCustomer({
           businessName: businessName.trim(),
           tradingName: tradingName.trim() || undefined,
@@ -384,15 +437,16 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             districtId,
             streetAddress: streetAddress.trim(),
             landmarkAndDirections: landmark.trim(),
-            latitude,
-            longitude,
-            accuracyMetres: accuracy,
+            ...(latitude !== null && longitude !== null && accuracy !== null
+              ? { latitude, longitude, accuracyMetres: accuracy }
+              : {}),
           },
         });
         resetTableData();
         if (portraitFile && created.primaryPerson?.id) {
           try {
             await customersApi.uploadPortrait(created.id, created.primaryPerson.id, portraitFile);
+            resetTableData();
           } catch {
             toast.error('Customer created but portrait upload failed.');
           }
@@ -422,7 +476,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
   // ── Section label helper ───────────────────────────────────────────
   const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="mt-4 mb-3">
+    <div className="mt-5 mb-3">
       <span className="text-[11px] font-medium text-portal-muted uppercase tracking-wide">
         {children}
       </span>
@@ -490,20 +544,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             filterPlaceholder="Search..."
             size="sm"
           />
-          <FlatDropdown
-            label="Region"
-            value={regionId}
-            options={regionOptions}
-            onChange={(val: any) => {
-              const v = val?.value !== undefined ? val.value : val;
-              setRegionId(v);
-              setDistrictId('');
-            }}
-            placeholder={loadingRegions ? 'Loading...' : 'Select region'}
-            filter
-            filterPlaceholder="Search region..."
-            size="sm"
-          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -526,96 +566,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {customer?.premisesPhotoUrl && <img src={customer.premisesPhotoUrl} alt={`${customer.businessName} premises`} className="h-16 w-24 rounded object-cover" />}
-          <div>
-            <p className="text-[11px] font-medium text-portal-muted uppercase">Business premises photo</p>
-            <p className="text-[11px] text-portal-muted">JPEG, PNG, or WebP · up to 5 MB · optional</p>
-            {premisesPhotoFile && <p className="mt-1 text-xs text-portal-text">{premisesPhotoFile.name}</p>}
-          </div>
-          <FlatButton size="sm" variant="outline" leftIcon="pi pi-camera" onClick={() => premisesPhotoInputRef.current?.click()}>
-            {premisesPhotoFile || customer?.premisesPhotoUrl ? 'Change photo' : 'Choose photo'}
-          </FlatButton>
-          {premisesPhotoFile && <FlatButton size="sm" variant="ghost" onClick={() => setPremisesPhotoFile(null)}>Remove selection</FlatButton>}
-          <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePremisesPhotoChange} />
-        </div>
-
-        {/* ── Representative ─────────────────────────────────────── */}
-        <>
             <SectionLabel>Representative</SectionLabel>
-
-            {/* Portrait upload */}
-            <div className="flex items-center gap-4 mb-4">
-              {/* Avatar — click to view if photo exists, else click to upload */}
-              <button
-                type="button"
-                onClick={() => portraitPreview ? setShowPortraitViewer(true) : portraitInputRef.current?.click()}
-                className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
-              >
-                {portraitPreview ? (
-                  <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
-                ) : (
-                  <i className="pi pi-camera text-lg text-portal-muted group-hover:text-portal-accent transition-colors" />
-                )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <i className={`pi ${portraitPreview ? 'pi-search-plus' : 'pi-upload'} text-white text-xs`} />
-                </div>
-              </button>
-
-              <div className="flex flex-col gap-1">
-                <p className="text-xs text-portal-text font-medium">
-                  {portraitFile ? portraitFile.name : 'Representative photo'}
-                </p>
-                <p className="text-[11px] text-portal-muted">
-                  JPEG, PNG or WebP · Max 5 MB · Optional
-                </p>
-                <div className="flex items-center gap-3 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => portraitInputRef.current?.click()}
-                    className="text-[11px] text-portal-accent hover:text-portal-accent-hover"
-                  >
-                    {portraitPreview ? 'Change photo' : 'Upload photo'}
-                  </button>
-                  {portraitFile && (
-                    <button
-                      type="button"
-                      onClick={() => { setPortraitFile(null); setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null); }}
-                      className="text-[11px] text-red-400 hover:text-red-300"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <input
-                ref={portraitInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={handlePortraitChange}
-              />
-            </div>
-
-            {/* Portrait lightbox */}
-            {showPortraitViewer && portraitPreview && (
-              <div
-                className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center"
-                onClick={() => setShowPortraitViewer(false)}
-              >
-                <div className="relative max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                  <img src={portraitPreview} alt="Portrait" className="w-full rounded object-contain max-h-[70vh]" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPortraitViewer(false)}
-                    className="absolute top-2 right-2 w-7 h-7 rounded bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
-                  >
-                    <i className="pi pi-times text-xs" />
-                  </button>
-                </div>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FlatInputText
@@ -676,20 +627,39 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               />
             </div>
 
-        </>
-
         {/* ── Location ───────────────────────────────────────────── */}
         <>
-            <SectionLabel>Location</SectionLabel>
+            <div className="mt-5 mb-3 flex items-center justify-between border-b border-portal-border/60 pb-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Primary Location
+                {customer?.primaryLocation?.id && pendingLocationIds.includes(customer.primaryLocation.id) && <span className="ml-2 normal-case tracking-normal text-portal-accent">Update awaiting sync</span>}
+              </span>
+              {driverMode && isEditing && customer?.primaryLocation?.id && onEditLocation && (
+                <button type="button" onClick={() => onEditLocation(customer.primaryLocation!)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit location</button>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {driverMode ? (
+                <FlatInputText label="Region" value={customer?.primaryLocation?.regionName || driverMode.region?.name || ''} disabled size="sm" />
+              ) : (
+                <FlatDropdown
+                  label="Region"
+                  value={locationRegionId}
+                  options={regionOptions}
+                  onChange={(val: any) => { const v = val?.value !== undefined ? val.value : val; setLocationRegionId(v); if (!isEditing) setRegionId(v); setDistrictId(''); }}
+                  placeholder={loadingRegions ? 'Loading...' : 'Select region'}
+                  filter
+                  filterPlaceholder="Search region..."
+                  size="sm"
+                />
+              )}
               <FlatDropdown
                 label="District"
                 value={districtId}
                 options={districtOptions}
                 onChange={(val: any) => setDistrictId(val?.value !== undefined ? val.value : val)}
                 placeholder={
-                  !regionId
+                  !locationRegionId && !driverMode
                     ? 'Select region first'
                     : loadingDistricts
                     ? 'Loading...'
@@ -698,17 +668,24 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 filter
                 filterPlaceholder="Search district..."
                 size="sm"
-                disabled={!regionId}
-              />
-              <FlatInputText
-                label="Street Address"
-                placeholder="12 Liberation Road, Accra"
-                value={streetAddress}
-                onChange={(e) => setStreetAddress(e.target.value)}
-                size="sm"
-                maxLength={300}
+                disabled={!locationRegionId && !driverMode}
               />
             </div>
+            {driverMode && districts.length === 0 && (
+              <p className="mt-2 text-[11px] text-portal-muted">
+                No districts are saved for this trek region yet. Connect and use Force Full Refresh in Offline & Sync Center to download them. You can still save this customer without a district.
+              </p>
+            )}
+
+            <FlatTextarea
+              label="Street Address"
+              placeholder="12 Liberation Road, Accra"
+              value={streetAddress}
+              onChange={(e) => setStreetAddress(e.target.value)}
+              size="sm"
+              rows={2}
+              maxLength={300}
+            />
 
             <FlatTextarea
               label="Landmark & Directions"
@@ -804,10 +781,311 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 </FlatButton>
               )}
             </div>
+
+            {isEditing && (additionalLocations.length > 0 || onAddLocation) && (
+              <div className="mt-4 border-t border-portal-border/50 pt-3">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  {additionalLocations.length > 0 && <button type="button" onClick={() => setShowAdditionalLocations((value) => !value)} className="flex items-center gap-2 text-[11px] text-portal-accent hover:text-portal-accent-hover">
+                    <i className={`pi ${showAdditionalLocations ? 'pi-chevron-down' : 'pi-chevron-right'} text-[10px]`} />
+                    {showAdditionalLocations ? 'Hide additional locations' : `View additional locations (${additionalLocations.length})`}
+                  </button>}
+                  {onAddLocation && <button type="button" onClick={onAddLocation} className="flex items-center gap-1 text-[11px] text-portal-accent hover:text-portal-accent-hover">
+                    <i className="pi pi-plus text-[10px]" /> Add additional location
+                  </button>}
+                </div>
+                {showAdditionalLocations && additionalLocations.length > 0 && <div className="mt-3 space-y-3">
+                  {additionalLocations.map((location, index) => {
+                    const hasGps = location.latitude != null && location.longitude != null;
+                    return <div key={location.locationId || location.id} className="rounded border border-portal-border bg-portal-canvas p-3 sm:p-4">
+                      <div className="flex items-center justify-between gap-3 border-b border-portal-border/50 pb-3">
+                        <p className="text-xs font-medium text-portal-text">Location {index + 1}
+                          {pendingLocationIds.includes(location.locationId || location.id) && <span className="ml-2 text-[11px] font-normal text-portal-accent">Update awaiting sync</span>}
+                        </p>
+                        {(onEditLocation || onDeleteLocation) && <div className="flex shrink-0 gap-3">
+                          {onEditLocation && <button type="button" onClick={() => onEditLocation(location)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit</button>}
+                          {onDeleteLocation && <button type="button" onClick={() => onDeleteLocation(location)} className="text-[11px] text-red-400 hover:text-red-300">Delete</button>}
+                        </div>}
+                      </div>
+                      <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Region</dt><dd className="mt-1 text-xs text-portal-text">{location.regionName || 'Not provided'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">District</dt><dd className="mt-1 text-xs text-portal-text">{location.districtName || 'Not provided'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Location type</dt><dd className="mt-1 text-xs text-portal-text">{location.locationType?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Not provided'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Street address</dt><dd className="mt-1 whitespace-pre-wrap text-xs text-portal-text">{location.streetAddress || 'Not provided'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Landmark & directions</dt><dd className="mt-1 whitespace-pre-wrap text-xs text-portal-text">{location.landmarkAndDirections || 'Not provided'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">GPS location</dt><dd className="mt-1 text-xs text-portal-text">{hasGps ? <a href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`} target="_blank" rel="noopener noreferrer" className="font-mono text-portal-accent hover:text-portal-accent-hover">{location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)} <i className="pi pi-external-link text-[10px]" /></a> : 'Not captured'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">GPS accuracy</dt><dd className="mt-1 text-xs text-portal-text">{location.accuracyMetres != null ? `±${location.accuracyMetres.toFixed(1)} m` : 'Unavailable'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Capture method</dt><dd className="mt-1 text-xs text-portal-text">{location.captureMethod?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Unavailable'}</dd></div>
+                        <div><dt className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Verification</dt><dd className="mt-1 text-xs text-portal-text">{location.verificationStatus?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Unavailable'}</dd></div>
+                      </dl>
+                    </div>;
+                  })}
+                </div>}
+              </div>
+            )}
           </>
+
+        {/* ── Attachments ─────────────────────────────────────────── */}
+        <SectionLabel>Attachments</SectionLabel>
+
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            type="button"
+            onClick={() => (premisesPreview || customer?.premisesPhotoUrl) ? setShowPremisesViewer(true) : premisesPhotoInputRef.current?.click()}
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded border-2 border-dashed border-portal-border bg-portal-canvas transition-colors hover:border-portal-accent group"
+            aria-label="Choose business premises photo"
+          >
+            {(premisesPreview || customer?.premisesPhotoUrl) ? <img src={premisesPreview || customer?.premisesPhotoUrl || ''} alt={`${customer?.businessName || 'Business'} premises`} className="h-full w-full object-cover" /> : <i className="pi pi-camera text-lg text-portal-muted transition-colors group-hover:text-portal-accent" />}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"><i className={`pi ${(premisesPreview || customer?.premisesPhotoUrl) ? 'pi-search-plus' : 'pi-upload'} text-xs text-white`} /></span>
+          </button>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-medium text-portal-text">{premisesPhotoFile ? premisesPhotoFile.name : 'Business premises photo'}</p>
+            <p className="text-[11px] text-portal-muted">JPEG, PNG or WebP · Max 5 MB · Optional</p>
+            <div className="mt-0.5 flex items-center gap-3">
+              <button type="button" onClick={() => premisesPhotoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">{premisesPreview || customer?.premisesPhotoUrl ? 'Change photo' : 'Upload photo'}</button>
+              {premisesPhotoFile && <button type="button" onClick={() => { setPremisesPhotoFile(null); setPremisesPreview(customer?.premisesPhotoUrl ?? null); }} className="text-[11px] text-red-400 hover:text-red-300">Remove</button>}
+            </div>
+          </div>
+          <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePremisesPhotoChange} />
+        </div>
+
+        {showPremisesViewer && (premisesPreview || customer?.premisesPhotoUrl) && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80" onClick={() => setShowPremisesViewer(false)}>
+            <div className="relative mx-4 w-full max-w-2xl" onClick={(event) => event.stopPropagation()}>
+              <img src={premisesPreview || customer?.premisesPhotoUrl || ''} alt={`${customer?.businessName || 'Business'} premises`} className="max-h-[70vh] w-full rounded object-contain" />
+              <button type="button" onClick={() => setShowPremisesViewer(false)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded bg-black/60 text-white hover:bg-black/80"><i className="pi pi-times text-xs" /></button>
+            </div>
+          </div>
+        )}
+
+        {/* Representative photo attachment */}
+            {/* Portrait upload */}
+            <div className="flex items-center gap-4 mb-4">
+              {/* Avatar — click to view if photo exists, else click to upload */}
+              <button
+                type="button"
+                onClick={() => portraitPreview ? setShowPortraitViewer(true) : portraitInputRef.current?.click()}
+                className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
+              >
+                {portraitPreview ? (
+                  <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="pi pi-camera text-lg text-portal-muted group-hover:text-portal-accent transition-colors" />
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <i className={`pi ${portraitPreview ? 'pi-search-plus' : 'pi-upload'} text-white text-xs`} />
+                </div>
+              </button>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-portal-text font-medium">
+                  {portraitFile ? portraitFile.name : 'Representative photo'}
+                </p>
+                <p className="text-[11px] text-portal-muted">
+                  JPEG, PNG or WebP · Max 5 MB · Optional
+                </p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => portraitInputRef.current?.click()}
+                    className="text-[11px] text-portal-accent hover:text-portal-accent-hover"
+                  >
+                    {portraitPreview ? 'Change photo' : 'Upload photo'}
+                  </button>
+                  {portraitFile && (
+                    <button
+                      type="button"
+                      onClick={() => { setPortraitFile(null); setPortraitPreview(customer?.primaryPerson?.portraitUrl ?? null); }}
+                      className="text-[11px] text-red-400 hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <input
+                ref={portraitInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePortraitChange}
+              />
+            </div>
+
+            {/* Portrait lightbox */}
+            {showPortraitViewer && portraitPreview && (
+              <div
+                className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center"
+                onClick={() => setShowPortraitViewer(false)}
+              >
+                <div className="relative max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                  <img src={portraitPreview} alt="Portrait" className="w-full rounded object-contain max-h-[70vh]" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPortraitViewer(false)}
+                    className="absolute top-2 right-2 w-7 h-7 rounded bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                  >
+                    <i className="pi pi-times text-xs" />
+                  </button>
+                </div>
+              </div>
+            )}
+
         </form>
     </FlatModal>
   );
+};
+
+export interface CustomerLocationModalProps {
+  visible: boolean;
+  onHide: () => void;
+  customerName?: string;
+  location?: CustomerLocation | null;
+  region?: { id: string; name: string };
+  districts: District[];
+  online?: boolean;
+  districtRequired?: boolean;
+  includeRegion?: boolean;
+  regionLocked?: boolean;
+  driverEdit?: boolean;
+  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+}
+
+export const CustomerLocationModal: React.FC<CustomerLocationModalProps> = ({
+  visible, onHide, customerName, location, region, districts, online = true, districtRequired = true, includeRegion = true, regionLocked = false, driverEdit = false, onSubmit,
+}) => {
+  const [locationType, setLocationType] = useState<LocationType>('BusinessPremises');
+  const [regionId, setRegionId] = useState(region?.id || '');
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [locationDistricts, setLocationDistricts] = useState<District[]>(districts);
+  const [districtId, setDistrictId] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setLocationDistricts(districts);
+    setRegionId(regionLocked ? region?.id || '' : location?.regionId || (location?.regionName === region?.name ? region?.id || '' : !location?.regionName ? region?.id || '' : ''));
+    setLocationType((location?.locationType as LocationType) || 'BusinessPremises');
+    setDistrictId(location?.districtId || '');
+    setStreetAddress(location?.streetAddress || ''); setLandmark(location?.landmarkAndDirections || '');
+    setLatitude(location?.latitude ?? null); setLongitude(location?.longitude ?? null); setAccuracy(location?.accuracyMetres ?? null);
+    setIsPrimary(Boolean(location?.isPrimary)); setSaving(false);
+  }, [visible, location, region?.id, region?.name, regionLocked]);
+
+  useEffect(() => {
+    if (!visible || regionLocked) return;
+    organisationApi.getRegions().then(setRegions).catch(() => {});
+  }, [visible, regionLocked]);
+
+  useEffect(() => {
+    if (!visible || regionLocked || regionId || !location?.regionName || !regions.length) return;
+    const match = regions.find((item) => item.name.trim().toLowerCase() === location.regionName?.trim().toLowerCase());
+    if (match) setRegionId(match.id);
+  }, [visible, regionLocked, regionId, location?.regionName, regions]);
+
+  useEffect(() => {
+    if (regionLocked) setLocationDistricts(districts);
+  }, [regionLocked, districts]);
+
+  useEffect(() => {
+    if (!visible || regionLocked || !regionId) return;
+    let active = true;
+    setLocationDistricts([]);
+    organisationApi.getDistricts(regionId).then((items) => { if (active) setLocationDistricts(items); }).catch(() => {});
+    return () => { active = false; };
+  }, [visible, regionId, regionLocked]);
+
+  const availableDistricts = useMemo(
+    () => {
+      const options = locationDistricts.filter((district) => !regionId || !district.regionId || district.regionId === regionId);
+      if (regionLocked && location?.districtId && !options.some((district) => district.id === location.districtId)) {
+        options.unshift({ id: location.districtId, name: location.districtName || 'Current district', regionId: location.regionId || '' });
+      }
+      return options;
+    },
+    [locationDistricts, regionId, regionLocked, location]
+  );
+
+  useEffect(() => {
+    if (!visible || !location?.districtName || districtId || !availableDistricts.length) return;
+    const originalRegionId = location.regionId || regions.find((item) => item.name.trim().toLowerCase() === location.regionName?.trim().toLowerCase())?.id || (location.regionName === region?.name ? region?.id : undefined);
+    if (originalRegionId && regionId !== originalRegionId) return;
+    const match = availableDistricts.find((item) => item.name.trim().toLowerCase() === location.districtName?.trim().toLowerCase());
+    if (match) setDistrictId(match.id);
+  }, [visible, location, districtId, availableDistricts, regions, regionId, region?.id, region?.name]);
+
+  const capture = () => {
+    if (!navigator.geolocation) { toast.error('Geolocation is not supported by this browser.'); return; }
+    setCapturing(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => { setLatitude(position.coords.latitude); setLongitude(position.coords.longitude); setAccuracy(position.coords.accuracy); setCapturing(false); },
+      () => { setCapturing(false); toast.error('Could not capture the current location.'); },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (districtRequired && !location && !regionId) { toast.error('Region is required.'); return; }
+    if (districtRequired && !location && !districtId) { toast.error('Select a district.'); return; }
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        locationType,
+        ...(includeRegion && regionId ? { regionId } : {}),
+        ...(districtId ? { districtId } : {}),
+        ...(streetAddress.trim() ? { streetAddress: streetAddress.trim() } : {}),
+        ...(landmark.trim() ? { landmarkAndDirections: landmark.trim() } : {}),
+        ...(latitude !== null && longitude !== null ? { latitude, longitude, accuracyMetres: accuracy ?? undefined } : {}),
+        isPrimary,
+      };
+      if (driverEdit && location) {
+        delete payload.locationType;
+        delete payload.isPrimary;
+        delete payload.regionId;
+        if (districtId === (location.districtId || '')) delete payload.districtId;
+        if (streetAddress.trim() === (location.streetAddress || '').trim()) delete payload.streetAddress;
+        else payload.streetAddress = streetAddress.trim();
+        if (landmark.trim() === (location.landmarkAndDirections || '').trim()) delete payload.landmarkAndDirections;
+        else payload.landmarkAndDirections = landmark.trim();
+        if (latitude === location.latitude && longitude === location.longitude && accuracy === location.accuracyMetres) {
+          delete payload.latitude; delete payload.longitude; delete payload.accuracyMetres;
+        }
+        if (!Object.keys(payload).length) { toast('No location changes to save.'); return; }
+      }
+      await onSubmit(payload);
+      onHide();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not add location.');
+    } finally { setSaving(false); }
+  };
+
+  return <FlatModal visible={visible} onHide={() => !saving && onHide()} title={`${location ? 'Edit location' : 'Add additional location'}${customerName ? ` · ${customerName}` : ''}`} size="md"
+    footer={<><FlatButton variant="ghost" size="sm" onClick={onHide} disabled={saving}>Cancel</FlatButton><FlatButton size="sm" onClick={submit} loading={saving} disabled={saving || capturing}>Save location</FlatButton></>}>
+    <div className="space-y-3">
+      {!driverEdit && <FlatDropdown label="Location type" value={locationType} options={[{ label: 'Business premises', value: 'BusinessPremises' }, { label: 'Delivery location', value: 'DeliveryLocation' }, { label: 'Residential', value: 'Residential' }, { label: 'Other', value: 'Other' }]} onChange={(value: any) => setLocationType((value?.value ?? value) as LocationType)} size="sm" />}
+      {regionLocked ? (
+        <FlatInputText label="Region" value={location?.regionName || region?.name || ''} disabled size="sm" />
+      ) : (
+        <FlatDropdown label={`Region${districtRequired && !location ? ' *' : ''}`} value={regionId} options={regions.map((item) => ({ label: item.name, value: item.id }))} onChange={(value: any) => { setRegionId(value?.value ?? value ?? ''); setDistrictId(''); }} placeholder="Select region" filter size="sm" />
+      )}
+      <FlatDropdown label={`District${districtRequired && !location ? ' *' : ''}`} value={districtId} options={availableDistricts.map((district) => ({ label: district.name, value: district.id }))} onChange={(value: any) => setDistrictId(value?.value ?? value ?? '')} placeholder="Select district" filter size="sm" disabled={!regionId && districtRequired} />
+      <FlatTextarea label="Street Address" value={streetAddress} onChange={(event) => setStreetAddress(event.target.value)} rows={2} maxLength={300} size="sm" />
+      <FlatTextarea label="Landmark & Directions" value={landmark} onChange={(event) => setLandmark(event.target.value)} rows={2} maxLength={500} size="sm" />
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
+        <span className="text-[11px] text-portal-muted">{latitude !== null && longitude !== null ? `GPS captured · ±${(accuracy ?? 0).toFixed(1)}m` : online ? 'GPS is optional for an additional location.' : 'Saved offline and queued for sync.'}</span>
+        <FlatButton variant="outline" size="sm" leftIcon="pi pi-map-marker" onClick={capture} loading={capturing} disabled={capturing}>{capturing ? 'Capturing...' : latitude !== null ? 'Recapture GPS' : 'Capture GPS'}</FlatButton>
+      </div>
+      {!driverEdit && <FlatCheckbox checked={isPrimary} onChange={setIsPrimary} label="Make this the primary location" />}
+    </div>
+  </FlatModal>;
 };
 
 export default CustomerModal;

@@ -60,7 +60,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
         showIcon={showIcon}
         dateFormat={dateFormat}
         placeholder={placeholder}
-        className={`w-full ${className}`}
+        className={`flat-datepicker w-full ${className}`}
         inputClassName={`
           w-full border rounded transition-colors
           ${sizeConfig.input}

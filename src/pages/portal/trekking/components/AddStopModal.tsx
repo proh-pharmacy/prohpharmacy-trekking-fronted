@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatTextarea } from '../../../../components/flat-form';
@@ -58,11 +58,17 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
   const [sequence, setSequence]                   = useState(nextSequence);
   const [notes, setNotes]                         = useState('');
   const [products, setProducts]                   = useState<ProductRow[]>([emptyProductRow()]);
-  const [editProducts, setEditProducts]           = useState(false);
   const [districts, setDistricts]                 = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts]   = useState(false);
   const [saving, setSaving]                       = useState(false);
   const [errors, setErrors]                       = useState<{ customerAccountId?: string; sequence?: string; products?: string }>({});
+  const customerChanged = Boolean(stop && customerAccountId !== stop.customerAccountId);
+
+  const initialStopCustomer = useMemo(() => stop ? ({
+    id: stop.customerAccountId,
+    businessName: stop.customerName,
+    customerCode: stop.customerCode,
+  } as Customer) : undefined, [stop?.customerAccountId, stop?.customerName, stop?.customerCode]);
 
   // Reset the form on open. The trek determines the customer region.
   useEffect(() => {
@@ -72,8 +78,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
       setDistrictId('');
       setDistricts([]);
       setNotes(stop?.notes ?? '');
-      setProducts(stop ? productRowsFromStop(stop) : [emptyProductRow()]);
-      setEditProducts(false);
+      setProducts(stop && stop.products.length ? productRowsFromStop(stop) : [emptyProductRow()]);
       setErrors({});
     }
   }, [visible, nextSequence, trekRegionId, stop]);
@@ -122,8 +127,19 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
   const updateProductRow = (i: number, changes: Partial<ProductRow>) =>
     setProducts((p) => p.map((row, idx) => idx === i ? { ...row, ...changes } : row));
 
+  const enteredProducts = products.filter((p) => p.productId || p.plannedBasicQuantity || p.plannedPackagingQuantity);
+  const productsChanged = Boolean(stop && (
+    enteredProducts.length !== stop.products.length ||
+    enteredProducts.some((row, index) => {
+      const original = stop.products[index];
+      return !original || row.productId !== original.productId ||
+        Number(row.plannedBasicQuantity || 0) !== Number(original.plannedBasicQuantity || 0) ||
+        Number(row.plannedPackagingQuantity || 0) !== Number(original.plannedPackagingQuantity || 0);
+    })
+  ));
+
   const handleSubmit = async () => {
-    const shouldSendProducts = !stop || editProducts;
+    const shouldSendProducts = !stop || (customerChanged ? enteredProducts.length > 0 : productsChanged);
     const validProducts = products.filter((p) => p.productId);
     const result = schema.safeParse({ customerAccountId, sequence });
     const errs: typeof errors = {};
@@ -153,9 +169,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
       }));
       if (stop) {
         await treksApi.updateStop(trekId, stop.stopId, {
+          ...(customerChanged ? { customerAccountId } : {}),
           sequence,
           notes: notes.trim(),
-          ...(editProducts ? { products: productPayload } : {}),
+          ...(shouldSendProducts ? { products: productPayload } : {}),
         });
       } else {
         await treksApi.addStop(trekId, {
@@ -216,25 +233,26 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
         {/* Customer async search — key forces remount on filter change */}
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
-            {stop ? (
-              <div>
-                <p className="text-[11px] font-medium uppercase text-portal-muted mb-1">Customer</p>
-                <p className="text-xs font-semibold text-white py-2">{stop.customerName} · {stop.customerCode}</p>
-              </div>
-            ) : (
             <FlatAsyncSelect<Customer>
-              key={`${trekRegionId}:${districtId}`}
+              key={stop ? `edit:${stop.stopId}` : `${trekRegionId}:${districtId}`}
               label="Customer"
               required
               placeholder="Search by name, code, or phone..."
               value={customerAccountId}
+              initialSelectedItem={initialStopCustomer}
               onChange={(v) => {
-                setCustomerAccountId(v);
+                const nextCustomerId = v || '';
+                setCustomerAccountId(nextCustomerId);
                 setErrors((p) => { const n = { ...p }; delete n.customerAccountId; return n; });
               }}
               fetchFn={fetchCustomers}
               optionValue="id"
               optionLabel="businessName"
+              selectedItemTemplate={(item) => (
+                <span className="truncate text-xs text-portal-text">
+                  {item.businessName} <span className="font-mono text-portal-muted">· {item.customerCode}</span>
+                </span>
+              )}
               itemTemplate={(item) => (
                 <div>
                   <span className="font-medium text-white text-xs">{item.businessName}</span>
@@ -247,36 +265,17 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
               size="sm"
               errorMessage={errors.customerAccountId}
             />
-            )}
           </div>
           <FlatInputNumber label="Sequence" required min={1} useGrouping={false} size="sm"
             value={sequence} onChange={(value) => setSequence(value ?? 0)} errorMessage={errors.sequence} />
         </div>
 
-        {stop && !editProducts && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium uppercase text-portal-muted">Products</p>
-              <FlatButton variant="ghost" size="sm" label="Change Products" onClick={() => setEditProducts(true)} />
-            </div>
-            {stop.products.map((product) => (
-              <p key={product.stopProductId} className="text-xs text-portal-text">
-                {product.productName} · {product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}
-                {product.packagingUnitName && ` · ${product.plannedPackagingQuantity ?? 0} ${product.packagingUnitName}`}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {(!stop || editProducts) && <div className="rounded border border-portal-border/50 bg-portal-canvas/30 p-3">
+        <div className="rounded border border-portal-border/50 bg-portal-canvas/30 p-3">
           {stop && (
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-[11px] text-portal-muted">Saving product changes replaces all lines and refreshes their prices.</p>
-              <FlatButton variant="ghost" size="sm" label="Keep Existing" onClick={() => {
-                setEditProducts(false);
-                setProducts(productRowsFromStop(stop));
-                setErrors((previous) => ({ ...previous, products: undefined }));
-              }} />
+            <div className="mb-2">
+              <p className="text-[11px] text-portal-muted">{customerChanged
+                ? 'These product entries will be saved with the new customer.'
+                : 'Edited products replace the existing lines and refresh their prices.'}</p>
             </div>
           )}
           <div className="mb-4 border-b border-portal-border/50 pb-3">
@@ -284,9 +283,9 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
               Products <span className="text-red-400">*</span>
             </label>
           </div>
-          <div className="space-y-2">
+          <div className="divide-y divide-portal-border/50">
             {products.map((row, i) => (
-              <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] gap-2 items-end">
+              <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] gap-2 items-end py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0">
                   <FlatAsyncSelect<Product>
                     label="Product"
@@ -299,22 +298,21 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                     })}
                     fetchFn={fetchProducts}
                     optionValue="id"
-                    optionLabel={(p) => `${p.name} · ${p.basicUnitName || 'basic unit'}${p.packagingUnitName ? ` / ${p.packagingUnitName}` : ''}`}
+                    optionLabel={(p) => `${p.name} · ${p.packagingUnitName ? `${p.packagingUnitName} / ` : ''}${p.basicUnitName || 'basic unit'}`}
                     itemTemplate={(p) => (
                       <div>
                         <span className="text-white text-xs">{p.name}</span>
-                        {p.basicUnitName && <span className="text-portal-muted text-[11px] ml-1.5">({p.basicUnitName})</span>}
-                        {p.packagingUnitName && <span className="text-portal-muted text-[11px] ml-1.5">/ {p.packagingUnitName}</span>}
+                        {(p.packagingUnitName || p.basicUnitName) && (
+                          <span className="text-portal-muted text-[11px] ml-1.5">
+                            ({[p.packagingUnitName, p.basicUnitName].filter(Boolean).join(' / ')})
+                          </span>
+                        )}
                       </div>
                     )}
                     size="sm"
                     clearable={false}
                   />
                 </div>
-                <FlatInputNumber id={`stop-basic-${i}`} label={row.product?.basicUnitName || 'Basic unit'}
-                  min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
-                  value={row.plannedBasicQuantity === '' ? null : Number(row.plannedBasicQuantity)}
-                  onChange={(value) => updateProductRow(i, { plannedBasicQuantity: value == null ? '' : String(value) })} />
                 <div
                   className={row.hasPackagingUnit ? '' : 'opacity-0 pointer-events-none'}
                   aria-hidden={!row.hasPackagingUnit}
@@ -325,6 +323,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                     onChange={(value) => updateProductRow(i, { plannedPackagingQuantity: value == null ? '' : String(value) })}
                     disabled={!row.hasPackagingUnit} />
                 </div>
+                <FlatInputNumber id={`stop-basic-${i}`} label={row.product?.basicUnitName || 'Basic unit'}
+                  min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
+                  value={row.plannedBasicQuantity === '' ? null : Number(row.plannedBasicQuantity)}
+                  onChange={(value) => updateProductRow(i, { plannedBasicQuantity: value == null ? '' : String(value) })} />
                 {products.length > 1 && (
                   <button type="button" onClick={() => removeProductRow(i)} className="h-[38px] px-2 text-red-400 hover:text-red-300 flex items-center">
                     <i className="pi pi-times text-[11px]" />
@@ -339,7 +341,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
             </button>
           </div>
           {errors.products && <p className="text-[11px] text-red-400 mt-1">{errors.products}</p>}
-        </div>}
+        </div>
 
         <FlatTextarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)}
           placeholder="Optional notes for this stop..." rows={2} maxLength={500} size="sm" />

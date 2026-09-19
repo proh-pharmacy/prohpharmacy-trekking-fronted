@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
 import { FlatAsyncSelect } from '../../../../components/flat-form/FlatAsyncSelect';
-import { treksApi, fleetApi, organisationApi, type Branch, type Region, type Vehicle, type StaffItem } from '../../../../api-client';
+import { treksApi, fleetApi, organisationApi, staffApi, type Trek, type Branch, type Region, type Vehicle, type StaffItem } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatTrekDate, parseTrekDate } from './trekDate';
 
 const schema = z.object({
   regionId:      z.string().min(1, 'Trekking region is required'),
@@ -18,7 +19,7 @@ type Errors = Partial<Record<keyof z.infer<typeof schema>, string>>;
 interface Props {
   visible: boolean;
   onHide: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (created: Trek) => void;
 }
 
 export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess }) => {
@@ -27,7 +28,9 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
   const [scheduledDate, setScheduledDate] = useState('');
   const [vehicleId, setVehicleId]         = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [vehicleRegionFilter, setVehicleRegionFilter] = useState<'all' | 'trek'>('all');
   const [salesStaffId, setSalesStaffId]   = useState('');
+  const [staffBranchFilter, setStaffBranchFilter] = useState('');
   const [notes, setNotes]                 = useState('');
   const [saving, setSaving]               = useState(false);
   const [errors, setErrors]               = useState<Errors>({});
@@ -45,15 +48,24 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
   }, [visible]);
 
   const fetchVehicles = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
-    const res = await fleetApi.getVehicles({ ...params, regionId: regionId || undefined });
+    if (vehicleRegionFilter === 'trek' && !regionId) return { data: [], totalPages: 1 };
+    const res = await fleetApi.getVehicles({ ...params, regionId: vehicleRegionFilter === 'trek' ? regionId || undefined : undefined });
     const raw: Vehicle[] = res?.data ?? res?.items ?? (Array.isArray(res) ? res : []);
     const total = res?.totalPages ?? 1;
     return { data: raw.filter((v) => v.currentStaffId), totalPages: total };
-  }, [regionId]);
+  }, [regionId, vehicleRegionFilter]);
+
+  const fetchSalesStaff = useCallback(
+    (params: { pageNumber: number; pageSize: number; search?: string }) =>
+      staffApi.getStaff({ ...params, branchId: staffBranchFilter || undefined }),
+    [staffBranchFilter],
+  );
 
   const reset = () => {
     setRegionId(''); setBranchId(''); setScheduledDate(''); setVehicleId('');
     setSelectedVehicle(null); setSalesStaffId(''); setNotes(''); setErrors({});
+    setVehicleRegionFilter('all');
+    setStaffBranchFilter('');
   };
 
   const handleHide = () => { reset(); onHide(); };
@@ -72,11 +84,10 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
     }
     setSaving(true);
     try {
-      await treksApi.createTrek({ regionId, branchId: branchId || null, scheduledDate, vehicleId, salesStaffId: salesStaffId || null, notes: notes.trim() || undefined });
-      toast.success('Trek created.');
+      const created = await treksApi.createTrek({ regionId, branchId: branchId || null, scheduledDate, vehicleId, salesStaffId: salesStaffId || null, notes: notes.trim() || undefined });
       resetTableData();
       handleHide();
-      onSuccess?.();
+      onSuccess?.(created);
     } catch (err: any) {
       const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to create trek.';
       toast.error(msg);
@@ -111,25 +122,24 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
             options={regionOptions}
             value={regionId}
             onChange={(v: any) => {
-              setRegionId(v?.value !== undefined ? v.value : v);
-              setBranchId(''); setVehicleId(''); setSelectedVehicle(null);
+              const nextRegionId = v?.value !== undefined ? v.value : v;
+              setRegionId(nextRegionId);
+              setBranchId('');
               clearError('regionId');
             }}
             size="sm"
             errorMessage={errors.regionId}
           />
-          <div>
-            <label className="block text-[11px] font-medium text-portal-muted mb-1">
-              Scheduled Date <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => { setScheduledDate(e.target.value); clearError('scheduledDate'); }}
-              className="w-full h-[38px] px-3 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent"
-            />
-            {errors.scheduledDate && <p className="text-[11px] text-red-400 mt-1">{errors.scheduledDate}</p>}
-          </div>
+          <FlatDatePicker
+            label="Scheduled Date"
+            required
+            value={parseTrekDate(scheduledDate)}
+            onChange={(date) => { setScheduledDate(formatTrekDate(date)); clearError('scheduledDate'); }}
+            dateFormat="yy-mm-dd"
+            baseZIndex={2100}
+            size="sm"
+            errorMessage={errors.scheduledDate}
+          />
         </div>
 
         <FlatDropdown
@@ -145,11 +155,10 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
 
         {/* Vehicle — auto-infers driver */}
         <FlatAsyncSelect<Vehicle>
-          key={regionId}
           label="Vehicle"
           required
-          placeholder={regionId ? 'Search vehicles in this region...' : 'Select region first'}
-          disabled={!regionId}
+          placeholder={vehicleRegionFilter === 'trek' ? (regionId ? 'Search vehicles in trekking region...' : 'Select a trekking region first...') : 'Search vehicles across all regions...'}
+          helperText={vehicleRegionFilter === 'trek' && !regionId ? 'Select a trekking region above to see its vehicles.' : undefined}
           value={vehicleId}
           onChange={(v, item) => {
             setVehicleId(v || '');
@@ -157,6 +166,15 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
             clearError('vehicleId');
           }}
           fetchFn={fetchVehicles}
+          filter={{
+            label: 'Filter by',
+            value: vehicleRegionFilter,
+            onChange: (value) => setVehicleRegionFilter(value as 'all' | 'trek'),
+            options: [
+              { label: 'All regions', value: 'all' },
+              { label: 'Trekking region', value: 'trek' },
+            ],
+          }}
           optionValue="id"
           optionLabel={(v) => `${v.regionName || 'No region'} · ${v.displayName}`}
           itemTemplate={(item) => (
@@ -188,7 +206,16 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
           label="Sales Staff (Optional)"
           value={salesStaffId}
           onChange={(value) => setSalesStaffId(value || '')}
-          endpointUrl="/staff"
+          fetchFn={fetchSalesStaff}
+          filter={{
+            label: 'Filter by',
+            value: staffBranchFilter,
+            onChange: setStaffBranchFilter,
+            options: [
+              { label: 'All branches', value: '' },
+              ...branches.filter((branch) => branch.isActive).map((branch) => ({ label: branch.name, value: branch.id })),
+            ],
+          }}
           optionValue="id"
           optionLabel="fullName"
           placeholder="Search sales staff..."

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
 import { FlatAsyncSelect } from '../../../../components/flat-form/FlatAsyncSelect';
-import { treksApi, fleetApi, organisationApi, type Trek, type Branch, type Region, type Vehicle, type StaffItem } from '../../../../api-client';
+import { treksApi, fleetApi, organisationApi, staffApi, type Trek, type Branch, type Region, type Vehicle, type StaffItem } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatTrekDate, parseTrekDate } from './trekDate';
 
 const schema = z.object({
   regionId:      z.string().min(1, 'Trekking region is required'),
@@ -28,7 +29,10 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
   const [scheduledDate, setScheduledDate]     = useState('');
   const [vehicleId, setVehicleId]             = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [initialVehicle, setInitialVehicle] = useState<Vehicle | undefined>();
+  const [vehicleRegionFilter, setVehicleRegionFilter] = useState<'all' | 'trek'>('all');
   const [salesStaffId, setSalesStaffId]       = useState('');
+  const [staffBranchFilter, setStaffBranchFilter] = useState('');
   const [notes, setNotes]                     = useState('');
   const [saving, setSaving]                   = useState(false);
   const [errors, setErrors]                   = useState<Errors>({});
@@ -45,19 +49,38 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
       setScheduledDate(trek.scheduledDate);
       setVehicleId(trek.vehicleId);
       setSalesStaffId(trek.salesStaffId || '');
+      setStaffBranchFilter('');
       setNotes(trek.notes ?? '');
       setErrors({});
       setSelectedVehicle(null);
+      setInitialVehicle(undefined);
+      setVehicleRegionFilter('all');
       organisationApi.getRegions().then(setRegions).catch(() => {});
       organisationApi.getBranches().then(setBranches).catch(() => {});
     }
   }, [visible, trek]);
 
+  useEffect(() => {
+    if (!visible || !trek.vehicleId) return;
+    let active = true;
+    fleetApi.getVehicle(trek.vehicleId)
+      .then((vehicle) => { if (active) setInitialVehicle(vehicle); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [visible, trek.vehicleId]);
+
   const fetchVehicles = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
-    const res = await fleetApi.getVehicles({ ...params, regionId: regionId || undefined });
+    if (vehicleRegionFilter === 'trek' && !regionId) return { data: [], totalPages: 1 };
+    const res = await fleetApi.getVehicles({ ...params, regionId: vehicleRegionFilter === 'trek' ? regionId || undefined : undefined });
     const raw: Vehicle[] = res?.data ?? res?.items ?? (Array.isArray(res) ? res : []);
     return { data: raw.filter((v) => v.currentStaffId), totalPages: res?.totalPages ?? 1 };
-  }, [regionId]);
+  }, [regionId, vehicleRegionFilter]);
+
+  const fetchSalesStaff = useCallback(
+    (params: { pageNumber: number; pageSize: number; search?: string }) =>
+      staffApi.getStaff({ ...params, branchId: staffBranchFilter || undefined }),
+    [staffBranchFilter],
+  );
 
   const handleSubmit = async () => {
     const result = schema.safeParse({ regionId, scheduledDate, vehicleId });
@@ -97,13 +120,13 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
     .map((branch) => ({ label: branch.name, value: branch.id }));
 
   const driverName = selectedVehicle?.currentStaffName ?? (vehicleId === trek.vehicleId ? trek.driverName : null);
-  const initialVehicle = useMemo(() => ({
+  const selectedInitialVehicle = useMemo(() => initialVehicle?.id === trek.vehicleId ? initialVehicle : ({
     id: trek.vehicleId,
     displayName: trek.vehicleDisplayName,
-    regionName: trek.regionName,
+    regionName: '',
     registrationNumber: '',
     currentStaffName: trek.driverName,
-  } as Vehicle), [trek.vehicleId, trek.vehicleDisplayName, trek.regionName, trek.driverName]);
+  } as Vehicle), [initialVehicle, trek.vehicleId, trek.vehicleDisplayName, trek.driverName]);
   const initialSalesStaff = useMemo(() => trek.salesStaffId && trek.salesStaffName ? ({
     id: trek.salesStaffId,
     fullName: trek.salesStaffName,
@@ -131,25 +154,24 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
             options={regionOptions}
             value={regionId}
             onChange={(v: any) => {
-              setRegionId(v?.value !== undefined ? v.value : v);
-              setBranchId(''); setVehicleId(''); setSelectedVehicle(null);
+              const nextRegionId = v?.value !== undefined ? v.value : v;
+              setRegionId(nextRegionId);
+              setBranchId('');
               clearError('regionId');
             }}
             size="sm"
             errorMessage={errors.regionId}
           />
-          <div>
-            <label className="block text-[11px] font-medium text-portal-muted mb-1">
-              Scheduled Date <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => { setScheduledDate(e.target.value); clearError('scheduledDate'); }}
-              className="w-full h-[38px] px-3 text-xs bg-portal-canvas border border-portal-border rounded text-white focus:outline-none focus:border-portal-accent"
-            />
-            {errors.scheduledDate && <p className="text-[11px] text-red-400 mt-1">{errors.scheduledDate}</p>}
-          </div>
+          <FlatDatePicker
+            label="Scheduled Date"
+            required
+            value={parseTrekDate(scheduledDate)}
+            onChange={(date) => { setScheduledDate(formatTrekDate(date)); clearError('scheduledDate'); }}
+            dateFormat="yy-mm-dd"
+            baseZIndex={2100}
+            size="sm"
+            errorMessage={errors.scheduledDate}
+          />
         </div>
 
         <FlatDropdown
@@ -164,15 +186,23 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
         />
 
         <FlatAsyncSelect<Vehicle>
-          key={regionId}
           label="Vehicle"
           required
-          placeholder={regionId ? 'Search vehicles in this region...' : 'Select region first'}
-          disabled={!regionId}
+          placeholder={vehicleRegionFilter === 'trek' ? (regionId ? 'Search vehicles in trekking region...' : 'Select a trekking region first...') : 'Search vehicles across all regions...'}
+          helperText={vehicleRegionFilter === 'trek' && !regionId ? 'Select a trekking region above to see its vehicles.' : undefined}
           value={vehicleId}
-          initialSelectedItem={vehicleId === trek.vehicleId && regionId === trek.regionId ? initialVehicle : undefined}
+          initialSelectedItem={vehicleId === trek.vehicleId ? selectedInitialVehicle : undefined}
           onChange={(v, item) => { setVehicleId(v || ''); setSelectedVehicle(item ?? null); clearError('vehicleId'); }}
           fetchFn={fetchVehicles}
+          filter={{
+            label: 'Filter by',
+            value: vehicleRegionFilter,
+            onChange: (value) => setVehicleRegionFilter(value as 'all' | 'trek'),
+            options: [
+              { label: 'All regions', value: 'all' },
+              { label: 'Trekking region', value: 'trek' },
+            ],
+          }}
           optionValue="id"
           optionLabel={(v) => `${v.regionName || 'No region'} · ${v.displayName}`}
           itemTemplate={(item) => (
@@ -204,7 +234,16 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
           value={salesStaffId}
           initialSelectedItem={initialSalesStaff}
           onChange={(value) => setSalesStaffId(value || '')}
-          endpointUrl="/staff"
+          fetchFn={fetchSalesStaff}
+          filter={{
+            label: 'Filter by',
+            value: staffBranchFilter,
+            onChange: setStaffBranchFilter,
+            options: [
+              { label: 'All branches', value: '' },
+              ...branches.filter((branch) => branch.isActive).map((branch) => ({ label: branch.name, value: branch.id })),
+            ],
+          }}
           optionValue="id"
           optionLabel="fullName"
           placeholder="Search sales staff..."

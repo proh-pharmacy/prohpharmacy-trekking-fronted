@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FlatButton, FlatDropdown } from '../../../components/flat-form';
 import { reportsApi, organisationApi, type CollectionsReportResponse } from '../../../api-client';
 import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
+import { FlatDataTable } from '../../../components/data-table';
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -152,39 +153,17 @@ export const CollectionsReportPage: React.FC = () => {
               <div className="px-5 py-3 border-b border-portal-border/60">
                 <span className="text-sm font-bold text-white">By Payment Method</span>
               </div>
-              {data.byPaymentMethod.length === 0 ? (
-                <p className="text-xs text-portal-muted text-center py-10">No data.</p>
-              ) : (
-                <table className="w-full">
-                  <thead className="bg-portal-canvas border-b border-portal-border/60">
-                    <tr>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-4">Method</th>
-                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3">Transactions</th>
-                      <th className="text-right text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-4">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-portal-border/30">
-                    {data.byPaymentMethod.map((row) => (
-                      <tr key={row.paymentMethod} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2.5 px-4 text-xs text-portal-text">
-                          {PAYMENT_METHOD_LABELS[row.paymentMethod] ?? row.paymentMethod}
-                        </td>
-                        <td className="py-2.5 px-3 text-xs text-portal-muted text-center">{row.transactions}</td>
-                        <td className="py-2.5 px-4 text-xs font-mono text-portal-accent text-right">
-                          {fmtGhs(row.total)}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="border-t border-portal-border/60 bg-portal-canvas/40">
-                      <td className="py-2.5 px-4 text-[11px] font-bold text-portal-muted uppercase tracking-wide">Total</td>
-                      <td className="py-2.5 px-3 text-xs text-white text-center font-semibold">{data.totalTransactions.toLocaleString()}</td>
-                      <td className="py-2.5 px-4 text-xs font-mono font-bold text-portal-accent text-right">
-                        {fmtGhs(data.totalCollected)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              )}
+              <FlatDataTable
+                data={data.byPaymentMethod}
+                enablePaginator={false}
+                enableTableFilter={false}
+                emptyDataText="No data."
+                columns={[
+                  { field: 'paymentMethod', header: 'Method', body: (row) => <span className="text-xs text-portal-text">{PAYMENT_METHOD_LABELS[row.paymentMethod] ?? row.paymentMethod}</span> },
+                  { field: 'transactions', header: 'Transactions', body: (row) => <span className="text-xs text-portal-muted">{row.transactions.toLocaleString()}</span> },
+                  { field: 'total', header: 'Total', body: (row) => <span className="text-xs font-mono text-portal-accent">{fmtGhs(row.total)}</span> },
+                ]}
+              />
             </div>
 
             {/* By Branch */}
@@ -192,37 +171,17 @@ export const CollectionsReportPage: React.FC = () => {
               <div className="px-5 py-3 border-b border-portal-border/60">
                 <span className="text-sm font-bold text-white">By Branch</span>
               </div>
-              {data.byBranch.length === 0 ? (
-                <p className="text-xs text-portal-muted text-center py-10">No data.</p>
-              ) : (
-                <table className="w-full">
-                  <thead className="bg-portal-canvas border-b border-portal-border/60">
-                    <tr>
-                      <th className="text-left text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-4">Branch</th>
-                      <th className="text-center text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-3">Transactions</th>
-                      <th className="text-right text-[10px] font-bold text-portal-muted uppercase tracking-wider py-2.5 px-4">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-portal-border/30">
-                    {data.byBranch.map((row) => (
-                      <tr key={row.branchName} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2.5 px-4 text-xs text-portal-text">{row.branchName}</td>
-                        <td className="py-2.5 px-3 text-xs text-portal-muted text-center">{row.transactions.toLocaleString()}</td>
-                        <td className="py-2.5 px-4 text-xs font-mono text-portal-accent text-right">
-                          {fmtGhs(row.total)}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="border-t border-portal-border/60 bg-portal-canvas/40">
-                      <td className="py-2.5 px-4 text-[11px] font-bold text-portal-muted uppercase tracking-wide">Total</td>
-                      <td className="py-2.5 px-3 text-xs text-white text-center font-semibold">{data.totalTransactions.toLocaleString()}</td>
-                      <td className="py-2.5 px-4 text-xs font-mono font-bold text-portal-accent text-right">
-                        {fmtGhs(data.totalCollected)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              )}
+              <FlatDataTable
+                data={data.byBranch}
+                enablePaginator={false}
+                enableTableFilter={false}
+                emptyDataText="No data."
+                columns={[
+                  { field: 'branchName', header: 'Branch', body: (row) => <span className="text-xs text-portal-text">{row.branchName}</span> },
+                  { field: 'transactions', header: 'Transactions', body: (row) => <span className="text-xs text-portal-muted">{row.transactions.toLocaleString()}</span> },
+                  { field: 'total', header: 'Total', body: (row) => <span className="text-xs font-mono text-portal-accent">{fmtGhs(row.total)}</span> },
+                ]}
+              />
             </div>
           </div>
         </>

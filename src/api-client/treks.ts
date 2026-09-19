@@ -41,6 +41,7 @@ export interface TrekStop {
   primaryContactName?: string | null;
   primaryContactPhone?: string | null;
   notes?: string | null;
+  returns?: DriverReturn[];
   products: TrekStopProduct[];
 }
 
@@ -92,6 +93,7 @@ export interface AddStopPayload {
 }
 
 export interface UpdateStopPayload {
+  customerAccountId?: string;
   sequence?: number;
   notes?: string;
   products?: AddStopPayload['products'];
@@ -107,6 +109,17 @@ export interface RecordDeliveryPayload {
     balance?: number;
     notes?: string;
   }[];
+}
+
+export interface RecordReturnPayload {
+  productId: string;
+  basicQtyReturned: number;
+  packagingQtyReturned?: number;
+  refundMethod?: PaymentMethod;
+  refundAmount?: number;
+  reason?: string;
+  clientGeneratedId?: string;
+  gps?: { latitude: number; longitude: number; accuracyMetres?: number };
 }
 
 export interface StopProductPricePayload {
@@ -262,6 +275,10 @@ export const treksApi = {
     return normalizeTrekProducts(res.data);
   },
 
+  deleteTrek: async (id: string): Promise<void> => {
+    await apiClient.delete(`/treks/${id}`);
+  },
+
   changeStatus: async (id: string, status: TrekStatus): Promise<Trek> => {
     const res = await apiClient.patch<Trek>(`/treks/${id}/status`, { status });
     return normalizeTrekProducts(res.data);
@@ -299,6 +316,15 @@ export const treksApi = {
   recordDelivery: async (id: string, payload: RecordDeliveryPayload) => {
     const res = await apiClient.post(`/treks/${id}/record`, payload);
     return res.data;
+  },
+
+  recordReturn: async (trekId: string, stopId: string, payload: RecordReturnPayload): Promise<DriverReturn> => {
+    const res = await apiClient.post<DriverReturn>(`/treks/${trekId}/stops/${stopId}/returns`, payload);
+    return res.data;
+  },
+
+  voidReturn: async (trekId: string, stopId: string, returnId: string): Promise<void> => {
+    await apiClient.delete(`/treks/${trekId}/stops/${stopId}/returns/${returnId}`);
   },
 
   generateLink: async (id: string): Promise<{ token: string; url: string }> => {

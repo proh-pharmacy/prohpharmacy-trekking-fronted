@@ -53,6 +53,28 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* PrimeIcons' spinner glyph is an open U shape. Use a consistent circular
+   loader wherever `pi pi-spinner` is used instead. */
+.pi.pi-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  font-size: 1em;
+  line-height: 1;
+  border: 0.14em solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50% !important;
+  vertical-align: -0.12em;
+}
+
+.pi.pi-spinner::before {
+  display: none;
+}
+
+.flat-button-spinner {
+  border-radius: 50% !important;
+}
 input[type='number'] {
   -moz-appearance: textfield;
 }
@@ -733,6 +755,36 @@ div.p-icon-field {
 }
 
 /* DatePicker (Calendar) */
+.flat-datepicker.p-calendar {
+  position: relative;
+}
+
+.flat-datepicker.p-calendar .p-inputtext {
+  width: 100% !important;
+  padding-right: 2.5rem !important;
+  border-radius: 4px !important;
+}
+
+.flat-datepicker.p-calendar .p-datepicker-trigger {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: var(--color-portal-muted) !important;
+  box-shadow: none !important;
+}
+
+.flat-datepicker.p-calendar .p-datepicker-trigger:hover {
+  color: var(--color-portal-text) !important;
+  background: color-mix(in srgb, var(--color-portal-text) 8%, transparent) !important;
+}
+
 .p-datepicker .p-datepicker-header {
   background: var(--color-portal-canvas) !important;
   border-bottom: 1px solid var(--color-portal-border) !important;
@@ -749,8 +801,22 @@ div.p-icon-field {
 }
 
 .p-datepicker table td > span.p-highlight {
-  background: var(--color-portal-accent) !important;
-  color: #ffffff !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 16%, transparent) !important;
+  color: var(--color-portal-accent) !important;
+}
+
+.p-datepicker table td.p-datepicker-today > span:not(.p-highlight),
+.p-datepicker table td.p-datepicker-today > span:not(.p-highlight):hover {
+  background: transparent !important;
+  color: var(--color-portal-accent) !important;
+  border-color: var(--color-portal-accent) !important;
+}
+
+.p-datepicker table td.p-datepicker-today > span.p-highlight,
+.p-datepicker table td.p-datepicker-today > span.p-highlight:hover {
+  background: color-mix(in srgb, var(--color-portal-accent) 16%, transparent) !important;
+  color: var(--color-portal-accent) !important;
+  border-color: var(--color-portal-accent) !important;
 }
 
 /* DatePicker Small (sm) Panel */
@@ -765,14 +831,18 @@ div.p-icon-field {
   font-size: 0.75rem !important;
 }
 
-.p-datepicker.p-datepicker-sm .p-datepicker-header button,
-.p-datepicker-sm .p-datepicker-header button {
+.p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-prev,
+.p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-next,
+.p-datepicker-sm .p-datepicker-header .p-datepicker-prev,
+.p-datepicker-sm .p-datepicker-header .p-datepicker-next {
   width: 1.5rem !important;
   height: 1.5rem !important;
 }
 
-.p-datepicker.p-datepicker-sm .p-datepicker-header button .p-icon,
-.p-datepicker-sm .p-datepicker-header button .p-icon {
+.p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-prev .p-icon,
+.p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-next .p-icon,
+.p-datepicker-sm .p-datepicker-header .p-datepicker-prev .p-icon,
+.p-datepicker-sm .p-datepicker-header .p-datepicker-next .p-icon {
   font-size: 0.7rem !important;
 }
 

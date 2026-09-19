@@ -35,6 +35,12 @@ export interface FlatAsyncSelectProps<T = any> {
   fullWidth?: boolean;
   size?: FlatInputSize;
   variant?: 'dark' | 'default' | 'white';
+  filter?: {
+    label: string;
+    value: string;
+    options: { label: string; value: string; disabled?: boolean }[];
+    onChange: (value: string) => void;
+  };
 }
 
 export function FlatAsyncSelect<T extends Record<string, any> = any>({
@@ -64,8 +70,10 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   fullWidth = true,
   size = 'sm',
   variant = 'dark',
+  filter,
 }: FlatAsyncSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [items, setItems] = useState<T[]>(staticOptions || []);
@@ -84,6 +92,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const requestIdRef = useRef(0);
   const isDark = variant === 'dark';
   const effectiveSize: FlatInputSize = size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
@@ -111,8 +120,10 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         return;
       }
 
+      const requestId = ++requestIdRef.current;
       if (pageToLoad === 1) {
         setLoading(true);
+        setItems([]);
       } else {
         setLoadingMore(true);
       }
@@ -157,6 +168,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
           }
         }
 
+        if (requestId !== requestIdRef.current) return;
         setItems((prev) => {
           if (isNewSearch || pageToLoad === 1) {
             return resultItems;
@@ -171,10 +183,12 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         setTotalPages(fetchedTotalPages);
         setTotalCount(fetchedTotalCount);
       } catch (err) {
-        console.error('[FlatAsyncSelect] Fetch error:', err);
+        if (requestId === requestIdRef.current) console.error('[FlatAsyncSelect] Fetch error:', err);
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [endpointUrl, defaultParams, fetchFn, pageSize, debouncedSearch, searchParam, searchMode, staticOptions, optionValue]
@@ -220,6 +234,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
       setTimeout(() => searchInputRef.current?.focus(), 50);
     } else {
       setIsOpen(false);
+      setIsFilterOpen(false);
     }
   };
 
@@ -236,12 +251,14 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         !dropdownRef.current.contains(target)
       ) {
         setIsOpen(false);
+        setIsFilterOpen(false);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
+        setIsFilterOpen(false);
       }
     };
 
@@ -309,6 +326,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
     setSelectedItem(item);
     onChange?.(val, item);
     setIsOpen(false);
+    setIsFilterOpen(false);
     setSearchTerm('');
   };
 
@@ -406,7 +424,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="w-full bg-transparent border-none outline-none text-xs text-white placeholder-portal-muted focus:ring-0"
+                className="min-w-0 flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button
@@ -418,7 +436,37 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 </button>
               )}
               {loading && <i className="pi pi-spin pi-spinner text-portal-accent text-xs shrink-0 pr-1" />}
+              {filter && (
+                <button
+                  type="button"
+                  aria-label={`Filter ${label || 'options'}`}
+                  aria-expanded={isFilterOpen}
+                  title={`Filter ${label || 'options'}`}
+                  onClick={() => setIsFilterOpen((open) => !open)}
+                  className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors cursor-pointer ${isFilterOpen || filter.value !== filter.options[0]?.value ? 'text-portal-accent bg-portal-accent/10' : 'text-portal-muted hover:text-portal-text hover:bg-white/[0.06]'}`}
+                >
+                  <i className="pi pi-filter text-xs" />
+                </button>
+              )}
             </div>
+
+            {filter && isFilterOpen && (
+              <div className="max-h-48 overflow-y-auto custom-scrollbar border-b border-portal-border/60 bg-portal-surface p-2 shrink-0">
+                <p className="px-2 pb-1 text-[11px] font-medium text-portal-muted">{filter.label}</p>
+                {filter.options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={option.disabled}
+                    onClick={() => { filter.onChange(option.value); setIsFilterOpen(false); }}
+                    className={`w-full flex items-center justify-between rounded px-2 py-2 text-left text-xs transition-colors ${option.disabled ? 'text-portal-muted/50 cursor-not-allowed' : option.value === filter.value ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.06] cursor-pointer'}`}
+                  >
+                    <span>{option.label}</span>
+                    {option.value === filter.value && <i className="pi pi-check text-[11px]" />}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Scrollable Items List Container */}
             <div

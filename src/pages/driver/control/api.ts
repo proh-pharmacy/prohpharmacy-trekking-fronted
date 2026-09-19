@@ -1,6 +1,7 @@
 import { publicApi } from '../../../api-client/api';
 import { treksApi, type DriverTrek, type DriverReturn } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
+import type { CustomerPerson } from '../../../api-client/customers';
 
 export interface RegionTrek {
   trekId: string;
@@ -12,6 +13,7 @@ export interface RegionTrek {
   regionName: string;
   stopsCount: number;
 }
+export interface FieldDistrict { id: string; name: string; code: string; regionId: string; }
 
 export interface FieldCustomer {
   id: string;
@@ -19,16 +21,49 @@ export interface FieldCustomer {
   businessName: string;
   primaryPhoneNumber: string;
   customerType?: string;
+  registrationStatus?: string;
+  regionId?: string | null;
   regionName?: string | null;
+  primaryPerson?: CustomerPerson | null;
   primaryContactName?: string;
   primaryPersonId?: string | null;
+  tradingName?: string | null;
+  whatsAppNumber?: string | null;
+  primaryContactFirstName?: string | null;
+  primaryContactMiddleName?: string | null;
+  primaryContactLastName?: string | null;
+  primaryContactPhone?: string | null;
+  primaryContactRelationshipType?: string | null;
+  primaryContactGhanaCardNumber?: string | null;
   portraitUrl?: string | null;
   clientGeneratedId?: string;
   premisesPhotoUrl?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   accuracyMetres?: number | null;
-  primaryLocation?: { latitude?: number | null; longitude?: number | null; accuracyMetres?: number | null } | null;
+  districtId?: string | null;
+  streetAddress?: string | null;
+  landmarkAndDirections?: string | null;
+  primaryLocation?: { id?: string; locationType?: string | null; regionId?: string | null; regionName?: string | null; districtId?: string | null; districtName?: string | null; streetAddress?: string | null; landmarkAndDirections?: string | null; latitude?: number | null; longitude?: number | null; accuracyMetres?: number | null; captureMethod?: string | null; verificationStatus?: string | null; isPrimary?: boolean } | null;
+  locations?: FieldCustomerLocation[];
+  additionalLocations?: FieldCustomerLocation[];
+}
+
+export interface FieldCustomerLocation {
+  id: string;
+  locationType?: string | null;
+  regionId?: string | null;
+  regionName?: string | null;
+  districtId?: string | null;
+  districtName?: string | null;
+  streetAddress?: string | null;
+  landmarkAndDirections?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMetres?: number | null;
+  captureMethod?: string | null;
+  verificationStatus?: string | null;
+  isPrimary?: boolean;
 }
 
 export interface GpsFix {
@@ -65,6 +100,9 @@ export interface DriverLocation {
 
 export type ActionType =
   | 'RegisterCustomer'
+  | 'UpdateCustomer'
+  | 'AddCustomerLocation'
+  | 'UpdateCustomerLocation'
   | 'AddWalkInStop'
   | 'RecordDelivery'
   | 'RecordUnplannedSale'
@@ -79,6 +117,7 @@ export interface QueuedAction {
   status: 'pending' | 'conflict' | 'synced';
   serverId?: string | null;
   reason?: string;
+  localBeforeLocation?: FieldCustomerLocation;
 }
 
 export type QueuedPhotoKind = 'premises' | 'portrait';
@@ -132,6 +171,14 @@ export const fieldApi = {
     const response = await publicApi.get(path(token, '/region/treks'));
     return unwrapList<RegionTrek>(response.data);
   },
+  getAssignedTreks: async (token: string): Promise<RegionTrek[]> => {
+    const response = await publicApi.get(path(token, '/assigned'));
+    return unwrapList<RegionTrek>(response.data);
+  },
+  generateTrekToken: async (token: string, trekId: string): Promise<{ token: string; url: string }> => {
+    const response = await publicApi.post<{ token: string; url: string }>(path(token, `/treks/${encodeURIComponent(trekId)}/generate-token`));
+    return response.data;
+  },
   getProducts: async (token: string, since?: string): Promise<Product[]> => {
     const response = await publicApi.get(path(token, '/offline/products'), { params: since ? { since } : undefined });
     return unwrapList<Product>(response.data);
@@ -149,7 +196,20 @@ export const fieldApi = {
         || (customer as FieldCustomer & { primaryContactPortraitUrl?: string; primaryPerson?: { portraitUrl?: string } }).primaryContactPortraitUrl
         || (customer as FieldCustomer & { primaryPerson?: { portraitUrl?: string } }).primaryPerson?.portraitUrl
         || null,
+      primaryContactName: customer.primaryPerson?.fullName || customer.primaryContactName,
+      primaryContactPhone: customer.primaryPerson?.primaryPhoneNumber || customer.primaryContactPhone,
+      primaryContactRelationshipType: customer.primaryPerson?.relationshipType || customer.primaryContactRelationshipType,
+      latitude: customer.primaryLocation?.latitude ?? customer.latitude ?? null,
+      longitude: customer.primaryLocation?.longitude ?? customer.longitude ?? null,
+      accuracyMetres: customer.primaryLocation?.accuracyMetres ?? customer.accuracyMetres ?? null,
+      districtId: customer.primaryLocation?.districtId ?? customer.districtId ?? null,
+      streetAddress: customer.primaryLocation?.streetAddress ?? customer.streetAddress ?? null,
+      landmarkAndDirections: customer.primaryLocation?.landmarkAndDirections ?? customer.landmarkAndDirections ?? null,
     }));
+  },
+  getDistricts: async (token: string, since?: string): Promise<FieldDistrict[]> => {
+    const response = await publicApi.get(path(token, '/offline/districts'), { params: since ? { since } : undefined });
+    return unwrapList<FieldDistrict>(response.data);
   },
   uploadPremisesPhoto: async (token: string, customerId: string, file: File): Promise<{ customerId: string; premisesPhotoUrl: string }> => {
     const formData = new FormData();
@@ -157,7 +217,9 @@ export const fieldApi = {
     const response = await publicApi.post<{ customerId: string; premisesPhotoUrl: string }>(
       path(token, `/customers/${encodeURIComponent(customerId)}/premises-photo`),
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      // Let the browser/Axios add the multipart boundary. Setting this header
+      // manually can make the server reject an otherwise valid FormData body.
+      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
     );
     return response.data;
   },
@@ -167,7 +229,7 @@ export const fieldApi = {
     const response = await publicApi.post<{ personId: string; portraitUrl: string }>(
       path(token, `/customers/${encodeURIComponent(customerId)}/people/${encodeURIComponent(personId)}/portrait`),
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
     );
     return response.data;
   },
@@ -188,6 +250,10 @@ export const fieldApi = {
   },
   registerCustomer: async (token: string, payload: Record<string, unknown>): Promise<FieldCustomer> => {
     const response = await publicApi.post<FieldCustomer>(path(token, '/customers'), payload);
+    return response.data;
+  },
+  addCustomerLocation: async (token: string, customerId: string, payload: Record<string, unknown>) => {
+    const response = await publicApi.post(path(token, `/customers/${encodeURIComponent(customerId)}/locations`), payload);
     return response.data;
   },
   addWalkInStop: async (token: string, trekId: string, payload: Record<string, unknown>) => {

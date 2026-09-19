@@ -3,9 +3,9 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import { FlatButton, FlatDropdown } from '../../../components/flat-form';
-import { FlatModal } from '../../../components/overlay';
-import { type Customer, organisationApi, customersApi, type CustomerImportMapping } from '../../../api-client';
-import { CustomerModal } from './components/CustomerModal';
+import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
+import { type Customer, type CustomerLocation, organisationApi, customersApi, type CustomerImportMapping } from '../../../api-client';
+import { CustomerModal, CustomerLocationModal } from './components/CustomerModal';
 import toast from 'react-hot-toast';
 
 // ── Filter options ──────────────────────────────────────────────────
@@ -65,6 +65,9 @@ export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [locationCustomer, setLocationCustomer] = useState<Customer | null>(null);
+  const [locationEditing, setLocationEditing] = useState<CustomerLocation | null>(null);
+  const [locationToDelete, setLocationToDelete] = useState<CustomerLocation | null>(null);
   const [importVisible, setImportVisible] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
@@ -73,7 +76,7 @@ export const CustomersPage: React.FC = () => {
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Regions', value: '' },
   ]);
-  const [districtOptions, setDistrictOptions] = useState<{ label: string; value: string }[]>([
+  const [districtOptions, setDistrictOptions] = useState<{ label: string; value: string; regionId?: string }[]>([
     { label: 'All Districts', value: '' },
   ]);
   const [branchOptions, setBranchOptions] = useState<{ label: string; value: string }[]>([
@@ -95,7 +98,7 @@ export const CustomersPage: React.FC = () => {
       if (districtsResult.status === 'fulfilled') {
         setDistrictOptions([
           { label: 'All Districts', value: '' },
-          ...districtsResult.value.map((d) => ({ label: d.name, value: d.id })),
+          ...districtsResult.value.map((d) => ({ label: d.name, value: d.id, regionId: d.regionId })),
         ]);
       }
       if (branchesResult.status === 'fulfilled') {
@@ -134,10 +137,17 @@ export const CustomersPage: React.FC = () => {
         owningBranchName: c.owningBranchName || undefined,
         registeredByStaffId: c.registeredByStaffId || undefined,
         registeredByName: c.registeredByName || undefined,
+        registeredDuringTrekId: c.registeredDuringTrekId || null,
+        clientGeneratedId: c.clientGeneratedId || null,
+        createdOffline: Boolean(c.createdOffline),
+        premisesPhotoUrl: c.premisesPhotoUrl || null,
+        recordedAt: c.recordedAt || undefined,
         createdAt: c.createdAt || '',
         updatedAt: c.updatedAt || null,
         primaryPerson: c.primaryPerson || undefined,
         primaryLocation: c.primaryLocation || undefined,
+        locations: Array.isArray(c.locations) ? c.locations : undefined,
+        additionalLocations: Array.isArray(c.additionalLocations) ? c.additionalLocations : (Array.isArray(c.locations) ? c.locations : undefined),
       }));
 
       return {
@@ -283,7 +293,7 @@ export const CustomersPage: React.FC = () => {
   const runImport = async () => {
     if (!importFile) { toast.error('Choose an Excel file first.'); return; }
     setImporting(true);
-    try { const result = await customersApi.importCustomers(importFile, importMapping); toast.success(`${result.imported} customers imported; ${result.skipped} skipped.`); setImportVisible(false); setImportFile(null); resetTableData(); }
+    try { const result = await customersApi.importCustomers(importFile, importMapping); resetTableData(); toast.success(`${result.imported} customers imported; ${result.skipped} skipped.`); setImportVisible(false); setImportFile(null); }
     catch (error: any) { toast.error(error.response?.data?.message || 'Customer import failed.'); }
     finally { setImporting(false); }
   };
@@ -379,7 +389,48 @@ export const CustomersPage: React.FC = () => {
           setEditingCustomer(null);
         }}
         customer={editingCustomer}
+        onAddLocation={() => { setLocationCustomer(editingCustomer); setLocationEditing(null); setModalVisible(false); }}
+        onEditLocation={(location) => { setLocationCustomer(editingCustomer); setLocationEditing(location); setModalVisible(false); }}
+        onDeleteLocation={setLocationToDelete}
       />
+      <FlatConfirmDialog
+        visible={locationToDelete !== null}
+        onHide={() => setLocationToDelete(null)}
+        onConfirm={async () => {
+          if (!editingCustomer || !locationToDelete) return;
+          try {
+            const locationId = locationToDelete.locationId || locationToDelete.id;
+            await customersApi.deleteLocation(editingCustomer.id, locationId);
+            resetTableData();
+            try { setEditingCustomer(await customersApi.getCustomer(editingCustomer.id)); }
+            catch { toast.error('Location deleted, but customer details could not be refreshed.'); }
+            setLocationToDelete(null);
+            toast.success('Location deleted.');
+          } catch { toast.error('Could not delete location.'); }
+        }}
+        title="Delete location?"
+        message="This location will be removed from the customer."
+        confirmLabel="Delete location"
+        variant="danger"
+      />
+      {locationCustomer && <CustomerLocationModal
+        visible={Boolean(locationCustomer)}
+        onHide={() => setLocationCustomer(null)}
+        customerName={locationCustomer.businessName}
+        location={locationEditing}
+        region={{ id: locationCustomer.regionId, name: locationCustomer.regionName }}
+        districts={districtOptions.filter((option) => option.value).map((option) => ({ id: option.value, name: option.label, regionId: option.regionId || '' }))}
+        onSubmit={async (payload) => {
+          if (locationEditing) await customersApi.updateLocation(locationCustomer.id, locationEditing.locationId || locationEditing.id, payload as any);
+          else await customersApi.addLocation(locationCustomer.id, payload as any);
+          resetTableData();
+          try { setEditingCustomer(await customersApi.getCustomer(locationCustomer.id)); }
+          catch { toast.error('Location saved, but customer details could not be refreshed.'); }
+          setLocationCustomer(null);
+          setLocationEditing(null);
+          toast.success(locationEditing ? 'Location updated.' : 'Additional location added.');
+        }}
+      />}
       <FlatModal visible={importVisible} onHide={() => !importing && setImportVisible(false)} title="Import customers" size="lg"
         footer={<><FlatButton size="sm" variant="ghost" onClick={() => setImportVisible(false)} disabled={importing}>Cancel</FlatButton><FlatButton size="sm" onClick={() => void runImport()} loading={importing}>Import customers</FlatButton></>}>
         <div className="space-y-4">

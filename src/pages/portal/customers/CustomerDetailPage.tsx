@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
 import { FlatButton, FlatDropdown } from '../../../components/flat-form';
-import { FlatModal } from '../../../components/overlay';
+import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import {
   customersApi,
@@ -11,8 +11,10 @@ import {
   type LedgerEntry,
   type LedgerEntryType,
   type AddLedgerEntryPayload,
+  type CustomerLocation,
+  organisationApi,
 } from '../../../api-client';
-import { CustomerModal } from './components/CustomerModal';
+import { CustomerModal, CustomerLocationModal } from './components/CustomerModal';
 import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -120,6 +122,10 @@ export const CustomerDetailPage: React.FC = () => {
 
   // ── Edit modal state ───────────────────────────────────────────────
   const [editVisible, setEditVisible] = useState(false);
+  const [locationVisible, setLocationVisible] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<CustomerLocation | null>(null);
+  const [locationToDelete, setLocationToDelete] = useState<CustomerLocation | null>(null);
+  const [districts, setDistricts] = useState<any[]>([]);
 
   // ── Export modal state ─────────────────────────────────────────────
   const [exportVisible, setExportVisible] = useState(false);
@@ -177,6 +183,7 @@ export const CustomerDetailPage: React.FC = () => {
   useEffect(() => {
     loadCustomer();
   }, [loadCustomer]);
+  useEffect(() => { organisationApi.getDistricts().then(setDistricts).catch(() => {}); }, []);
 
   // ── FlatDataTable wiring ───────────────────────────────────────────
   const dataMapper = useCallback(
@@ -563,7 +570,46 @@ export const CustomerDetailPage: React.FC = () => {
           loadCustomer();
         }}
         customer={customer}
+        onAddLocation={() => { setEditingLocation(null); setLocationVisible(true); setEditVisible(false); }}
+        onEditLocation={(location) => { setEditingLocation(location); setLocationVisible(true); setEditVisible(false); }}
+        onDeleteLocation={setLocationToDelete}
       />
+
+      <FlatConfirmDialog
+        visible={locationToDelete !== null}
+        onHide={() => setLocationToDelete(null)}
+        onConfirm={async () => {
+          if (!customer || !locationToDelete) return;
+          try {
+            await customersApi.deleteLocation(customer.id, locationToDelete.locationId || locationToDelete.id);
+            resetTableData();
+            await loadCustomer();
+            setLocationToDelete(null);
+            toast.success('Location deleted.');
+          } catch { toast.error('Could not delete location.'); }
+        }}
+        title="Delete location?"
+        message="This location will be removed from the customer."
+        confirmLabel="Delete location"
+        variant="danger"
+      />
+
+      {customer && <CustomerLocationModal
+        visible={locationVisible}
+        onHide={() => setLocationVisible(false)}
+        customerName={customer.businessName}
+        location={editingLocation}
+        region={{ id: customer.regionId, name: customer.regionName }}
+        districts={districts}
+        onSubmit={async (payload) => {
+          if (editingLocation) await customersApi.updateLocation(customer.id, editingLocation.locationId || editingLocation.id, payload as any);
+          else await customersApi.addLocation(customer.id, payload as any);
+          resetTableData();
+          await loadCustomer();
+          setEditingLocation(null);
+          toast.success(editingLocation ? 'Location updated.' : 'Additional location added.');
+        }}
+      />}
 
       {/* ── Add Ledger Entry Modal ── */}
       <FlatModal

@@ -10,6 +10,7 @@ const editStaffSchema = z.object({
   firstName:   z.string().min(1, 'First name is required'),
   lastName:    z.string().min(1, 'Last name is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
+  emailAddress: z.string().email('Enter a valid email address').optional(),
   branchId:    z.string().min(1, 'Assign a branch / hub'),
 });
 
@@ -45,6 +46,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
   const [branchId, setBranchId] = useState('');
   const [role, setRole] = useState('');
   const [saving, setSaving] = useState(false);
@@ -90,6 +92,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
       setFirstName(staff.firstName || '');
       setLastName(staff.lastName || '');
       setPhoneNumber(staff.phoneNumber || '');
+      setEmailAddress(staff.emailAddress || staff.email || '');
       setBranchId(staff.branchId || '');
       setRole(staff.role || staff.jobTitle || '');
       setPhotoFile(null);
@@ -102,11 +105,15 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextEmail = emailAddress.trim();
+    const currentEmail = (staff.emailAddress || staff.email || '').trim();
+    const emailChanged = nextEmail !== currentEmail;
 
     const result = editStaffSchema.safeParse({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phoneNumber: phoneNumber.trim(),
+      emailAddress: emailChanged ? nextEmail : undefined,
       branchId,
     });
 
@@ -126,9 +133,11 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
+        ...(emailChanged ? { emailAddress: nextEmail } : {}),
         branchId,
         role: role || undefined,
       });
+      resetTableData();
 
       if (photoFile) {
         try {
@@ -139,7 +148,6 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
       }
 
       toast.success(`Staff member ${firstName} ${lastName} updated.`);
-      resetTableData();
       onHide();
       onSuccess?.();
     } catch (err: any) {
@@ -251,7 +259,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
           />
         </div>
 
-        {/* Contact & Branch */}
+        {/* Contact */}
         <div className="grid grid-cols-2 gap-3">
           <FlatInputText
             label="Phone Number"
@@ -261,6 +269,18 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             size="sm"
             errorMessage={errors.phoneNumber}
           />
+          <FlatInputText
+            label="Email Address"
+            type="email"
+            value={emailAddress}
+            onChange={(e) => { setEmailAddress(e.target.value); clearError('emailAddress'); }}
+            size="sm"
+            errorMessage={errors.emailAddress}
+          />
+        </div>
+
+        {/* Branch & Role */}
+        <div className="grid grid-cols-2 gap-3">
           <FlatDropdown
             label="Assigned Branch / Hub"
             required
@@ -270,10 +290,6 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             size="sm"
             errorMessage={errors.branchId}
           />
-        </div>
-
-        {/* Role Field */}
-        <div>
           <FlatDropdown
             label="Position / Role"
             options={roleOptions}
