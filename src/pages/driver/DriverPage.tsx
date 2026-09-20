@@ -9,6 +9,7 @@ import {
   type DriverStopProduct,
   type DriverReturn,
   type PaymentMethod,
+  type PortalSession,
 } from '../../api-client';
 import type { Product } from '../../api-client/products';
 import type { Customer, CustomerLocation } from '../../api-client/customers';
@@ -457,6 +458,25 @@ export const DriverPage: React.FC = () => {
   const navigate = useNavigate();
   const token = tokenParam || searchParams.get('token') || '';
   const view = location.pathname.startsWith('/treks/driver/') ? location.pathname.split('/')[3] : 'dashboard';
+  const [sessionRemembered, setSessionRemembered] = useState(() => {
+    try { return Boolean(localStorage.getItem('portalSession')); } catch { return false; }
+  });
+  useEffect(() => {
+    if (!token) return;
+    const cached = localStorage.getItem('portalSession');
+    if (!cached) {
+      setSessionRemembered(false);
+      return;
+    }
+    try {
+      const session = JSON.parse(cached) as Record<string, unknown>;
+      localStorage.setItem('portalSession', JSON.stringify({ ...session, driverToken: token }));
+      setSessionRemembered(true);
+    } catch {
+      localStorage.removeItem('portalSession');
+      setSessionRemembered(false);
+    }
+  }, [token]);
   const driverHref = (section?: string, extras?: Record<string, string>) => {
     const params = new URLSearchParams({ token, ...extras });
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
@@ -621,9 +641,31 @@ export const DriverPage: React.FC = () => {
   const visibleTreks = regionTreks.length ? regionTreks : [{ trekId: trek.trekId, trekNumber: trek.trekNumber, scheduledDate: trek.scheduledDate,
     status: trek.status, driverName: trek.driverName, salesStaffName: trek.salesStaffName, regionName: trek.regionName, stopsCount: trek.stops.length }];
   const pendingCount = queue.filter((action) => action.status === 'pending').length + photoQueue.filter((photo) => photo.status === 'pending').length;
-const isStopRecorded = (s: DriverStop) =>
+  const isStopRecorded = (s: DriverStop) =>
     s.products.length > 0 &&
     s.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
+
+  const keepDriverSession = () => {
+    const session: PortalSession = {
+      driverToken: token,
+      trekId: trek.trekId,
+      trekNumber: trek.trekNumber,
+      regionName: trek.regionName,
+      scheduledDate: trek.scheduledDate,
+      status: trek.status,
+      driver: { id: '', name: trek.driverName, phone: '' },
+      salesRep: trek.salesStaffName ? { id: trek.salesStaffId || '', name: trek.salesStaffName, phone: '' } : null,
+    };
+    localStorage.setItem('portalSession', JSON.stringify(session));
+    setSessionRemembered(true);
+    toast.success('This trek will be remembered on this device.');
+  };
+
+  const logoutDriverSession = () => {
+    localStorage.removeItem('portalSession');
+    setSessionRemembered(false);
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-portal-canvas">
@@ -654,6 +696,9 @@ const isStopRecorded = (s: DriverStop) =>
             const params = options?.kind ? { ...options, nonce: String(Date.now()) } : options;
             navigate(driverHref(nextView === 'dashboard' ? undefined : nextView, params));
           }}
+          sessionRemembered={sessionRemembered}
+          onKeepLoggedIn={keepDriverSession}
+          onLogout={logoutDriverSession}
           renderStopsView={() => (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-portal-border/60 pb-3">

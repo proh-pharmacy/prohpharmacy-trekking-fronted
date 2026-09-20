@@ -10,6 +10,7 @@ import {
   Path,
   PlusCircle,
   UsersThree,
+  UserCircle,
   Warning,
   type Icon,
 } from '@phosphor-icons/react';
@@ -53,6 +54,9 @@ interface Props {
   renderTreksView?: () => React.ReactNode;
   renderActionsView?: () => React.ReactNode;
   renderOfflineView?: () => React.ReactNode;
+  sessionRemembered: boolean;
+  onKeepLoggedIn: () => void;
+  onLogout: () => void;
 }
 
 function isStopRecorded(stop: DriverTrek['stops'][number]) {
@@ -184,8 +188,12 @@ export function DriverDashboard({
   renderTreksView,
   renderActionsView,
   renderOfflineView,
+  sessionRemembered,
+  onKeepLoggedIn,
+  onLogout,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
   const [confirmSos, setConfirmSos] = useState(false);
   const [loadedMapRegion, setLoadedMapRegion] = useState<string | null>(null);
   const [mapCustomerScope, setMapCustomerScope] = useState<'trek' | 'region'>('trek');
@@ -345,6 +353,44 @@ export function DriverDashboard({
             onSync={onSync}
             onOpenSyncCenter={() => setActiveView('offline')}
           />
+          <div className="relative">
+            <button
+              type="button"
+              aria-label={sessionRemembered ? 'Driver session' : 'Keep me logged in'}
+              aria-expanded={sessionMenuOpen}
+              onClick={() => setSessionMenuOpen((open) => !open)}
+              className="flex h-9 w-9 items-center justify-center rounded text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              <UserCircle size={22} weight="duotone" aria-hidden="true" />
+            </button>
+            {sessionMenuOpen && (
+              <div className="absolute right-0 top-full z-[1600] mt-2 w-52 rounded border border-portal-border bg-portal-surface p-1.5 shadow-xl">
+                <div className="border-b border-portal-border/60 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Region</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-portal-text">{trek.regionName}</p>
+                </div>
+                {sessionRemembered ? (
+                  <button
+                    type="button"
+                    onClick={() => { setSessionMenuOpen(false); onLogout(); }}
+                    className="flex min-h-10 w-full items-center rounded px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+                  >
+                    <i className="pi pi-sign-out mr-2.5 text-sm" aria-hidden="true" />
+                    Log out
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setSessionMenuOpen(false); onKeepLoggedIn(); }}
+                    className="flex min-h-10 w-full items-center rounded px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+                  >
+                    <i className="pi pi-bookmark mr-2.5 text-sm text-portal-accent" aria-hidden="true" />
+                    Keep me logged in
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

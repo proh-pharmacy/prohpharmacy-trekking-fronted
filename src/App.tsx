@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { PrimeReactProvider } from 'primereact/api';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
@@ -9,6 +9,29 @@ import { GuestGuard } from './components/auth/GuestGuard';
 import { ProHToaster } from './components/toast';
 import { PWAInstallPrompt } from './components/pwa/PWAInstallPrompt';
 import { PWAUpdatePrompt } from './components/pwa/PWAUpdatePrompt';
+import { useIsPWA } from './hooks/usePWA';
+import { useAuth } from './context';
+
+function PwaSessionRedirect() {
+  const isPWA = useIsPWA();
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isPWA || isAuthenticated || !['/', '/portal', '/portal/dashboard'].includes(location.pathname)) return;
+    try {
+      const session = JSON.parse(localStorage.getItem('portalSession') || 'null') as { driverToken?: string } | null;
+      if (session?.driverToken) {
+        navigate(`/treks/driver/treks?token=${encodeURIComponent(session.driverToken)}`, { replace: true });
+      }
+    } catch {
+      localStorage.removeItem('portalSession');
+    }
+  }, [isPWA, isAuthenticated, location.pathname, navigate]);
+
+  return null;
+}
 
 // ── chunk-auth ─────────────────────────────────────────────────────────
 const LoginPage = lazy(() =>
@@ -114,6 +137,7 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<LazyFallback />}>
+              <PwaSessionRedirect />
               <Routes>
                 {/* ── Auth ── */}
                 <Route

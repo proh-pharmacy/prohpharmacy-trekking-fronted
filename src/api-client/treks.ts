@@ -232,6 +232,17 @@ export interface DriverTrek {
   stops: DriverStop[];
 }
 
+export interface PortalSession {
+  driverToken: string;
+  trekId: string;
+  trekNumber: string;
+  regionName: string;
+  scheduledDate: string;
+  status: TrekStatus;
+  driver: { id: string; name: string; phone: string };
+  salesRep: { id: string; name: string; phone: string } | null;
+}
+
 const normalizeStopProduct = <T extends { basicUnitName?: string | null; unit?: string | null }>(product: T): T => ({
   ...product,
   basicUnitName: product.basicUnitName ?? product.unit ?? null,
@@ -246,6 +257,10 @@ const normalizeTrekProducts = <T extends { stops: { products: { basicUnitName?: 
 });
 
 export const treksApi = {
+  portalAuth: async (trekNumber: string): Promise<PortalSession> => {
+    const res = await publicApi.post<PortalSession>('/treks/portal/auth', { trekNumber });
+    return res.data;
+  },
   getTreks: async (params?: {
     search?: string;
     sort?: string;
