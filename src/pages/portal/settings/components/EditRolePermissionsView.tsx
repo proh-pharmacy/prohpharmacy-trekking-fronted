@@ -26,22 +26,6 @@ const FALLBACK_MODULES: SystemModulePermissions[] = [
   { module: 'Audit', permissions: ['Audit.View'] },
 ];
 
-const MODULE_ICONS: Record<string, string> = {
-  Customers: 'pi pi-users',
-  CustomerKyc: 'pi pi-id-card',
-  CustomerCredit: 'pi pi-wallet',
-  Staff: 'pi pi-user-plus',
-  Treks: 'pi pi-map-marker',
-  Vehicles: 'pi pi-car',
-  Tracking: 'pi pi-compass',
-  TrackingDevices: 'pi pi-tablet',
-  Visits: 'pi pi-calendar-check',
-  Roles: 'pi pi-shield',
-  Branches: 'pi pi-building',
-  Reports: 'pi pi-file-export',
-  Audit: 'pi pi-history',
-};
-
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
   Audit: 'Audit',
   CustomerKyc: 'Customer KYC',
@@ -315,10 +299,10 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
           </div>
         </div>
 
-        {/* 3. Table Header: Cohesive horizontal format */}
-        <div className="px-6 py-2.5 bg-portal-canvas/60 border-b border-portal-border/60 flex items-center text-[11px] font-bold uppercase tracking-wider text-portal-muted">
-          <div className="w-52 shrink-0">Permission</div>
-          <div className="flex-1 pl-4">Status</div>
+        {/* 3. Table Column Headers */}
+        <div className="hidden sm:grid sm:grid-cols-[160px_1fr] md:grid-cols-[190px_1fr] gap-4 px-4 sm:px-6 py-2.5 bg-portal-canvas/80 border-b border-portal-border/60 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+          <div>Feature / Module</div>
+          <div>Activity</div>
         </div>
 
         {/* 4. Table Body Rows */}
@@ -335,74 +319,63 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
           <div className="divide-y divide-portal-border/40">
             {filteredModules.map((mod) => {
               const moduleName = mod.module;
-              const moduleIcon = MODULE_ICONS[moduleName] || 'pi pi-folder';
-              const displayName = MODULE_DISPLAY_NAMES[moduleName] || moduleName;
-              const allEnabled = mod.permissions.every((p) => enabledKeys.has(p));
+              const displayName =
+                MODULE_DISPLAY_NAMES[moduleName] ||
+                moduleName.replace(/([a-z])([A-Z])/g, '$1 $2');
+              const isAllSelected = mod.permissions.every((p) => enabledKeys.has(p));
 
               return (
                 <div
                   key={moduleName}
-                  className="px-6 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-portal-canvas/30 transition-colors"
+                  className="grid grid-cols-1 sm:grid-cols-[160px_1fr] md:grid-cols-[190px_1fr] gap-2 sm:gap-4 px-4 sm:px-6 py-3 items-start sm:items-center hover:bg-portal-canvas/30 transition-colors"
                 >
-                  {/* Left Column: Permission Module */}
-                  <div className="w-52 shrink-0">
-                    <div className="flex items-center gap-2.5">
-                      <i className={`${moduleIcon} text-portal-accent text-sm`} />
-                      <div>
-                        <div className="text-xs font-semibold text-white">
-                          {displayName}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleModuleAll(mod.permissions)}
-                          className="text-[10px] text-portal-muted hover:text-portal-accent cursor-pointer transition text-left"
-                        >
-                          {allEnabled ? 'Disable all' : 'Enable all'}
-                        </button>
-                      </div>
-                    </div>
+                  {/* Left Column: Feature / Module name & row toggle (NO ICONS) */}
+                  <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1">
+                    <span className="text-xs font-semibold text-white tracking-wide">
+                      {displayName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleModuleAll(mod.permissions)}
+                      className="text-[10px] text-portal-muted hover:text-portal-accent cursor-pointer transition select-none"
+                    >
+                      {isAllSelected ? 'Deselect all' : 'Select all'}
+                    </button>
                   </div>
 
-                  {/* Right Column: Horizontally aligned capabilities and their status toggles */}
-                  <div className="flex-1 flex flex-wrap items-center gap-x-8 gap-y-2 pl-0 md:pl-4">
+                  {/* Right Column: Activity checkboxes */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                     {mod.permissions.map((permKey) => {
                       const rawAction = permKey.includes('.') ? permKey.split('.')[1] : permKey;
-                      const actionName = rawAction.replace(/([A-Z])/g, ' $1').trim();
+                      const actionLabel = rawAction.replace(/([a-z])([A-Z])/g, '$1 $2').trim();
                       const isChecked = enabledKeys.has(permKey);
 
                       return (
-                        <div
+                        <label
                           key={permKey}
                           onClick={() => togglePermission(permKey)}
-                          className="flex flex-col items-center gap-1 min-w-[50px] cursor-pointer group select-none py-1"
-                          title={`${permKey} (${isChecked ? 'Active' : 'Disabled'})`}
+                          className="inline-flex items-center gap-2 cursor-pointer select-none group py-0.5"
+                          title={permKey}
                         >
+                          <div
+                            className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 transition-colors ${
+                              isChecked
+                                ? 'bg-portal-accent border-portal-accent text-portal-canvas'
+                                : 'border-portal-border bg-portal-surface group-hover:border-portal-accent/70'
+                            }`}
+                          >
+                            {isChecked && <i className="pi pi-check text-[9px] font-bold" />}
+                          </div>
                           <span
-                            className={`text-[11px] font-medium transition-colors ${
-                              isChecked ? 'text-white font-semibold' : 'text-portal-muted group-hover:text-portal-text'
+                            className={`text-xs transition-colors ${
+                              isChecked
+                                ? 'text-white font-medium'
+                                : 'text-portal-muted group-hover:text-portal-text'
                             }`}
                           >
-                            {actionName}
+                            {actionLabel}
                           </span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isChecked}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePermission(permKey);
-                            }}
-                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              isChecked ? 'bg-portal-accent' : 'bg-portal-border'
-                            }`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                isChecked ? 'translate-x-3' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                        </div>
+                        </label>
                       );
                     })}
                   </div>

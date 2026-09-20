@@ -383,14 +383,14 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
         )}
 
         {/* Name Fields */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FlatInputText
             label="First Name"
             required
             placeholder="e.g. Kwame"
             value={firstName}
             onChange={(e) => { setFirstName(e.target.value); clearError('firstName'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.firstName}
           />
           <FlatInputText
@@ -399,13 +399,13 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="e.g. Asante"
             value={lastName}
             onChange={(e) => { setLastName(e.target.value); clearError('lastName'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.lastName}
           />
         </div>
 
         {/* Contact Fields */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FlatInputText
             label="Corporate Email"
             required
@@ -413,7 +413,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="k.asante@prohpharmacy.com"
             value={emailAddress}
             onChange={(e) => { setEmailAddress(e.target.value); clearError('emailAddress'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.emailAddress}
           />
           <FlatInputText
@@ -422,20 +422,20 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="+233 20 123 4567"
             value={phoneNumber}
             onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.phoneNumber}
           />
         </div>
 
         {/* Branch & Joined Date */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FlatDropdown
             label="Assigned Branch / Hub"
             required
             options={branchOptions}
             value={branchId}
             onChange={(val: any) => { setBranchId(val?.value !== undefined ? val.value : val); clearError('branchId'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.branchId}
           />
           <FlatInputText
@@ -444,7 +444,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             value={joinedOn}
             onChange={(e) => { setJoinedOn(e.target.value); clearError('joinedOn'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.joinedOn}
           />
         </div>
@@ -456,7 +456,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="Auto-generated if omitted"
             value={employeeNumber}
             onChange={(e) => setEmployeeNumber(e.target.value)}
-            size="md"
+            size="sm"
             helperText="Leave blank to automatically assign the next sequential employee number."
           />
         </div>
@@ -499,14 +499,14 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
                   placeholder={`Defaults to "${autoDefaultPassword}" if omitted`}
                   value={initialPassword}
                   onChange={(e) => setInitialPassword(e.target.value)}
-                  size="md"
+                  size="sm"
                   helperText={`Min 8 chars. If left blank, will automatically default to "${autoDefaultPassword}".`}
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[26px] text-portal-muted hover:text-white transition-colors cursor-pointer text-xs"
+                  className="absolute right-3 top-[23px] text-portal-muted hover:text-white transition-colors cursor-pointer text-xs"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <i className={`pi ${showPassword ? 'pi-eye-slash' : 'pi-eye'}`} />

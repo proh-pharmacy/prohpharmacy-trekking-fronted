@@ -619,24 +619,14 @@ export const UsersAndRolesPage: React.FC = () => {
           const userId = user.id || (user as any).userId;
           return (
             <div
-              className="flex items-center gap-3 cursor-pointer group"
+              className="cursor-pointer group min-w-0"
               onClick={() => navigate(`/portal/settings/users/${userId}`)}
               title="Click to view & edit user details"
             >
-              <div className="w-8 h-8 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:border-portal-accent transition-colors">
-                {user.fullName
-                  .split(' ')
-                  .map((n) => n[0])
-                  .slice(0, 2)
-                  .join('')
-                  .toUpperCase()}
+              <div className="text-portal-text text-xs font-semibold truncate group-hover:text-portal-accent transition-colors">
+                {user.fullName}
               </div>
-              <div className="min-w-0">
-                <div className="text-portal-text text-xs truncate group-hover:text-portal-accent transition-colors">
-                  {user.fullName}
-                </div>
-                <div className="text-[11px] text-portal-accent font-mono truncate">{user.email}</div>
-              </div>
+              <div className="text-[11px] text-portal-accent font-mono truncate">{user.email}</div>
             </div>
           );
         },
@@ -756,25 +746,15 @@ export const UsersAndRolesPage: React.FC = () => {
         sortable: true,
         body: (staff) => (
           <div
-            className="flex items-center gap-3 cursor-pointer group"
+            className="cursor-pointer group min-w-0"
             onClick={() => setEditStaffTarget(staff)}
             title="Click to view & edit staff member details"
           >
-            <div className="w-8 h-8 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:border-portal-accent transition-colors">
-              {staff.fullName
-                .split(' ')
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()}
+            <div className="text-portal-text text-xs font-semibold truncate group-hover:text-portal-accent transition-colors">
+              {staff.fullName}
             </div>
-            <div className="min-w-0">
-              <div className="text-portal-text text-xs truncate group-hover:text-portal-accent transition-colors">
-                {staff.fullName}
-              </div>
-              <div className="text-[11px] text-portal-muted font-mono truncate">
-                {staff.emailAddress || staff.phoneNumber || '—'}
-              </div>
+            <div className="text-[11px] text-portal-muted font-mono truncate">
+              {staff.emailAddress || staff.phoneNumber || '—'}
             </div>
           </div>
         ),
@@ -920,7 +900,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 : 'border-transparent text-portal-muted hover:text-white'
             }`}
           >
-            <span>Role Permissions Matrix</span>
+            <span>Roles & Permission</span>
           </button>
         </div>
       )}
@@ -981,18 +961,14 @@ export const UsersAndRolesPage: React.FC = () => {
           }}
         />
       ) : (
-        /* Role Permissions Matrix Tab */
+        /* Roles & Permission Tab */
         <div className="space-y-4">
           {/* Header Card: Controls & Actions */}
-          <div className="bg-portal-surface border border-portal-border/60 rounded p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-portal-surface border border-portal-border/60 rounded p-3 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <i className="pi pi-shield text-portal-accent text-xs" />
-                <span>Role Permissions Matrix</span>
+              <h2 className="text-base sm:text-xl font-semibold tracking-tight text-portal-text">
+                Roles & Permission
               </h2>
-              <p className="text-xs text-portal-muted mt-1">
-                Configure operational authority, assign module capabilities, and manage system access tiers.
-              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               {/* Filter input */}

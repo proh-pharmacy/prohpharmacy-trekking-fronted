@@ -66,6 +66,22 @@ const DEFAULT_SYSTEM_MODULES: SystemModulePermissions[] = [
   },
 ];
 
+const MODULE_DISPLAY_NAMES: Record<string, string> = {
+  Audit: 'Audit',
+  CustomerKyc: 'Customer KYC',
+  CustomerCredit: 'Customer Credit',
+  Customers: 'Customers',
+  Staff: 'Staff',
+  Treks: 'Treks',
+  Visits: 'Visits',
+  Vehicles: 'Vehicles',
+  Tracking: 'Tracking',
+  TrackingDevices: 'Tracking Devices',
+  Roles: 'Roles',
+  Branches: 'Branches',
+  Reports: 'Reports',
+};
+
 export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   visible,
   onHide,
@@ -195,12 +211,9 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       onHide={onHide}
       size="lg"
       title="Create New Role"
-      subtitle="Define a custom operational role and configure its initial authority scope."
-      badge={<span className="text-portal-accent text-[11px] font-mono">Custom Role</span>}
-      icon="pi pi-shield"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <FlatInputText
               id="role-name-input"
@@ -208,10 +221,9 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. WarehouseOfficer, Pharmacist"
-              size="md"
+              size="sm"
               required
             />
-            <p className="text-[11px] text-portal-muted mt-1">Unique alphanumeric role identifier.</p>
           </div>
           <div>
             <FlatInputText
@@ -220,33 +232,33 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of role responsibilities"
-              size="md"
+              size="sm"
             />
-            <p className="text-[11px] text-portal-muted mt-1">Maximum 200 characters.</p>
           </div>
         </div>
 
-        {/* Permissions Picker */}
-        <div className="border border-portal-border/60 rounded bg-portal-canvas p-3 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-portal-border/40 pb-2">
-            <div>
+        {/* Permissions Table (Windows Security / Activity Grid) */}
+        <div className="border border-portal-border/60 rounded bg-portal-canvas overflow-hidden">
+          {/* Top Bar: Title & Filter / Bulk actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border-b border-portal-border/40 bg-portal-surface/70">
+            <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-white">
-                Initial Module Permissions
+                Permissions
               </span>
-              <span className="ml-2 text-[11px] text-portal-muted font-mono">
+              <span className="text-[11px] text-portal-muted font-mono">
                 ({selectedPermissions.size} of {totalPermissionsCount} selected)
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               <div className="relative">
-                <i className="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-portal-muted" />
+                <i className="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-portal-muted pointer-events-none" />
                 <input
                   type="text"
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
                   placeholder="Filter permissions..."
-                  className="h-[30px] pl-8 pr-3 bg-portal-surface border border-portal-border rounded text-[11px] text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent"
+                  className="h-[30px] pl-8 pr-3 bg-portal-canvas border border-portal-border rounded text-[11px] text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent"
                 />
               </div>
 
@@ -271,6 +283,12 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             </div>
           </div>
 
+          {/* Table Column Headers */}
+          <div className="hidden sm:grid sm:grid-cols-[160px_1fr] md:grid-cols-[190px_1fr] gap-4 px-3 py-2 bg-portal-canvas/90 border-b border-portal-border/60 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+            <div>Feature / Module</div>
+            <div>Activity</div>
+          </div>
+
           {loadingModules ? (
             <div className="py-8 text-center text-xs text-portal-muted flex items-center justify-center gap-2">
               <i className="pi pi-spin pi-spinner text-portal-accent" />
@@ -281,58 +299,64 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               No permissions matched your filter criteria.
             </div>
           ) : (
-            <div className="max-h-[320px] overflow-y-auto space-y-3 pr-1">
+            <div className="max-h-[320px] overflow-y-auto divide-y divide-portal-border/40">
               {filteredModules.map((mod) => {
                 const isAllSelected = mod.permissions.every((p) => selectedPermissions.has(p));
+                const displayName =
+                  MODULE_DISPLAY_NAMES[mod.module] ||
+                  mod.module.replace(/([a-z])([A-Z])/g, '$1 $2');
 
                 return (
                   <div
                     key={mod.module}
-                    className="border border-portal-border/40 rounded bg-portal-surface/60 p-2.5"
+                    className="grid grid-cols-1 sm:grid-cols-[160px_1fr] md:grid-cols-[190px_1fr] gap-2 sm:gap-4 px-3 py-2.5 items-start sm:items-center hover:bg-portal-surface/40 transition-colors"
                   >
-                    <div className="flex items-center justify-between border-b border-portal-border/30 pb-1.5 mb-2">
-                      <div className="flex items-center gap-2">
-                        <i className="pi pi-folder text-portal-accent text-xs" />
-                        <span className="text-xs font-semibold text-white">{mod.module}</span>
-                        <span className="text-[10px] text-portal-muted font-mono">
-                          (
-                          {mod.permissions.filter((p) => selectedPermissions.has(p)).length}/
-                          {mod.permissions.length})
-                        </span>
-                      </div>
-
+                    {/* Left Column: Feature / Module name & row toggle */}
+                    <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1">
+                      <span className="text-xs font-semibold text-white tracking-wide">
+                        {displayName}
+                      </span>
                       <button
                         type="button"
                         onClick={() => toggleModuleAll(mod.permissions)}
-                        className="text-[11px] text-portal-muted hover:text-white font-medium cursor-pointer"
+                        className="text-[10px] text-portal-muted hover:text-portal-accent cursor-pointer transition select-none"
                       >
-                        {isAllSelected ? 'Deselect Module' : 'Select All'}
+                        {isAllSelected ? 'Deselect all' : 'Select all'}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {/* Right Column: Activity checkboxes */}
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                       {mod.permissions.map((permKey) => {
                         const isChecked = selectedPermissions.has(permKey);
+                        const rawAction = permKey.includes('.') ? permKey.split('.')[1] : permKey;
+                        const actionLabel = rawAction.replace(/([a-z])([A-Z])/g, '$1 $2').trim();
+
                         return (
                           <label
                             key={permKey}
                             onClick={() => togglePermission(permKey)}
-                            className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition border select-none ${
-                              isChecked
-                                ? 'bg-portal-accent/10 border-portal-accent/30 text-white'
-                                : 'bg-portal-canvas/50 border-portal-border/30 text-portal-muted hover:text-white hover:bg-portal-surface'
-                            }`}
+                            className="inline-flex items-center gap-2 cursor-pointer select-none group py-0.5"
+                            title={permKey}
                           >
                             <div
-                              className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${
+                              className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 transition-colors ${
                                 isChecked
                                   ? 'bg-portal-accent border-portal-accent text-portal-canvas'
-                                  : 'border-portal-border bg-portal-surface'
+                                  : 'border-portal-border bg-portal-surface group-hover:border-portal-accent/70'
                               }`}
                             >
                               {isChecked && <i className="pi pi-check text-[9px] font-bold" />}
                             </div>
-                            <span className="text-[11px] font-mono truncate">{permKey}</span>
+                            <span
+                              className={`text-xs transition-colors ${
+                                isChecked
+                                  ? 'text-white font-medium'
+                                  : 'text-portal-muted group-hover:text-portal-text'
+                              }`}
+                            >
+                              {actionLabel}
+                            </span>
                           </label>
                         );
                       })}

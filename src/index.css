@@ -616,6 +616,17 @@ div.p-icon-field {
   transition: all 0.15s ease !important;
 }
 
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.625rem !important;
+}
+
+.p-multiselect-panel .p-multiselect-item .p-checkbox {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
 /* Small (sm) Panels */
 .p-dropdown-panel-sm .p-dropdown-items .p-dropdown-item,
 .p-multiselect-panel-sm .p-multiselect-items .p-multiselect-item,

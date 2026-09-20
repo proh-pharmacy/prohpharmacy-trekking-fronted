@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
-import { FlatButton, FlatDropdown } from '../../../components/flat-form';
+import { FlatButton, FlatDropdown, FlatDatePicker } from '../../../components/flat-form';
 import { reportsApi, organisationApi, type CollectionsReportResponse } from '../../../api-client';
 import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
 import { FlatDataTable } from '../../../components/data-table';
@@ -9,6 +9,21 @@ import { FlatDataTable } from '../../../components/data-table';
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
+
+const parseDate = (val?: string | null): Date | null => {
+  if (!val) return null;
+  const [y, m, d] = val.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+};
+
+const formatDate = (date?: Date | null): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   Cash: 'Cash',
@@ -86,7 +101,7 @@ export const CollectionsReportPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ── Filter bar ── */}
-      <div className="bg-portal-surface border border-portal-border/60 p-4 space-y-4">
+      <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h2 className="text-xl font-bold tracking-tight text-white">Collections Report</h2>
           <FlatButton
@@ -98,17 +113,23 @@ export const CollectionsReportPage: React.FC = () => {
             disabled={exporting || loading}
           />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">From</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-              className="bg-portal-canvas border border-portal-border text-white text-xs h-9 px-3 w-full focus:outline-none focus:border-portal-accent" />
-          </div>
-          <div>
-            <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">To</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-              className="bg-portal-canvas border border-portal-border text-white text-xs h-9 px-3 w-full focus:outline-none focus:border-portal-accent" />
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <FlatDatePicker
+            label="From"
+            value={parseDate(from)}
+            onChange={(d: Date | null) => setFrom(formatDate(d))}
+            placeholder="From date"
+            dateFormat="yy-mm-dd"
+            size="sm"
+          />
+          <FlatDatePicker
+            label="To"
+            value={parseDate(to)}
+            onChange={(d: Date | null) => setTo(formatDate(d))}
+            placeholder="To date"
+            dateFormat="yy-mm-dd"
+            size="sm"
+          />
           <div>
             <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">Branch</label>
             <FlatDropdown value={branchId} options={branchOptions}
