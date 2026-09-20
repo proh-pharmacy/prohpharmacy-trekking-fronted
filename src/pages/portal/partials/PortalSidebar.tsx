@@ -83,7 +83,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     <>
       {/* Mobile Drawer Dark Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-[1400] md:hidden transition-opacity duration-300 ${
           mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onCloseMobile}
@@ -91,7 +91,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 md:static md:z-30 h-dvh md:h-full bg-portal-surface border-r border-portal-border/60 flex flex-col shrink-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none w-72 max-w-[85vw] ${
+        className={`fixed inset-y-0 left-0 z-[1500] md:static md:z-30 h-dvh md:h-full bg-portal-surface border-r border-portal-border/60 flex flex-col shrink-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none w-72 max-w-[85vw] ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${
           showCollapsed ? 'md:w-[72px]' : 'md:w-60 lg:w-64'

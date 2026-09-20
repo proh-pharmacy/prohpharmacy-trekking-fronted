@@ -141,7 +141,7 @@ export const CustomerPinsPage: React.FC = () => {
             <span className="text-[11px] font-medium uppercase tracking-wider text-portal-muted">
               PIN SIZE:
             </span>
-            <div className="inline-flex rounded border border-portal-border bg-portal-canvas p-0.5">
+            <div className="inline-flex h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
               {(
                 [
                   { id: 'xs', label: 'Extra Small', shortLabel: 'XS' },
@@ -156,7 +156,7 @@ export const CustomerPinsPage: React.FC = () => {
                     type="button"
                     onClick={() => setPinSize(s.id)}
                     title={`Set pin size to ${s.label}`}
-                    className={`px-2 py-1 text-xs font-medium rounded transition cursor-pointer ${
+                    className={`flex items-center justify-center px-2 text-xs font-medium rounded transition cursor-pointer ${
                       isActive
                         ? 'bg-portal-accent/20 text-portal-accent font-semibold border border-portal-accent/50'
                         : 'text-portal-muted hover:text-white border border-transparent'

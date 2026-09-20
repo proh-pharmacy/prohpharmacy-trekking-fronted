@@ -46,7 +46,7 @@ export function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[3000] w-[calc(100%-2rem)] max-w-sm">
       <div className="bg-portal-surface border border-portal-border rounded-lg shadow-xl p-4 flex items-start gap-3 text-white">
         <img
           src="/pwa-192x192.png"

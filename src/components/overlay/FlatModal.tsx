@@ -73,7 +73,7 @@ export const FlatModal: React.FC<FlatModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6 select-none animate-fadeIn"
+      className="fixed inset-0 h-dvh z-[2000] flex items-center justify-center p-4 sm:p-6 select-none animate-fadeIn"
     >
       {/* Dark Obsidian Backdrop with Soft Blur */}
       <div
@@ -84,13 +84,13 @@ export const FlatModal: React.FC<FlatModalProps> = ({
       {/* Modal Surface Box (portal-surface card, 4px subtle rounded flat) */}
       <div
         ref={modalRef}
-        className={`relative w-full ${sizeClasses[size]} bg-portal-surface border border-portal-border/80 rounded shadow-2xl flex flex-col max-h-[90vh] overflow-hidden z-10 transition-all transform animate-scaleIn text-white select-text ${className}`}
+        className={`relative w-full ${sizeClasses[size]} bg-portal-surface border border-portal-border/80 rounded shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] overflow-hidden z-10 transition-all transform animate-scaleIn text-white select-text ${className}`}
       >
         {/* Modal Header */}
         {header !== undefined ? (
           header
         ) : title ? (
-          <div className="shrink-0 px-6 py-4 border-b border-portal-border/60 flex items-center justify-between gap-4 bg-portal-surface">
+          <div className="shrink-0 px-4 sm:px-6 py-4 border-b border-portal-border/60 flex items-center justify-between gap-4 bg-portal-surface">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
                 <div className="w-9 h-9 rounded bg-portal-canvas border border-portal-border flex items-center justify-center text-portal-accent shrink-0 shadow-inner">
@@ -126,13 +126,13 @@ export const FlatModal: React.FC<FlatModalProps> = ({
         ) : null}
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar text-sm text-portal-text leading-relaxed">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 custom-scrollbar text-sm text-portal-text leading-relaxed">
           {children}
         </div>
 
         {/* Modal Sticky Footer */}
         {footer && (
-          <div className="shrink-0 px-6 py-3.5 border-t border-portal-border/60 bg-portal-canvas flex items-center justify-end gap-3">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 border-t border-portal-border/60 bg-portal-canvas flex items-center justify-end gap-3">
             {footer}
           </div>
         )}

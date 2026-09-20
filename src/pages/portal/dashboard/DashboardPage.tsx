@@ -138,13 +138,13 @@ export const DashboardPage: React.FC = () => {
         <h1 className="text-xl font-bold text-white tracking-tight">Overview</h1>
         <div className="flex items-center gap-3">
           {/* Period toggle */}
-          <div className="flex items-center bg-portal-canvas border border-portal-border/60 rounded overflow-hidden">
+          <div className="flex h-[44px] items-stretch bg-portal-canvas border border-portal-border/60 rounded overflow-hidden">
             {(['week', 'month'] as const).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                className={`h-full px-3 text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
                   period === p
                     ? 'bg-portal-accent text-portal-canvas'
                     : 'text-portal-muted hover:text-white'
@@ -161,7 +161,7 @@ export const DashboardPage: React.FC = () => {
               options={branchOptions}
               onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
               placeholder="All Branches"
-              size="sm"
+              size="md"
             />
           </div>
         </div>

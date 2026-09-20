@@ -80,7 +80,7 @@ export const LoginPage: React.FC = () => {
 
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-[#1b3d2b] overflow-hidden font-sans select-none">
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-light-green overflow-hidden font-sans select-none">
       {/* Background Image: login_bg_alternate.png */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105"
