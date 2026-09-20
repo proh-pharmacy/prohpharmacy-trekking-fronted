@@ -17,8 +17,12 @@ import { FlatButton } from '../../../components/flat-form';
 import { BranchModal } from './components/BranchModal';
 import { DistrictModal } from './components/DistrictModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 export const OrganisationPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canManageBranches = hasAnyPermission('Branches.Create', 'Branches.Edit', 'Branches.Manage');
+  const canManageDistricts = hasAnyPermission('Districts.Create', 'Districts.Edit', 'Branches.Manage');
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -456,7 +460,7 @@ export const OrganisationPage: React.FC = () => {
           dataSourceUrl="/organisation/branches"
           columns={branchColumns}
           heading="Branches & Dispatch Hubs"
-          hasAction
+          hasAction={canManageBranches}
           actionName="Add Branch"
           onAction={() => {
             setEditingBranch(null);
@@ -516,7 +520,7 @@ export const OrganisationPage: React.FC = () => {
           dataSourceUrl="/organisation/districts"
           columns={districtColumns}
           heading="Operational Districts"
-          hasAction
+          hasAction={canManageDistricts}
           actionName="Add District"
           onAction={() => setDistrictModalVisible(true)}
           filterable="search"

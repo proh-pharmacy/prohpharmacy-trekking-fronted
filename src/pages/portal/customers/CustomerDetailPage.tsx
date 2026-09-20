@@ -16,6 +16,7 @@ import {
 } from '../../../api-client';
 import { CustomerModal, CustomerLocationModal } from './components/CustomerModal';
 import { fmtGhs, fmtGhsShort, formatDateInput, parseDateInput } from '../../../lib/utils';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -82,6 +83,10 @@ function formatDate(dateStr: string): string {
 
 // ── Page ───────────────────────────────────────────────────────────────
 export const CustomerDetailPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canEditCustomer = hasAnyPermission('Customers.Edit', 'Customers.Manage');
+  const canExportReports = hasAnyPermission('Reports.Export', 'Customers.Export');
+  const canManageLedger = hasAnyPermission('Ledger.View', 'Ledger.ViewDetails', 'Ledger.CreateEntry', 'CustomerCredit.View');
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
 
@@ -386,22 +391,22 @@ export const CustomerDetailPage: React.FC = () => {
               Call
             </FlatButton>
           )}
-          <FlatButton
-            variant="outline"
-            size="sm"
-            leftIcon="pi pi-download"
-            onClick={() => setExportVisible(true)}
-          >
-            Export
-          </FlatButton>
-          <FlatButton
-            variant="outline"
-            size="sm"
-            leftIcon="pi pi-pencil"
-            onClick={() => setEditVisible(true)}
-          >
-            Edit
-          </FlatButton>
+          {canExportReports && <FlatButton
+              variant="outline"
+              size="sm"
+              leftIcon="pi pi-download"
+              onClick={() => setExportVisible(true)}
+            >
+              Export
+            </FlatButton>}
+          {canEditCustomer && <FlatButton
+              variant="outline"
+              size="sm"
+              leftIcon="pi pi-pencil"
+              onClick={() => setEditVisible(true)}
+            >
+              Edit
+            </FlatButton>}
         </div>
       </div>
 
@@ -443,12 +448,12 @@ export const CustomerDetailPage: React.FC = () => {
       </div>
 
       {/* ── Ledger table ── */}
-      <FlatDataTable<LedgerEntry>
+      {canManageLedger && <FlatDataTable<LedgerEntry>
         key={refreshTick}
         dataSourceUrl={`/customers/${customerId}/ledger`}
         columns={columns}
         heading="Ledger"
-        hasAction
+        hasAction={hasAnyPermission('Ledger.CreateEntry', 'CustomerCredit.Manage')}
         actionName="Add Entry"
         onAction={() => setAddVisible(true)}
         enablePaginator
@@ -467,7 +472,7 @@ export const CustomerDetailPage: React.FC = () => {
             },
           ],
         }}
-      />
+      />}
 
       {/* ── Export Statement Modal ── */}
       <FlatModal

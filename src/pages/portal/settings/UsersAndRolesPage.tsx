@@ -29,6 +29,7 @@ import { CreateRoleModal } from './components/CreateRoleModal';
 import { FlatConfirmDialog } from '../../../components/overlay';
 import { FlatButton } from '../../../components/flat-form';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const SEEDED_ROLES: Role[] = [
   { name: 'SuperAdmin', description: 'Complete system, security, user administration & organisation authority.', isSystem: true },
@@ -42,6 +43,10 @@ const SEEDED_ROLES: Role[] = [
 
 export const UsersAndRolesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hasAnyPermission } = usePermissions();
+  const canManageUsers = hasAnyPermission('Users.Invite', 'Users.Edit', 'Staff.Manage');
+  const canManageStaff = hasAnyPermission('Staff.Create', 'Staff.Edit', 'Staff.Manage');
+  const canManageRoles = hasAnyPermission('Roles.Create', 'Roles.Edit', 'Roles.Manage', 'Roles.ManagePermissions');
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -910,7 +915,7 @@ export const UsersAndRolesPage: React.FC = () => {
           dataSourceUrl="/users?sort=createdAt_desc"
           columns={userColumns}
           heading="Users & Access Control"
-          hasAction
+          hasAction={canManageUsers}
           actionName="Invite User"
           onAction={() => setInviteModalVisible(true)}
           filterable="search"
@@ -931,7 +936,7 @@ export const UsersAndRolesPage: React.FC = () => {
           dataSourceUrl="/staff?sort=createdAt_desc"
           columns={staffColumns}
           heading="Staff Directory"
-          hasAction
+          hasAction={canManageStaff}
           actionName="Add Staff"
           onAction={() => setCreateStaffVisible(true)}
           filterable="search"
@@ -1020,15 +1025,15 @@ export const UsersAndRolesPage: React.FC = () => {
                 </button>
               </div>
 
-              <FlatButton
-                type="button"
-                variant="primary"
-                size="sm"
-                leftIcon="pi pi-plus"
-                onClick={() => setCreateRoleVisible(true)}
-              >
-                Create Custom Role
-              </FlatButton>
+              {canManageRoles && <FlatButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  leftIcon="pi pi-plus"
+                  onClick={() => setCreateRoleVisible(true)}
+                >
+                  Create Custom Role
+                </FlatButton>}
             </div>
           </div>
 
@@ -1047,7 +1052,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 { field: 'name', header: 'Role', body: (role) => <span className="text-xs text-portal-text">{role.name}</span> },
                 { field: 'description', header: 'Scope & Description', body: (role) => <p className="max-w-xl text-xs leading-relaxed text-portal-muted">{role.description || 'System authority scope.'}</p> },
                 { field: 'type', header: 'Type', body: (role) => { const isSystem = role.isSystem ?? ['SuperAdmin', 'Admin', 'BranchManager', 'OperationsManager', 'Driver', 'FieldStaff', 'CreditOfficer', 'Auditor'].includes(role.name); return <span className={`text-[11px] font-mono ${isSystem ? 'text-portal-muted' : 'text-portal-accent'}`}>{isSystem ? 'System' : 'Custom'}</span>; } },
-                { field: 'actions', header: 'Actions', body: (role) => <FlatButton type="button" variant="outline" size="sm" leftIcon="pi pi-sliders-h" onClick={() => setEditingRole(role)}>Edit Permissions</FlatButton> },
+                ...(canManageRoles ? [{ field: 'actions', header: 'Actions', body: (role: Role) => <FlatButton type="button" variant="outline" size="sm" leftIcon="pi pi-sliders-h" onClick={() => setEditingRole(role)}>Edit Permissions</FlatButton> }] : []),
               ]}
             />
           ) : (

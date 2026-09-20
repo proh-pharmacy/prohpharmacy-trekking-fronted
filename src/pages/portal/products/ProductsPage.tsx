@@ -8,8 +8,12 @@ import { UnitModal } from './components/UnitModal';
 import { PackagingUnitModal } from './components/PackagingUnitModal';
 import { ImportProductsModal } from './components/ImportProductsModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 export const ProductsPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canManageProducts = hasAnyPermission('Products.Manage', 'Products.Create', 'Products.Edit');
+  const canImportProducts = hasAnyPermission('Products.Import', 'Products.Manage');
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const activeTab: 'products' | 'units' | 'packaging' = rawTab === 'units' || rawTab === 'packaging' ? rawTab : 'products';
@@ -381,12 +385,12 @@ export const ProductsPage: React.FC = () => {
           dataSourceUrl="/products"
           columns={productColumns}
           heading="Products List"
-          secondaryAction
+          secondaryAction={canImportProducts}
           secondaryActionName="Import"
           secondaryActionNameMobile="Import"
           secondaryActionIcon="pi pi-upload"
           onSecondaryAction={() => setImportModalVisible(true)}
-          hasAction
+          hasAction={canManageProducts}
           actionName="Add Product"
           actionNameMobile="Add"
           onAction={() => {

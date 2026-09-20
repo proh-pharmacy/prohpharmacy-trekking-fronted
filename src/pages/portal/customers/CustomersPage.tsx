@@ -7,6 +7,7 @@ import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
 import { type Customer, type CustomerLocation, organisationApi, customersApi, type CustomerImportMapping } from '../../../api-client';
 import { CustomerModal, CustomerLocationModal } from './components/CustomerModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 // ── Filter options ──────────────────────────────────────────────────
 const CUSTOMER_TYPE_FILTER_OPTIONS = [
@@ -62,6 +63,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const CustomersPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canRegisterCustomers = hasAnyPermission('Customers.Register', 'Customers.Create');
+  const canEditCustomers = hasAnyPermission('Customers.Edit', 'Customers.Manage');
+  const canViewLedger = hasAnyPermission('CustomerCredit.View', 'Ledger.View', 'Ledger.ViewDetails');
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -259,25 +264,25 @@ export const CustomersPage: React.FC = () => {
         style: { width: '140px', textAlign: 'right' },
         body: (row) => (
           <div className="flex items-center justify-end gap-2">
-            <FlatButton
-              variant="outline"
-              size="sm"
-              leftIcon="pi pi-pencil"
-              onClick={() => {
-                setEditingCustomer(row);
-                setModalVisible(true);
-              }}
-            >
-              Edit
-            </FlatButton>
-            <FlatButton
-              variant="outline"
-              size="sm"
-              leftIcon="pi pi-wallet"
-              onClick={() => navigate(`/portal/customers/${row.id}`)}
-            >
-              Ledger
-            </FlatButton>
+            {canEditCustomers && <FlatButton
+                variant="outline"
+                size="sm"
+                leftIcon="pi pi-pencil"
+                onClick={() => {
+                  setEditingCustomer(row);
+                  setModalVisible(true);
+                }}
+              >
+                Edit
+              </FlatButton>}
+            {canViewLedger && <FlatButton
+                variant="outline"
+                size="sm"
+                leftIcon="pi pi-wallet"
+                onClick={() => navigate(`/portal/customers/${row.id}`)}
+              >
+                Ledger
+              </FlatButton>}
           </div>
         ),
       },
@@ -327,10 +332,10 @@ export const CustomersPage: React.FC = () => {
         dataSourceUrl="/customers"
         columns={columns}
         heading="Customers"
-        hasAction
+        hasAction={canRegisterCustomers}
         actionName="Add Customer"
         actionNameMobile="Add"
-        secondaryAction
+        secondaryAction={canRegisterCustomers}
         secondaryActionName="Import Customers"
         secondaryActionNameMobile="Import"
         secondaryActionIcon="pi pi-upload"

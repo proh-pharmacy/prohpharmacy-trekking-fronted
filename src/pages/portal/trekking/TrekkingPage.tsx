@@ -6,6 +6,7 @@ import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { type Trek, type TrekStatus, organisationApi, treksApi } from '../../../api-client';
 import { CreateTrekModal } from './components/CreateTrekModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const STATUS_STYLES: Record<TrekStatus, string> = {
   Draft:      'text-portal-muted',
@@ -31,6 +32,9 @@ const STATUS_FILTER_OPTIONS = [
 
 export const TrekkingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hasAnyPermission } = usePermissions();
+  const canCreateTrek = hasAnyPermission('Treks.Create', 'Treks.Manage');
+  const canDeleteTrek = hasAnyPermission('Treks.Delete', 'Treks.Manage');
   const [createVisible, setCreateVisible] = useState(false);
   const [createdTrek, setCreatedTrek] = useState<Trek | null>(null);
   const [trekToDelete, setTrekToDelete] = useState<Trek | null>(null);
@@ -189,7 +193,7 @@ export const TrekkingPage: React.FC = () => {
             title="View trek"
             onClick={() => navigate(`/portal/trekking/${row.id}`)}
           />
-          {(row.status === 'Draft' || row.status === 'Scheduled') && (
+          {canDeleteTrek && (row.status === 'Draft' || row.status === 'Scheduled') && (
             <FlatButton
               variant="danger-outline"
               size="icon-sm"
@@ -202,7 +206,7 @@ export const TrekkingPage: React.FC = () => {
         </div>
       ),
     },
-  ], []);
+  ], [canDeleteTrek, navigate]);
 
   return (
     <div className="space-y-4">
@@ -210,7 +214,7 @@ export const TrekkingPage: React.FC = () => {
         dataSourceUrl="/treks"
         columns={columns}
         heading="Trekking"
-        hasAction
+        hasAction={canCreateTrek}
         actionName="New Trek"
         onAction={() => setCreateVisible(true)}
         filterable="search"

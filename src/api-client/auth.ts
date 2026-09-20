@@ -152,7 +152,11 @@ export const useCurrentUserQuery = (
     queryKey: AUTH_QUERY_KEY,
     queryFn: getCurrentUserApi,
     enabled: hasAuthToken,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    // Permissions control route and component visibility. Do not keep an old
+    // role snapshot after an administrator changes the user's permissions.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     retry: false,
     ...options,
   });

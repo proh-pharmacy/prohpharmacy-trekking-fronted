@@ -8,6 +8,7 @@ import { EditTrekModal } from './components/EditTrekModal';
 import { AddStopModal } from './components/AddStopModal';
 import toast from 'react-hot-toast';
 import { fmtGhs, parseNumericInput } from '../../../lib/utils';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<TrekStatus, string> = {
@@ -86,6 +87,12 @@ function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
 export const TrekDetailPage: React.FC = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const navigate = useNavigate();
+  const { hasAnyPermission } = usePermissions();
+  const canEditTrek = hasAnyPermission('Treks.Edit', 'Treks.Manage');
+  const canManageStops = hasAnyPermission('TrekStops.Add', 'TrekStops.Edit', 'Treks.Edit', 'Treks.Manage');
+  const canRecordDelivery = hasAnyPermission('TrekDeliveries.Record', 'Visits.Record');
+  const canRecordReturns = hasAnyPermission('TrekReturns.Record', 'Visits.Record');
+  const canManagePricing = hasAnyPermission('TrekPricing.Sync', 'TrekProducts.OverridePrice');
 
   const [trek, setTrek] = useState<Trek | null>(null);
   const [loading, setLoading] = useState(true);
@@ -409,13 +416,13 @@ export const TrekDetailPage: React.FC = () => {
 
         {/* Right: edit + share + status actions */}
         <div className="flex items-center gap-2 flex-wrap">
-          {!isLocked && (
+          {!isLocked && canEditTrek && (
             <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setEditVisible(true)}>
               Edit
             </FlatButton>
           )}
 
-          {!isLocked && trek.syncRequired && (
+          {!isLocked && canManagePricing && trek.syncRequired && (
             <div className="relative inline-flex">
               <FlatButton
                 variant="outline"
@@ -447,7 +454,7 @@ export const TrekDetailPage: React.FC = () => {
           )}
 
           {/* Share dropdown */}
-          <div className="relative" ref={shareRef}>
+          {hasAnyPermission('Treks.GenerateDriverLink', 'Treks.SendEmail', 'Treks.DownloadSheet', 'Reports.Export', 'Treks.Manage') && <div className="relative" ref={shareRef}>
             <FlatButton
               variant="outline"
               size="sm"
@@ -500,9 +507,13 @@ export const TrekDetailPage: React.FC = () => {
                 </button>
               </div>
             )}
-          </div>
+          </div>}
 
-          {nextStatuses.map((s) => (
+          {nextStatuses.filter((s) =>
+            s === 'InProgress' ? hasAnyPermission('Treks.Start', 'Treks.ChangeStatus', 'Treks.Manage') :
+            s === 'Completed' ? hasAnyPermission('Treks.Complete', 'Treks.ChangeStatus', 'Treks.Manage') :
+            hasAnyPermission('Treks.Cancel', 'Treks.ChangeStatus', 'Treks.Manage')
+          ).map((s) => (
             <FlatButton
               key={s}
               variant={s === 'Cancelled' ? 'danger-outline' : s === 'Completed' ? 'primary' : 'outline'}
@@ -544,7 +555,7 @@ export const TrekDetailPage: React.FC = () => {
             Stops
             <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
           </span>
-          {!isStructureLocked && (
+          {!isStructureLocked && canManageStops && (
             <FlatButton variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
               Add Stop
             </FlatButton>
@@ -571,6 +582,9 @@ export const TrekDetailPage: React.FC = () => {
                 recordingProduct={recordingProduct}
                 onEdit={() => setEditingStop(stop)}
                 onRemove={() => setRemovingStop(stop)}
+                canManageStops={canManageStops}
+                canRecordDelivery={canRecordDelivery}
+                canRecordReturns={canRecordReturns}
               />
             ))}
           </div>
@@ -715,6 +729,9 @@ interface StopCardProps {
   recordingProduct: string | null;
   onEdit: () => void;
   onRemove: () => void;
+  canManageStops: boolean;
+  canRecordDelivery: boolean;
+  canRecordReturns: boolean;
 }
 
 const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }> = ({ label, value, mono }) => {
@@ -728,7 +745,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = ({
-  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove,
+  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canRecordReturns,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
@@ -778,7 +795,7 @@ const StopCard: React.FC<StopCardProps> = ({
           {isRecorded && <span className="shrink-0 text-[11px] text-portal-accent">Recorded</span>}
           {stop.customerType && <span className="hidden text-[11px] text-portal-muted md:inline">{stop.customerType.replace(/([A-Z])/g, ' $1').trim()}</span>}
         </button>
-        {!isLocked && (
+        {!isLocked && canManageStops && (
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={onEdit}
               className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
@@ -856,7 +873,7 @@ const StopCard: React.FC<StopCardProps> = ({
             {activeStopTab === 'returns' && (
               <div className="ml-0 sm:ml-10">
                 <div className="mb-3 flex justify-end">
-                  <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>
+                  {canRecordReturns && <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>}
                 </div>
                 <FlatDataTable
                   data={[...(stop.returns ?? [])].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())}
@@ -870,7 +887,7 @@ const StopCard: React.FC<StopCardProps> = ({
                     { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
                     { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
                     { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
-                    { field: 'actions', header: 'Action', body: (item) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> },
+                    ...(canRecordReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> }] : []),
                   ]}
                 />
               </div>
@@ -890,7 +907,7 @@ const StopCard: React.FC<StopCardProps> = ({
                     { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
                     { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.displayRow ?? {}).paymentMethod)?.label || '—'}</span> },
                     { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
-                    { field: 'actions', header: 'Record', body: (product) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> },
+                    ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> }] : []),
                   ]}
                 />
               </div>

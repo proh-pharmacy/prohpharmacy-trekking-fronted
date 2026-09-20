@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { AuthProvider } from './context/AuthContext';
 import { AuthGuard } from './components/auth/AuthGuard';
+import { PermissionGuard } from './components/auth/PermissionGuard';
 import { GuestGuard } from './components/auth/GuestGuard';
 import { ProHToaster } from './components/toast';
 import { PWAInstallPrompt } from './components/pwa/PWAInstallPrompt';
@@ -160,24 +161,24 @@ export default function App() {
                 >
                   <Route index element={<Navigate to="/portal/dashboard" replace />} />
                   <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="traccar" element={<TraccarPage />} />
-                  <Route path="trekking" element={<TrekkingPage />} />
-                  <Route path="trekking/:trekId" element={<TrekDetailPage />} />
-                  <Route path="tracking" element={<TrackingPage />} />
-                  <Route path="customer-pins" element={<CustomerPinsPage />} />
-                  <Route path="customers" element={<CustomersPage />} />
-                  <Route path="customers/:customerId" element={<CustomerDetailPage />} />
-                  <Route path="products" element={<ProductsPage />} />
+                  <Route path="traccar" element={<PermissionGuard permissions={['TrackingDevices.View', 'TrackingDevices.Manage', 'Tracking.ViewAll']}><TraccarPage /></PermissionGuard>} />
+                  <Route path="trekking" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekkingPage /></PermissionGuard>} />
+                  <Route path="trekking/:trekId" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekDetailPage /></PermissionGuard>} />
+                  <Route path="tracking" element={<PermissionGuard permissions={['Tracking.ViewAll', 'Tracking.View']}><TrackingPage /></PermissionGuard>} />
+                  <Route path="customer-pins" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomerPinsPage /></PermissionGuard>} />
+                  <Route path="customers" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomersPage /></PermissionGuard>} />
+                  <Route path="customers/:customerId" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'Customers.Edit', 'CustomerKyc.View']}><CustomerDetailPage /></PermissionGuard>} />
+                  <Route path="products" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductsPage /></PermissionGuard>} />
                   <Route path="product" element={<Navigate to="/portal/products" replace />} />
-                  <Route path="fleet" element={<FleetPage />} />
-                  <Route path="reports/ledger-summary" element={<LedgerSummaryPage />} />
-                  <Route path="reports/treks" element={<TrekReportPage />} />
-                  <Route path="reports/collections" element={<CollectionsReportPage />} />
-                  <Route path="reports/products" element={<ProductsReportPage />} />
+                  <Route path="fleet" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><FleetPage /></PermissionGuard>} />
+                  <Route path="reports/ledger-summary" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><LedgerSummaryPage /></PermissionGuard>} />
+                  <Route path="reports/treks" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewTreks', 'Reports.Export']}><TrekReportPage /></PermissionGuard>} />
+                  <Route path="reports/collections" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewCollections', 'Reports.Export']}><CollectionsReportPage /></PermissionGuard>} />
+                  <Route path="reports/products" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewProducts', 'Reports.Export']}><ProductsReportPage /></PermissionGuard>} />
                   <Route path="settings" element={<Navigate to="/portal/settings/users" replace />} />
-                  <Route path="settings/users" element={<UsersAndRolesPage />} />
-                  <Route path="settings/users/:userId" element={<UserDetailsPage />} />
-                  <Route path="settings/organisation" element={<OrganisationPage />} />
+                  <Route path="settings/users" element={<PermissionGuard permissions={['Users.View', 'Staff.View', 'Roles.Manage']}><UsersAndRolesPage /></PermissionGuard>} />
+                  <Route path="settings/users/:userId" element={<PermissionGuard permissions={['Users.View', 'Staff.View', 'Roles.Manage']}><UserDetailsPage /></PermissionGuard>} />
+                  <Route path="settings/organisation" element={<PermissionGuard permissions={['Branches.View', 'Branches.Manage', 'Regions.View', 'Districts.View']}><OrganisationPage /></PermissionGuard>} />
                 </Route>
 
                 {/* ── Driver (standalone, no auth) ── */}

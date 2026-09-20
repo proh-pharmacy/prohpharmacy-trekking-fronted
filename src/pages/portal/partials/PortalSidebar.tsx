@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'primereact/tooltip';
 import { useAuth } from '../../../context';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { PORTAL_NAV_SECTIONS } from './portalNavItems';
 import toast from 'react-hot-toast';
 
@@ -19,6 +20,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, logout } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,7 +77,8 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   const filteredNavSections = PORTAL_NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) =>
-      item.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      item.label.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+      (!item.permissions || item.permissions.length === 0 || hasAnyPermission(...item.permissions))
     ),
   })).filter((section) => section.items.length > 0);
 

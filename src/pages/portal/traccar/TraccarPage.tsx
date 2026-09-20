@@ -15,6 +15,7 @@ import { RegisterDriverModal } from './components/RegisterDriverModal';
 import { DeviceModal } from '../fleet/components/DeviceModal';
 import { DeviceRegisteredModal } from '../fleet/components/DeviceRegisteredModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const DEVICE_STATUS_STYLES: Record<string, string> = {
   Active: 'text-portal-accent',
@@ -24,6 +25,10 @@ const DEVICE_STATUS_STYLES: Record<string, string> = {
 type ActiveTab = 'traccar-users' | 'drivers' | 'devices';
 
 export const TraccarPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canManageTraccarUsers = hasAnyPermission('TraccarUsers.Manage', 'TrackingDevices.Manage');
+  const canManageFleetDrivers = hasAnyPermission('FleetDrivers.Manage', 'Vehicles.Manage');
+  const canManageDevices = hasAnyPermission('TrackingDevices.Manage', 'TrackingDevices.Create', 'TrackingDevices.Edit');
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const activeTab: ActiveTab =
@@ -607,7 +612,7 @@ export const TraccarPage: React.FC = () => {
           dataSourceUrl="/fleet/traccar-users"
           columns={traccarUserColumns}
           heading="Traccar Users"
-          hasAction
+          hasAction={canManageTraccarUsers}
           actionName="Add Traccar User"
           onAction={() => { setEditingTraccarUser(null); setTraccarUserModalVisible(true); }}
           emptyDataText="No Traccar users found."
@@ -621,12 +626,12 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/drivers"
             columns={driverColumns}
             heading="Fleet Drivers"
-            secondaryAction
+            secondaryAction={canManageFleetDrivers}
             secondaryActionName="Sync Drivers to Traccar"
             secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
             onSecondaryAction={() => { setSyncDriversForce(false); setSyncDriversVisible(true); }}
-            hasAction
+            hasAction={canManageFleetDrivers}
             actionName="Register Driver"
             actionNameMobile="Register"
             onAction={() => setRegisterDriverVisible(true)}
@@ -641,12 +646,12 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/devices"
             columns={deviceColumns}
             heading="Tracking Devices"
-            secondaryAction
+            secondaryAction={canManageDevices}
             secondaryActionName="Sync to Traccar"
             secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
             onSecondaryAction={() => { setSyncDevicesForce(false); setSyncDevicesVisible(true); }}
-            hasAction
+            hasAction={canManageDevices}
             actionName="Register Device"
             actionNameMobile="Register"
             onAction={() => { setEditingDevice(null); setDeviceModalVisible(true); }}

@@ -12,6 +12,7 @@ import { VehicleModal } from './components/VehicleModal';
 import { VehicleStatusModal } from './components/VehicleStatusModal';
 import { AssignStaffModal } from './components/AssignStaffModal';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const VEHICLE_STATUS_STYLES: Record<string, string> = {
   Active: 'text-portal-accent',
@@ -32,6 +33,8 @@ const VEHICLE_STATUS_FILTER_OPTIONS = [
 ];
 
 export const FleetPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canManageVehicles = hasAnyPermission('Vehicles.Manage', 'Vehicles.Create', 'Vehicles.Edit');
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Regions', value: '' },
   ]);
@@ -232,7 +235,7 @@ export const FleetPage: React.FC = () => {
         dataSourceUrl="/fleet/vehicles"
         columns={vehicleColumns}
         heading="Vehicle Fleet"
-        hasAction
+        hasAction={canManageVehicles}
         actionName="Register Vehicle"
         onAction={() => { setEditingVehicle(null); setVehicleModalVisible(true); }}
         filterable="search"
