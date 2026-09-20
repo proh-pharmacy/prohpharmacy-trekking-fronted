@@ -98,7 +98,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 md:static md:z-30 h-full bg-portal-surface border-r border-portal-border/60 flex flex-col shrink-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none w-72 max-w-[85vw] ${
+        className={`fixed inset-y-0 left-0 z-50 md:static md:z-30 h-dvh md:h-full bg-portal-surface border-r border-portal-border/60 flex flex-col shrink-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none w-72 max-w-[85vw] ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${
           showCollapsed ? 'md:w-[72px]' : 'md:w-60 lg:w-64'
@@ -227,7 +227,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </div>
 
         {/* Navigation Sections */}
-        <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 min-h-0 px-3 py-3 space-y-5 overflow-y-auto custom-scrollbar">
           {filteredNavSections.map((section) => (
             <div key={section.title} className="space-y-1">
               {!showCollapsed ? (

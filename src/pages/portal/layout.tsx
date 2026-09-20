@@ -7,7 +7,7 @@ export const PortalLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-portal-canvas text-portal-text font-sans antialiased selection:bg-portal-accent selection:text-white">
+    <div className="h-dvh w-screen overflow-hidden flex bg-portal-canvas text-portal-text font-sans antialiased selection:bg-portal-accent selection:text-white">
       {/* Modular Collapsible & Responsive Sidebar */}
       <PortalSidebar
         collapsed={collapsed}
@@ -17,10 +17,10 @@ export const PortalLayout: React.FC = () => {
       />
 
       {/* Main Content Area - Fixed Header, Scrollable Main Viewport */}
-      <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 h-full min-h-0 flex flex-col min-w-0 overflow-hidden">
         <PortalHeader onToggleMobile={() => setMobileOpen((prev) => !prev)} />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 md:p-8 custom-scrollbar">
           <Outlet />
         </main>
       </div>

@@ -163,7 +163,7 @@ export const TrackingPage: React.FC = () => {
   }, [branches]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] md:h-[calc(100vh-4.5rem)] -m-4 sm:-m-6 md:-m-8 overflow-hidden bg-portal-canvas select-none">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] md:h-[calc(100dvh-4.5rem)] -m-4 sm:-m-6 md:-m-8 overflow-hidden bg-portal-canvas select-none">
       {/* ── Top Telemetry Control & KPI Bar ─────────────────────────── */}
       <div className="shrink-0 bg-portal-surface border-b border-portal-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
         {/* Left: Title & Live Connection Status */}
