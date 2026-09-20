@@ -12,13 +12,13 @@ export const GuestGuard: React.FC<GuestGuardProps> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#102218] text-white">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-light-green text-main-text">
         <img
-          src="/images/prohpharmacy_icon_white.png"
+          src="/images/prohpharmacy_icon.png"
           alt="ProH Pharmacy Logo"
           className="w-12 h-12 object-contain animate-pulse mb-4"
         />
-        <div className="flex items-center gap-2 text-sm text-[#4fb587]">
+        <div className="flex items-center gap-2 text-sm text-primary-green">
           <i className="pi pi-spin pi-spinner text-base" />
           <span>Loading portal...</span>
         </div>

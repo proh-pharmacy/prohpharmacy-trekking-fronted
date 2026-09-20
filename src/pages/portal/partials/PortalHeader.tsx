@@ -1,6 +1,5 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/useAuth';
 
 interface PortalHeaderProps {
@@ -36,15 +35,15 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
 
       {/* Top Right Notifications and Workspace */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        {/* Notifications Icon with Green Portal Accent Unread Dot */}
+        {/* Notifications placeholder until the notifications service is available */}
         <button
           type="button"
-          onClick={() => toast.success('3 field teams currently reporting telemetry.')}
-          className="relative h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center text-portal-text hover:text-white hover:bg-white/[0.06] rounded transition cursor-pointer"
-          title="Notifications"
+          disabled
+          aria-label="Notifications coming soon"
+          className="relative h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center text-portal-muted rounded transition cursor-not-allowed"
+          title="Notifications coming soon"
         >
           <i className="pi pi-bell text-base" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-portal-accent rounded-full shadow-[0_0_6px_var(--color-portal-accent)]" />
         </button>
 
         {/* Current branch/workspace */}
