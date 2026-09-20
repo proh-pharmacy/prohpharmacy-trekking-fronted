@@ -121,7 +121,6 @@ export const CustomerPinsPage: React.FC = () => {
       {/* Header */}
       <div className="shrink-0 bg-portal-surface border-b border-portal-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-white">Customer Pins</span>
           {!loading && (
             <span className="text-[11px] text-portal-muted">
               {pins.length} location pin{pins.length !== 1 ? 's' : ''}
