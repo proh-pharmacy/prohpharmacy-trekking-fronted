@@ -11,6 +11,7 @@ import {
 import { staffApi, type Branch, type Role, type CreateStaffResponse } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 const createStaffSchema = z.object({
   firstName:    z.string().min(1, 'First name is required'),
@@ -144,7 +145,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       emailAddress: emailAddress.trim(),
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber: normalizeGhanaPhoneNumber(phoneNumber),
       branchId,
       joinedOn,
     });
@@ -174,7 +175,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         emailAddress: emailAddress.trim().toLowerCase(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: normalizeGhanaPhoneNumber(phoneNumber),
         branchId,
         joinedOn,
         role: grantAppAccess ? selectedRoles[0] : undefined,
@@ -421,7 +422,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             placeholder="+233 20 123 4567"
             value={phoneNumber}
-            onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
+            onChange={(e) => { setPhoneNumber(formatGhanaPhoneNumber(e.target.value)); clearError('phoneNumber'); }}
             size="sm"
             errorMessage={errors.phoneNumber}
           />

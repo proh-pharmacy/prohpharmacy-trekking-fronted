@@ -5,6 +5,7 @@ import { FlatButton, FlatInputText, FlatDropdown } from '../../../../components/
 import { staffApi, type StaffItem, type Branch, type Role } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 const editStaffSchema = z.object({
   firstName:   z.string().min(1, 'First name is required'),
@@ -91,7 +92,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
     if (staff) {
       setFirstName(staff.firstName || '');
       setLastName(staff.lastName || '');
-      setPhoneNumber(staff.phoneNumber || '');
+      setPhoneNumber(formatGhanaPhoneNumber(staff.phoneNumber));
       setEmailAddress(staff.emailAddress || staff.email || '');
       setBranchId(staff.branchId || '');
       setRole(staff.role || staff.jobTitle || '');
@@ -112,7 +113,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
     const result = editStaffSchema.safeParse({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber: normalizeGhanaPhoneNumber(phoneNumber),
       emailAddress: emailChanged ? nextEmail : undefined,
       branchId,
     });
@@ -132,7 +133,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
       await staffApi.updateStaff(staff.id, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: normalizeGhanaPhoneNumber(phoneNumber),
         ...(emailChanged ? { emailAddress: nextEmail } : {}),
         branchId,
         role: role || undefined,
@@ -265,7 +266,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             label="Phone Number"
             required
             value={phoneNumber}
-            onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
+            onChange={(e) => { setPhoneNumber(formatGhanaPhoneNumber(e.target.value)); clearError('phoneNumber'); }}
             size="md"
             errorMessage={errors.phoneNumber}
           />

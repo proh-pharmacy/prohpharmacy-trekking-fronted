@@ -4,6 +4,7 @@ import { FlatButton, FlatInputText, FlatAsyncSelect } from '../../../../componen
 import { fleetApi, type TrackingDevice, type OperationalStatus, type Vehicle } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 const STATUS_COLOR: Record<string, string> = {
   Active: 'text-portal-accent',
@@ -59,7 +60,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
         if (!name.trim()) { toast.error('Name is required.'); setSubmitting(false); return; }
         await fleetApi.updateDevice(device.id, {
           name: name.trim(),
-          phoneNumber: phoneNumber.trim() || undefined,
+          phoneNumber: normalizeGhanaPhoneNumber(phoneNumber) || undefined,
           traccarDeviceId: traccarDeviceId ? Number(traccarDeviceId) : undefined,
         });
         toast.success(`Device "${name.trim()}" updated.`);
@@ -70,7 +71,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
         const created = await fleetApi.createDevice({
           vehicleId,
           uniqueId: uniqueId.trim() || undefined,
-          phoneNumber: phoneNumber.trim() || undefined,
+          phoneNumber: normalizeGhanaPhoneNumber(phoneNumber) || undefined,
         });
         toast.success('Tracking device registered.');
         resetTableData();
@@ -139,9 +140,9 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
             />
             <FlatInputText
               label="Phone Number"
-              placeholder="+233..."
+              placeholder="+233 24 123 4567"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
               size="md"
               maxLength={30}
             />
@@ -223,9 +224,9 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
             />
             <FlatInputText
               label="Phone Number"
-              placeholder="+233..."
+              placeholder="+233 24 123 4567"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
               size="md"
               maxLength={30}
             />

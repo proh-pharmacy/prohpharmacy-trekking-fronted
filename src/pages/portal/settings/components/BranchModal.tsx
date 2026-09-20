@@ -12,6 +12,7 @@ import {
 } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 interface BranchModalProps {
   visible: boolean;
@@ -81,7 +82,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
       setName(branch.name || '');
       setBranchType(branch.branchType || 'Retail');
       setAddress(branch.address || '');
-      setContactNumber(branch.contactNumber || branch.phoneNumber || '');
+      setContactNumber(formatGhanaPhoneNumber(branch.contactNumber || branch.phoneNumber));
       setDistrictId(branch.districtId || '');
       setLatitude(branch.latitude != null ? String(branch.latitude) : '');
       setLongitude(branch.longitude != null ? String(branch.longitude) : '');
@@ -205,7 +206,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           regionId: selectedRegionId,
           districtId,
           address: address.trim(),
-          contactNumber: contactNumber.trim(),
+          contactNumber: normalizeGhanaPhoneNumber(contactNumber),
           latitude: parsedLat,
           longitude: parsedLng,
         };
@@ -218,7 +219,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           regionId: selectedRegionId,
           districtId,
           address: address.trim(),
-          contactNumber: contactNumber.trim(),
+          contactNumber: normalizeGhanaPhoneNumber(contactNumber),
           ...(parsedLat !== null ? { latitude: parsedLat } : {}),
           ...(parsedLng !== null ? { longitude: parsedLng } : {}),
         };
@@ -334,9 +335,9 @@ export const BranchModal: React.FC<BranchModalProps> = ({
 
           <FlatInputText
             label="Official Contact Phone"
-            placeholder="e.g. +233 20 123 4567"
+            placeholder="+233 20 123 4567"
             value={contactNumber}
-            onChange={(e) => setContactNumber(e.target.value)}
+            onChange={(e) => setContactNumber(formatGhanaPhoneNumber(e.target.value))}
             size="md"
             required
           />

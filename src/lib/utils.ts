@@ -40,6 +40,34 @@ export function parseNumericInput(value: string | number | null | undefined): nu
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/** Format a Ghana Card number while it is being entered. */
+export function formatGhanaCardNumber(value: string | null | undefined): string {
+  const normalized = String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (normalized === 'G' || normalized === 'GH') return normalized;
+  if (normalized === 'GHA') return 'GHA-';
+  const digits = (normalized.startsWith('GHA') ? normalized.slice(3) : normalized)
+    .replace(/\D/g, '')
+    .slice(0, 10);
+  if (!digits) return '';
+  return `GHA-${digits.slice(0, 9)}${digits.length > 9 ? `-${digits.slice(9)}` : ''}`;
+}
+
+/** Format a Ghana phone number for display while it is being entered. */
+export function formatGhanaPhoneNumber(value: string | null | undefined): string {
+  const source = String(value ?? '').replace(/\D/g, '');
+  if (source === '0') return '0';
+  const digits = (source.startsWith('233') ? source.slice(3) : source.startsWith('0') ? source.slice(1) : source).slice(0, 9);
+  if (!digits) return '';
+  return `+233 ${digits.slice(0, 2)}${digits.length > 2 ? ` ${digits.slice(2, 5)}` : ''}${digits.length > 5 ? ` ${digits.slice(5)}` : ''}`;
+}
+
+/** Return a Ghana phone number in the API-friendly E.164 form. */
+export function normalizeGhanaPhoneNumber(value: string | null | undefined): string {
+  const source = String(value ?? '').replace(/\D/g, '');
+  const digits = (source.startsWith('233') ? source.slice(3) : source.startsWith('0') ? source.slice(1) : source).slice(0, 9);
+  return digits ? `+233${digits}` : '';
+}
+
 // Abbreviated for stat tiles: 1B / 1.2M / 123.4K / 1,234.56
 // Always pair with title={fmtGhs(amount)} for the full value on hover
 export function fmtGhsShort(amount: number): string {

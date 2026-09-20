@@ -5,7 +5,7 @@ import type { Product } from '../../../api-client/products';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay/FlatModal';
 import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction } from './api';
-import { fmtGhs, parseNumericInput } from '../../../lib/utils';
+import { fmtGhs, formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber, parseNumericInput } from '../../../lib/utils';
 import { CustomerModal } from '../../portal/customers/components/CustomerModal';
 
 export type FieldActionKind = 'customer' | 'stop' | 'sale' | 'return';
@@ -132,11 +132,11 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
         if (!values.businessName?.trim() || !values.primaryPhoneNumber?.trim() || !values.customerType ||
           !values.firstName?.trim() || !values.lastName?.trim() || !values.relationshipType || !values.representativePhone?.trim()) throw new Error('Complete the required customer and representative fields.');
         const customerClientId = await enqueue('RegisterCustomer', {
-          businessName: values.businessName.trim(), primaryPhoneNumber: values.primaryPhoneNumber.trim(), customerType: values.customerType,
+          businessName: values.businessName.trim(), primaryPhoneNumber: normalizeGhanaPhoneNumber(values.primaryPhoneNumber), customerType: values.customerType,
           ...(values.tradingName && { tradingName: values.tradingName.trim() }),
-          ...(values.whatsAppNumber && { whatsAppNumber: values.whatsAppNumber.trim() }),
+          ...(values.whatsAppNumber && { whatsAppNumber: normalizeGhanaPhoneNumber(values.whatsAppNumber) }),
           representative: { firstName: values.firstName.trim(), lastName: values.lastName.trim(), relationshipType: values.relationshipType,
-            primaryPhoneNumber: values.representativePhone.trim(), ...(values.middleName && { middleName: values.middleName.trim() }),
+            primaryPhoneNumber: normalizeGhanaPhoneNumber(values.representativePhone), ...(values.middleName && { middleName: values.middleName.trim() }),
             ...(values.ghanaCardNumber && { ghanaCardNumber: values.ghanaCardNumber.trim() }) },
           ...(values.districtId && { districtId: values.districtId }),
           ...(values.streetAddress?.trim() && { streetAddress: values.streetAddress.trim() }),
@@ -205,16 +205,16 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
           <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {text('businessName', 'Business name', true)} {text('primaryPhoneNumber', 'Customer phone', true)}
+            {text('businessName', 'Business name', true)} <FlatInputText label="Customer phone" placeholder="+233 24 123 4567" value={values.primaryPhoneNumber ?? ''} onChange={(event) => set('primaryPhoneNumber', formatGhanaPhoneNumber(event.target.value))} required size="md" />
             {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}
-            {text('whatsAppNumber', 'WhatsApp number')}
+            <FlatInputText label="WhatsApp number" placeholder="+233 24 123 4567" value={values.whatsAppNumber ?? ''} onChange={(event) => set('whatsAppNumber', formatGhanaPhoneNumber(event.target.value))} size="md" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Representative</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {text('firstName', 'First name', true)} {text('middleName', 'Middle name')} {text('lastName', 'Last name', true)}
-            {text('ghanaCardNumber', 'Ghana Card number')}
-            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} {text('representativePhone', 'Representative phone', true)}
+            <FlatInputText label="Ghana Card number" value={values.ghanaCardNumber ?? ''} onChange={(event) => set('ghanaCardNumber', formatGhanaCardNumber(event.target.value))} size="md" placeholder="GHA-..." maxLength={30} />
+            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} <FlatInputText label="Representative phone" placeholder="+233 24 123 4567" value={values.representativePhone ?? ''} onChange={(event) => set('representativePhone', formatGhanaPhoneNumber(event.target.value))} required size="md" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Location</p>
           <div className="h-px bg-portal-border" />

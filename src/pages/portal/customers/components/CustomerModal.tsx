@@ -17,6 +17,7 @@ import {
 } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
+import { formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 const pinIcon = L.divIcon({
   className: '',
@@ -273,8 +274,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setBusinessName(customer.businessName || '');
       setTradingName(customer.tradingName || '');
       setCustomerType(customer.customerType || '');
-      setPrimaryPhone(customer.primaryPhoneNumber || '');
-      setWhatsAppNumber(customer.whatsAppNumber || '');
+      setPrimaryPhone(formatGhanaPhoneNumber(customer.primaryPhoneNumber));
+      setWhatsAppNumber(formatGhanaPhoneNumber(customer.whatsAppNumber));
       setRegionId(driverMode?.region?.id || customer.regionId || '');
       setLocationRegionId(driverMode?.region?.id || customer.primaryLocation?.regionId || customer.regionId || '');
       // Rep — split fullName into parts
@@ -283,7 +284,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setRepLastName(parts.length > 1 ? parts[parts.length - 1] : '');
       setRepMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
       setRepRelationship((customer.primaryPerson?.relationshipType as RelationshipType) || '');
-      setRepPhone(customer.primaryPerson?.primaryPhoneNumber || '');
+      setRepPhone(formatGhanaPhoneNumber(customer.primaryPerson?.primaryPhoneNumber));
       setRepGhanaCard('');
       // Location
       setDistrictId(customer.primaryLocation?.districtId || '');
@@ -364,12 +365,12 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       if (driverMode) {
         await driverMode.onSubmit({
           ...(isEditing && customer ? { customerId: customer.id } : {}),
-          businessName: businessName.trim(), primaryPhoneNumber: primaryPhone.trim(), customerType,
-          ...(tradingName.trim() && { tradingName: tradingName.trim() }), ...(whatsAppNumber.trim() && { whatsAppNumber: whatsAppNumber.trim() }),
+          businessName: businessName.trim(), primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone), customerType,
+          ...(tradingName.trim() && { tradingName: tradingName.trim() }), ...(whatsAppNumber.trim() && { whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) }),
           ...(districtId && { districtId }),
           ...(isEditing ? { streetAddress: streetAddress.trim(), landmarkAndDirections: landmark.trim() }
             : { ...(streetAddress.trim() && { streetAddress: streetAddress.trim() }), ...(landmark.trim() && { landmarkAndDirections: landmark.trim() }) }),
-          representative: { firstName: repFirstName.trim(), ...(repMiddleName.trim() && { middleName: repMiddleName.trim() }), lastName: repLastName.trim(), relationshipType: repRelationship, primaryPhoneNumber: repPhone.trim(), ...(repGhanaCard.trim() && { ghanaCardNumber: repGhanaCard.trim() }) },
+          representative: { firstName: repFirstName.trim(), ...(repMiddleName.trim() && { middleName: repMiddleName.trim() }), lastName: repLastName.trim(), relationshipType: repRelationship, primaryPhoneNumber: normalizeGhanaPhoneNumber(repPhone), ...(repGhanaCard.trim() && { ghanaCardNumber: repGhanaCard.trim() }) },
           gps: latitude !== null && longitude !== null && accuracy !== null ? { latitude, longitude, accuracyMetres: accuracy } : null,
         }, { premises: premisesPhotoFile || undefined, portrait: portraitFile || undefined });
         resetTableData();
@@ -382,14 +383,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           tradingName: tradingName.trim() || undefined,
           customerType: customerType as CustomerType,
           regionId,
-          primaryPhoneNumber: primaryPhone.trim(),
-          whatsAppNumber: whatsAppNumber.trim() || undefined,
+          primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone),
+          whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) || undefined,
           representative: {
             firstName: repFirstName.trim(),
             middleName: repMiddleName.trim() || null,
             lastName: repLastName.trim(),
             relationshipType: repRelationship as RelationshipType,
-            primaryPhoneNumber: repPhone.trim(),
+            primaryPhoneNumber: normalizeGhanaPhoneNumber(repPhone),
             ghanaCardNumber: repGhanaCard.trim() || undefined,
           },
           location: {
@@ -425,14 +426,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           tradingName: tradingName.trim() || undefined,
           customerType: customerType as CustomerType,
           regionId,
-          primaryPhoneNumber: primaryPhone.trim(),
-          whatsAppNumber: whatsAppNumber.trim() || undefined,
+          primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone),
+          whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) || undefined,
           representative: {
             firstName: repFirstName.trim(),
             middleName: repMiddleName.trim() || null,
             lastName: repLastName.trim(),
             relationshipType: repRelationship as RelationshipType,
-            primaryPhoneNumber: repPhone.trim(),
+            primaryPhoneNumber: normalizeGhanaPhoneNumber(repPhone),
             ghanaCardNumber: repGhanaCard.trim() || undefined,
           },
           location: {
@@ -551,18 +552,18 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FlatInputText
             label="Primary Phone"
-            placeholder="+233..."
+            placeholder="+233 24 123 4567"
             value={primaryPhone}
-            onChange={(e) => setPrimaryPhone(e.target.value)}
+            onChange={(e) => setPrimaryPhone(formatGhanaPhoneNumber(e.target.value))}
             size="md"
             maxLength={30}
             required
           />
           <FlatInputText
             label="WhatsApp Number"
-            placeholder="+233..."
+            placeholder="+233 24 123 4567"
             value={whatsAppNumber}
-            onChange={(e) => setWhatsAppNumber(e.target.value)}
+            onChange={(e) => setWhatsAppNumber(formatGhanaPhoneNumber(e.target.value))}
             size="md"
             maxLength={30}
           />
@@ -612,9 +613,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               />
               <FlatInputText
                 label="Phone"
-                placeholder="+233..."
+                placeholder="+233 24 123 4567"
                 value={repPhone}
-                onChange={(e) => setRepPhone(e.target.value)}
+                onChange={(e) => setRepPhone(formatGhanaPhoneNumber(e.target.value))}
                 size="md"
                 maxLength={30}
                 required
@@ -623,7 +624,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 label="Ghana Card No."
                 placeholder="GHA-..."
                 value={repGhanaCard}
-                onChange={(e) => setRepGhanaCard(e.target.value)}
+                onChange={(e) => setRepGhanaCard(formatGhanaCardNumber(e.target.value))}
                 size="md"
                 maxLength={30}
               />
