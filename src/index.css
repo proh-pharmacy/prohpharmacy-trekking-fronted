@@ -1016,3 +1016,16 @@ div.p-icon-field {
   color: #41cc84 !important;
   text-decoration: none !important;
 }
+
+/* Keep focused text fields at 16px on touch devices to prevent iOS focus zoom. */
+@layer utilities {
+  @media (hover: none) and (pointer: coarse) {
+    :is(
+      input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='range']),
+      textarea,
+      select
+    ) {
+      font-size: 16px !important;
+    }
+  }
+}
