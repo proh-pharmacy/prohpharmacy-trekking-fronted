@@ -918,6 +918,23 @@ div.p-icon-field {
   color: #ffffff !important;
 }
 
+.flat-data-table-mobile-value .text-xs {
+  font-size: 13px;
+}
+
+.flat-data-table-mobile-value [class~="text-[11px]"],
+.flat-data-table-mobile-value [class~="text-[10px]"] {
+  font-size: 12px;
+}
+
+.flat-data-table-mobile-actions .justify-end {
+  justify-content: flex-start;
+}
+
+.flat-data-table-mobile-actions .ml-auto {
+  margin-left: 0;
+}
+
 .p-datatable .p-sortable-column .p-sortable-column-icon {
   color: #ffffff !important;
 }

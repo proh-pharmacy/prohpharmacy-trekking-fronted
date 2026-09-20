@@ -312,9 +312,9 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
         </>}
       </div>
       <div className="flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-[11px] font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-orange text-portal-orange' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{returnRows.length ? ` (${returnRows.length})` : ''}</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
+        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-orange text-portal-orange' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{returnRows.length ? ` (${returnRows.length})` : ''}</button>
       </div>
       {activeStopTab === 'details' && <>
       {/* Info grid */}
@@ -360,7 +360,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           enableTableFilter={false}
           emptyDataText="No products recorded for this stop."
           columns={[
-            { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
+            { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-semibold text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
             { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
             { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
             { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : displayRowFor(product).paymentMethod))?.label || '—'}</span> },
@@ -878,7 +878,7 @@ const isStopRecorded = (s: DriverStop) =>
                 key={`customers-${customerRows.length}`}
                 data={customerRows}
                 columns={[
-                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-normal text-portal-accent">{item.businessName}</span> },
+                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-semibold text-portal-accent">{item.businessName}</span> },
                   { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
                   { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-white">{item.primaryPhoneNumber}</a> },
@@ -911,8 +911,8 @@ const isStopRecorded = (s: DriverStop) =>
           renderTreksView={() => (
             <div className="space-y-4">
               <div className="flex items-center gap-1 border-b border-portal-border/60">
-                <button type="button" onClick={() => setTrekListTab('region')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${trekListTab === 'region' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Regional Treks</button>
-                <button type="button" onClick={() => setTrekListTab('mine')} className={`border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors ${trekListTab === 'mine' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Assigned treks</button>
+                <button type="button" onClick={() => setTrekListTab('region')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'region' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Regional Treks</button>
+                <button type="button" onClick={() => setTrekListTab('mine')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'mine' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Assigned treks</button>
               </div>
               <FlatDataTable<RegionTrek>
                 data={trekListTab === 'mine' ? (assignedTreks.length ? assignedTreks : [visibleTreks.find((item) => item.trekId === trek.trekId) ?? visibleTreks[0]]) : visibleTreks}

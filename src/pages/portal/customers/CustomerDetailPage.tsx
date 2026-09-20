@@ -277,7 +277,7 @@ export const CustomerDetailPage: React.FC = () => {
         style: { width: '80px' },
         body: (row) => (
           <span
-            className={`text-xs font-medium ${row.entryType === 'Debit' ? 'text-red-400' : 'text-portal-accent'
+            className={`text-xs font-semibold ${row.entryType === 'Debit' ? 'text-red-400' : 'text-portal-accent'
               }`}
           >
             {row.entryType}

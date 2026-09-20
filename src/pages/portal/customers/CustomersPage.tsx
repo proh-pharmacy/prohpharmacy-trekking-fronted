@@ -244,7 +244,7 @@ export const CustomersPage: React.FC = () => {
         style: { width: '100px' },
         body: (row) => (
           <span
-            className={`text-xs font-medium ${
+            className={`text-xs font-semibold ${
               STATUS_STYLES[row.registrationStatus] || 'text-portal-muted'
             }`}
           >

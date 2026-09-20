@@ -294,7 +294,7 @@ export const OrganisationPage: React.FC = () => {
         header: 'Status',
         body: (branch) => (
           <span
-            className={`text-xs font-medium ${
+            className={`text-xs font-semibold ${
               branch.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -412,43 +412,40 @@ export const OrganisationPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Navigation Tabs (inferred from ?tab= query parameter) */}
-      <div className="flex border-b border-portal-border/60 gap-6 text-xs font-bold">
+      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
         <button
           type="button"
           onClick={() => handleTabChange('branches')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'branches'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-building text-xs" />
           <span>Branches</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTabChange('districts')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'districts'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-map-marker text-xs" />
           <span>Districts</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTabChange('regions')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'regions'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-map text-xs" />
           <span>Regions</span>
         </button>
       </div>

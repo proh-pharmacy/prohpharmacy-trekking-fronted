@@ -1,4 +1,18 @@
 import React, { useState } from 'react';
+import {
+  BatteryCharging,
+  Compass,
+  Database,
+  DotsThree,
+  Gauge,
+  MapPin,
+  MapTrifold,
+  Path,
+  PlusCircle,
+  UsersThree,
+  Warning,
+  type Icon,
+} from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 import type { DriverTrek } from '../../../api-client/treks';
 import { FlatButton } from '../../../components/flat-form';
@@ -60,7 +74,7 @@ function NavRailButton({
   expanded,
   controls,
 }: {
-  icon: string;
+  icon: Icon;
   label: string;
   active: boolean;
   onClick: () => void;
@@ -68,6 +82,7 @@ function NavRailButton({
   expanded?: boolean;
   controls?: string;
 }) {
+  const IconComponent = icon;
   return (
     <button
       type="button"
@@ -77,13 +92,14 @@ function NavRailButton({
       aria-controls={controls}
       onClick={onClick}
       className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 text-center transition-all ${mobile ? 'h-16 flex-1 px-0.5' : 'h-[72px] w-full px-0.5 sm:h-[94px] sm:gap-1.5 sm:px-1'} ${active
-          ? 'bg-portal-surface/90 text-white'
+          ? 'bg-portal-accent/10 text-white'
           : 'text-portal-muted hover:bg-white/[0.04] hover:text-portal-text'
         }`}
     >
-      <i
-        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 ${mobile ? '' : 'sm:text-2xl'} ${active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
-          }`}
+      <IconComponent
+        size={mobile ? 22 : 26}
+        weight="duotone"
+        className="text-portal-accent transition-transform group-hover:scale-110"
         aria-hidden="true"
       />
       <span className={`font-semibold leading-tight tracking-wide ${mobile ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'}`}>{label}</span>
@@ -103,7 +119,7 @@ function ActionDrawerLink({
   disabled = false,
   danger = false,
 }: {
-  icon: string;
+  icon: Icon;
   label: string;
   badge?: string | number | null;
   badgeBorderless?: boolean;
@@ -111,6 +127,7 @@ function ActionDrawerLink({
   disabled?: boolean;
   danger?: boolean;
 }) {
+  const IconComponent = icon;
   return (
     <button
       type="button"
@@ -122,7 +139,7 @@ function ActionDrawerLink({
         }`}
     >
       <span className="flex items-center gap-2.5">
-        <i className={`pi ${icon} w-4 text-center text-sm`} aria-hidden="true" />
+        <IconComponent size={18} weight="duotone" className="shrink-0" aria-hidden="true" />
         <span>{label}</span>
       </span>
       {badge != null && (
@@ -236,24 +253,24 @@ export function DriverDashboard({
 
       <div className="space-y-0.5">
         {includeMap && (
-          <ActionDrawerLink icon="pi-map" label="Map" onClick={() => { setActiveView('map'); setMoreOpen(false); }} />
+          <ActionDrawerLink icon={MapTrifold} label="Map" onClick={() => { setActiveView('map'); setMoreOpen(false); }} />
         )}
-        <ActionDrawerLink icon="pi-bolt" label="Battery & vehicle" onClick={() => { setActiveView('vehicle'); setMoreOpen(false); }} />
-        <ActionDrawerLink icon="pi-plus-circle" label="Field actions" onClick={() => { setActiveView('actions'); setMoreOpen(false); }} />
-        <ActionDrawerLink icon="pi-database" label="Offline & sync center" badge={pendingCount || undefined} onClick={() => { setActiveView('offline'); setMoreOpen(false); }} />
+        <ActionDrawerLink icon={BatteryCharging} label="Battery & vehicle" onClick={() => { setActiveView('vehicle'); setMoreOpen(false); }} />
+        <ActionDrawerLink icon={PlusCircle} label="Field actions" onClick={() => { setActiveView('actions'); setMoreOpen(false); }} />
+        <ActionDrawerLink icon={Database} label="Offline & sync center" badge={pendingCount || undefined} onClick={() => { setActiveView('offline'); setMoreOpen(false); }} />
       </div>
 
       <div className="my-2 border-t border-portal-border/50" />
 
       <div className="space-y-1">
         <ActionDrawerLink
-          icon="pi-compass"
+          icon={Compass}
           label={reporting ? 'Updating location…' : 'Update GPS location'}
           disabled={!online || reporting}
           onClick={() => void reportLocation()}
         />
         <ActionDrawerLink
-          icon="pi-exclamation-triangle"
+          icon={Warning}
           label="SOS Emergency Alert"
           danger
           disabled={!online}
@@ -337,7 +354,7 @@ export function DriverDashboard({
           {/* Primary Navigation Tabs */}
           <div role="tablist" aria-label="Field navigation" className="flex flex-col py-1">
             <NavRailButton
-              icon="pi-gauge"
+              icon={Gauge}
               label="Overview"
               active={activeView === 'dashboard' || activeView === 'overview'}
               onClick={() => {
@@ -346,7 +363,7 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
-              icon="pi-map-marker"
+              icon={MapPin}
               label="Stops"
               active={activeView === 'assigned'}
               onClick={() => {
@@ -355,7 +372,7 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
-              icon="pi-sitemap"
+              icon={Path}
               label="Treks"
               active={activeView === 'treks'}
               onClick={() => {
@@ -364,7 +381,7 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
-              icon="pi-users"
+              icon={UsersThree}
               label="Customers"
               active={activeView === 'customers'}
               onClick={() => {
@@ -373,7 +390,7 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
-              icon="pi-map"
+              icon={MapTrifold}
               label="Map"
               active={activeView === 'map'}
               onClick={() => {
@@ -396,7 +413,7 @@ export function DriverDashboard({
                   : 'text-portal-muted hover:bg-white/[0.05] hover:text-white'
                 }`}
             >
-              <i className="pi pi-ellipsis-h text-base transition-transform group-hover:scale-110" />
+              <DotsThree size={22} weight="duotone" className="transition-transform group-hover:scale-110" aria-hidden="true" />
               <span className="text-[9px] font-semibold">More</span>
             </button>
           </div>
@@ -430,12 +447,15 @@ export function DriverDashboard({
 
                 {/* Driver and vehicle info (left) with speedometer (right) */}
                 <div className="relative z-10 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="mt-1.5 text-sm font-semibold text-portal-text sm:text-base">{trek.driverName}</p>
-                    <p className="text-[11px] text-portal-muted sm:text-xs">{trek.vehicleDisplayName || trek.trekNumber}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="mt-1.5 truncate text-sm sm:text-base" title={`${trek.driverName} · ${trek.vehicleDisplayName || trek.trekNumber}`}>
+                      <span className="font-semibold text-portal-text">{trek.driverName}</span>
+                      <span className="mx-2 text-portal-muted" aria-hidden="true">·</span>
+                      <span className="text-xs text-portal-muted sm:text-sm">{trek.vehicleDisplayName || trek.trekNumber}</span>
+                    </p>
 
                     {/* Link to the assigned trek's stops */}
-                    <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                    <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                       <CockpitButton
                         icon="pi-arrow-right"
                         onClick={() => setActiveView('assigned')}
@@ -920,13 +940,13 @@ export function DriverDashboard({
         aria-label="Field navigation"
         className="relative z-[1200] flex shrink-0 items-stretch border-t border-portal-border/60 bg-portal-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
-        <NavRailButton mobile icon="pi-gauge" label="Overview" active={activeView === 'dashboard' || activeView === 'overview'} onClick={() => { setActiveView('dashboard'); setMoreOpen(false); }} />
-        <NavRailButton mobile icon="pi-map-marker" label="Stops" active={activeView === 'assigned'} onClick={() => { setActiveView('assigned'); setMoreOpen(false); }} />
-        <NavRailButton mobile icon="pi-sitemap" label="Treks" active={activeView === 'treks'} onClick={() => { setActiveView('treks'); setMoreOpen(false); }} />
-        <NavRailButton mobile icon="pi-users" label="Customers" active={activeView === 'customers'} onClick={() => { setActiveView('customers'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon={Gauge} label="Overview" active={activeView === 'dashboard' || activeView === 'overview'} onClick={() => { setActiveView('dashboard'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon={MapPin} label="Stops" active={activeView === 'assigned'} onClick={() => { setActiveView('assigned'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon={Path} label="Treks" active={activeView === 'treks'} onClick={() => { setActiveView('treks'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon={UsersThree} label="Customers" active={activeView === 'customers'} onClick={() => { setActiveView('customers'); setMoreOpen(false); }} />
         <NavRailButton
           mobile
-          icon="pi-ellipsis-h"
+          icon={DotsThree}
           label="More"
           active={moreOpen || ['map', 'vehicle', 'actions', 'offline'].includes(activeView)}
           expanded={moreOpen}

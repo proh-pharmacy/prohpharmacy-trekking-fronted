@@ -660,7 +660,7 @@ export const UsersAndRolesPage: React.FC = () => {
           const status = getDisplayStatus(user);
           return (
             <span
-              className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                 status === 'Active'
                   ? 'text-portal-accent'
                   : status === 'Pending'
@@ -813,7 +813,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Platform Access',
         body: (staff) => (
           <span
-            className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
               staff.hasAppAccess ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -888,41 +888,38 @@ export const UsersAndRolesPage: React.FC = () => {
     <div className="space-y-6">
       {/* Tabs */}
       {!editingRole && (
-        <div className="flex border-b border-portal-border/60 gap-6 text-xs font-bold">
+        <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
           <button
             type="button"
             onClick={() => handleTabChange('users')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'users'
                 ? 'border-portal-accent text-white'
                 : 'border-transparent text-portal-muted hover:text-white'
             }`}
           >
-            <i className="pi pi-users text-xs" />
             <span>User Accounts</span>
           </button>
           <button
             type="button"
             onClick={() => handleTabChange('staff')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'staff'
                 ? 'border-portal-accent text-white'
                 : 'border-transparent text-portal-muted hover:text-white'
             }`}
           >
-            <i className="pi pi-id-card text-xs" />
             <span>Staff Directory</span>
           </button>
           <button
             type="button"
             onClick={() => handleTabChange('matrix')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'matrix'
                 ? 'border-portal-accent text-white'
                 : 'border-transparent text-portal-muted hover:text-white'
             }`}
           >
-            <i className="pi pi-shield text-xs" />
             <span>Role Permissions Matrix</span>
           </button>
         </div>

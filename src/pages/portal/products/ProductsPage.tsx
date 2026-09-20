@@ -194,7 +194,7 @@ export const ProductsPage: React.FC = () => {
         header: 'Status',
         body: (product) => (
           <span
-            className={`text-xs font-medium ${
+            className={`text-xs font-semibold ${
               product.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -255,7 +255,7 @@ export const ProductsPage: React.FC = () => {
         header: 'Status',
         body: (unit) => (
           <span
-            className={`text-xs font-medium ${
+            className={`text-xs font-semibold ${
               unit.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -337,43 +337,40 @@ export const ProductsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-portal-border/60 gap-6 text-xs font-bold overflow-x-auto whitespace-nowrap">
+      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
         <button
           type="button"
           onClick={() => handleTabChange('products')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'products'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-box text-xs" />
           <span>Products Catalog</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTabChange('units')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'units'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-tags text-xs" />
           <span>Basic Units</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTabChange('packaging')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer flex items-center gap-2 !rounded-none rounded-none ${
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'packaging'
               ? 'border-portal-accent text-white'
               : 'border-transparent text-portal-muted hover:text-white'
           }`}
         >
-          <i className="pi pi-inbox text-xs" />
           <span>Packaging Units</span>
         </button>
       </div>

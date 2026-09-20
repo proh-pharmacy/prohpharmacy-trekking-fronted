@@ -130,7 +130,7 @@ export const TrekkingPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.id}`)}
-          className="font-mono text-xs text-portal-accent hover:underline text-left"
+          className="font-mono text-xs font-semibold text-portal-accent hover:underline text-left"
         >
           {row.trekNumber}
         </button>
@@ -140,36 +140,36 @@ export const TrekkingPage: React.FC = () => {
       field: 'regionName',
       header: 'Trekking Region',
       style: { width: '150px' },
-      body: (row) => <span className="text-xs text-portal-text">{row.regionName || '—'}</span>,
+      body: (row) => <span className="text-xs font-semibold text-portal-text">{row.regionName || '—'}</span>,
     },
     {
       field: 'driverName',
       header: 'Driver',
-      body: (row) => <span className="text-xs text-portal-text">{row.driverName}</span>,
+      body: (row) => <span className="text-xs font-semibold text-portal-text">{row.driverName}</span>,
     },
     {
       field: 'salesStaffName',
       header: 'Sales Staff',
-      body: (row) => <span className="text-xs text-portal-text">{row.salesStaffName || '—'}</span>,
+      body: (row) => <span className="text-xs font-semibold text-portal-text">{row.salesStaffName || '—'}</span>,
     },
     {
       field: 'vehicleDisplayName',
       header: 'Vehicle',
       style: { width: '160px' },
-      body: (row) => <span className="text-xs text-portal-text">{row.vehicleDisplayName}</span>,
+      body: (row) => <span className="text-xs font-semibold text-portal-text">{row.vehicleDisplayName}</span>,
     },
     {
       field: 'scheduledDate',
       header: 'Date',
       style: { width: '110px' },
-      body: (row) => <span className="text-xs font-mono text-portal-text">{row.scheduledDate}</span>,
+      body: (row) => <span className="text-xs font-mono font-semibold text-portal-text">{row.scheduledDate}</span>,
     },
     {
       field: 'status',
       header: 'Status',
       style: { width: '110px' },
       body: (row) => (
-        <span className={`text-xs font-medium ${STATUS_STYLES[row.status as TrekStatus] || 'text-portal-muted'}`}>
+        <span className={`text-xs font-semibold ${STATUS_STYLES[row.status as TrekStatus] || 'text-portal-muted'}`}>
           {STATUS_LABELS[row.status as TrekStatus] || row.status}
         </span>
       ),

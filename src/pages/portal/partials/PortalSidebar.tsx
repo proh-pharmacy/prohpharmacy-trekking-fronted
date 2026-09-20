@@ -70,14 +70,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     }
   };
 
-  const userInitials = (user?.fullName || user?.email || 'KH')
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
-  const userName = user?.fullName || 'Kwesi Mensah';
+  const userName = user?.fullName || user?.email || 'Account';
 
   const filteredNavSections = PORTAL_NAV_SECTIONS.map((section) => ({
     ...section,
@@ -118,21 +111,12 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         <div className="shrink-0 p-4 border-b border-portal-border/60 bg-portal-surface">
           {!showCollapsed ? (
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                {/* User Avatar */}
-                <div className="shrink-0">
-                  <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
-                    {userInitials}
-                  </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-portal-text truncate tracking-tight">
+                  {userName}
                 </div>
-
-                <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold text-portal-text truncate tracking-tight">
-                    {userName}
-                  </div>
-                  <div className="text-[10px] text-portal-muted truncate font-mono">
-                    {user?.roles?.[0] || 'Operations Lead'}
-                  </div>
+                <div className="text-xs text-portal-muted truncate">
+                  {user?.roles?.[0] || 'Signed in'}
                 </div>
               </div>
 
@@ -161,17 +145,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2.5">
-              <div
-                className="portal-tooltip-item cursor-pointer"
-                data-pr-tooltip={`${userName} • ${user?.roles?.[0] || 'Operations Lead'}`}
-                data-pr-position="right"
-              >
-                <div className="w-9 h-9 rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center text-xs font-semibold text-white shadow-inner">
-                  {userInitials}
-                </div>
-              </div>
-
+            <div className="flex justify-center">
               <button
                 type="button"
                 onClick={onToggleCollapse}
