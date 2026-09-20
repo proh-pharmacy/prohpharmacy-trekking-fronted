@@ -160,8 +160,8 @@ export const LoginPage: React.FC = () => {
         <div ref={cardContentRef} className="p-8 sm:p-10">
         <div className="relative -mx-8 -mt-8 mb-7 grid grid-cols-2 border-b border-white/10 px-1 sm:-mx-10 sm:-mt-10">
           <span className={`absolute bottom-0 left-0 h-0.5 w-1/2 !rounded-none bg-portal-accent transition-transform duration-500 ease-in-out ${loginTab === 'trekking' ? 'translate-x-full' : 'translate-x-0'}`} aria-hidden="true" />
-          <button type="button" onClick={() => { setLoginTab('admin'); setTrekError(null); }} className={`relative z-10 px-3 py-2.5 text-xs font-semibold transition-colors ${loginTab === 'admin' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Admin</button>
-          <button type="button" onClick={() => { setLoginTab('trekking'); setAuthError(null); }} className={`relative z-10 px-3 py-2.5 text-xs font-semibold transition-colors ${loginTab === 'trekking' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Trekking</button>
+          <button type="button" onClick={() => { setLoginTab('admin'); setTrekError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors ${loginTab === 'admin' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Admin</button>
+          <button type="button" onClick={() => { setLoginTab('trekking'); setAuthError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors ${loginTab === 'trekking' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Trekking</button>
         </div>
         {/* Maintained ProH Pharmacy Logo & Header */}
         {!trekSession && (

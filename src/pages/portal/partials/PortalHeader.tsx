@@ -6,11 +6,30 @@ interface PortalHeaderProps {
   onToggleMobile?: () => void;
 }
 
+const SECTION_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  traccar: 'Traccar',
+  trekking: 'Trekking',
+  tracking: 'Tracking',
+  'customer-pins': 'Customer pins',
+  customers: 'Customers',
+  products: 'Products',
+  fleet: 'Fleet',
+  reports: 'Reports',
+  settings: 'Settings',
+};
+
+function getHeaderTitle(pathname: string): string {
+  const segments = pathname.replace(/^\/portal\/?/, '').split('/').filter(Boolean);
+  const section = segments[0] || 'dashboard';
+  return SECTION_LABELS[section] || section.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) => {
   const location = useLocation();
   const { user } = useAuth();
 
-  const currentSection = location.pathname.replace('/portal/', '') || 'Overview';
+  const currentSection = getHeaderTitle(location.pathname);
   const workspaceName = user?.branchName || 'Current workspace';
 
   return (

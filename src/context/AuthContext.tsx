@@ -145,6 +145,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(async (): Promise<void> => {
     await logoutMutation.mutateAsync();
+    // The driver workspace is remembered separately for PWA relaunches.
+    // Signing out of the main portal must clear that session as well.
+    try { localStorage.removeItem('portalSession'); } catch { /* storage may be unavailable */ }
   }, [logoutMutation]);
 
   const roles = useMemo(() => user?.roles || user?.systemRoles || [], [user?.roles, user?.systemRoles]);
