@@ -294,7 +294,8 @@ export function DriverDashboard({
       <header className="relative z-[1400] flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" className="h-8 w-8 object-contain" />
-          <p className="truncate text-xs font-bold tracking-wide text-white">
+          {/* Desktop header title & metadata */}
+          <p className="hidden truncate text-xs font-bold tracking-wide text-white sm:block">
             Driver Control Panel
           </p>
           <span className="hidden truncate text-[11px] font-semibold text-portal-text sm:inline">
@@ -303,6 +304,16 @@ export function DriverDashboard({
           <span className="hidden truncate text-xs font-semibold text-portal-accent sm:inline">
             ({trek.regionName})
           </span>
+
+          {/* Small screen: replace generic title with Region and Trek Number */}
+          <div className="flex min-w-0 items-center gap-1.5 sm:hidden">
+            <span className="truncate text-xs font-bold tracking-wide text-white">
+              {trek.regionName}
+            </span>
+            <span className="truncate text-[11px] font-semibold text-portal-accent">
+              · {trek.trekNumber}
+            </span>
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
@@ -442,7 +453,7 @@ export function DriverDashboard({
           {(activeView === 'dashboard' || activeView === 'overview') && (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
               {/* TOP WIDE CARD: JOURNEY */}
-              <section className="relative overflow-hidden rounded-xl border border-portal-border/70 bg-[#20252e] p-3 sm:p-6 shadow-xl">
+              <section className="relative overflow-hidden rounded border border-portal-border/70 bg-[#20252e] p-3 sm:p-6 shadow-xl">
                 {/* Background Map Backdrop (Real Vector Map) */}
                 <div className="pointer-events-none absolute inset-0 z-0">
                   <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} />
@@ -592,7 +603,7 @@ export function DriverDashboard({
               {/* BOTTOM TWO CARDS: BATTERY & WEATHER */}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* BOTTOM LEFT CARD: BATTERY */}
-                <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-portal-surface p-3 shadow-xl sm:p-6">
+                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-portal-surface p-3 shadow-xl sm:p-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Battery</h3>
                     {device?.ignition != null && (
@@ -673,7 +684,7 @@ export function DriverDashboard({
                 </section>
 
                 {/* BOTTOM RIGHT CARD: WEATHER & ENVIRONMENT */}
-                <section className="flex flex-col justify-between rounded-xl border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
+                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-portal-text sm:text-base">Weather</h3>
                     {weather && (
@@ -771,7 +782,7 @@ export function DriverDashboard({
               2. SUBVIEW: VEHICLE & TELEMETRY DIAGNOSTICS
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'vehicle' && (
-            <section className="mx-auto max-w-5xl rounded-xl border border-portal-border/70 bg-[#20252e] p-3 shadow-xl space-y-6 sm:p-6">
+            <section className="mx-auto max-w-5xl rounded border border-portal-border/70 bg-[#20252e] p-3 shadow-xl space-y-6 sm:p-6">
               <div className="flex items-center justify-between border-b border-portal-border/50 pb-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">
@@ -784,7 +795,7 @@ export function DriverDashboard({
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
+                <div className="rounded bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracker Battery</p>
                   <p className="mt-1 text-2xl font-semibold text-portal-text sm:text-3xl">{battery}%</p>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-portal-border/40">
@@ -792,7 +803,7 @@ export function DriverDashboard({
                   </div>
                 </div>
 
-                <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
+                <div className="rounded bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Motion & Ignition</p>
                   <p className="mt-1 text-base font-semibold text-portal-text capitalize sm:text-lg">
                     {device?.motion ? 'Vehicle Moving' : 'Vehicle Stopped'}
@@ -802,7 +813,7 @@ export function DriverDashboard({
                   </p>
                 </div>
 
-                <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4">
+                <div className="rounded bg-portal-canvas/60 border border-portal-border/50 p-4">
                   <p className="text-[11px] font-semibold uppercase text-portal-muted">Tracking Service</p>
                   <p className="mt-1 text-base font-semibold text-portal-text capitalize sm:text-lg">
                     {device?.traccarStatus || 'Connected'}
@@ -813,7 +824,7 @@ export function DriverDashboard({
                 </div>
               </div>
 
-              <div className="rounded-lg bg-portal-canvas/60 border border-portal-border/50 p-4 space-y-3">
+              <div className="rounded bg-portal-canvas/60 border border-portal-border/50 p-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase text-portal-muted">Last Geocoded Position</p>
                 <p className="text-sm font-medium text-portal-text break-words">{location}</p>
                 {device?.lastReportedAt && (
@@ -853,7 +864,7 @@ export function DriverDashboard({
               3. SUBVIEW: INTERACTIVE VECTOR MAP
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'map' && (
-            <section className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-portal-border/70 bg-[#20252e] shadow-xl">
+            <section className="mx-auto max-w-6xl overflow-hidden rounded border border-portal-border/70 bg-[#20252e] shadow-xl">
               <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-portal-border/50 sm:px-5 sm:py-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">Offline Map</p>

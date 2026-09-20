@@ -318,7 +318,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
       </div>
       {activeStopTab === 'details' && <>
       {/* Info grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-3.5 sm:px-4 py-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 py-2">
         <div>
           <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
           <InfoRow label="Region"   value={stop.regionName} />
@@ -660,10 +660,43 @@ const isStopRecorded = (s: DriverStop) =>
                 <div>
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
-                <div className="flex w-full flex-col items-stretch gap-2 pb-1 sm:w-auto sm:flex-row sm:items-center sm:pb-0">
-                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton size="sm" leftIcon="pi pi-plus" className="w-full shrink-0 sm:w-auto" onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}>Add additional stop</FlatButton>}
-                  {!trek.isLocked && trek.status === 'InProgress' && <FlatButton size="sm" variant="outline" leftIcon="pi pi-check-circle" className="w-full shrink-0 sm:w-auto" disabled={!online || syncing || completingTrek} onClick={() => setCompleteDialogOpen(true)}>Complete trek</FlatButton>}
-                  <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" className="w-full shrink-0 sm:w-auto" onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}>Download PDF Sheet</FlatButton>
+                <div className="w-full sm:w-auto">
+                  <div className="grid grid-cols-3 gap-0 w-full sm:min-w-[320px] rounded overflow-hidden border border-portal-border/70 divide-x divide-portal-border/70 shadow-xs">
+                    {/* 1. Add Stop (First item, highlighted green background) */}
+                    <button
+                      type="button"
+                      disabled={trek.isLocked || trek.status !== 'InProgress'}
+                      onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Add additional stop"
+                    >
+                      <i className="pi pi-plus text-xs font-bold" aria-hidden="true" />
+                      <span>Add</span>
+                    </button>
+
+                    {/* 2. Complete Trek */}
+                    <button
+                      type="button"
+                      disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
+                      onClick={() => setCompleteDialogOpen(true)}
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-white/[0.08] active:bg-white/[0.12] text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Complete trek"
+                    >
+                      <i className="pi pi-check-circle text-xs" aria-hidden="true" />
+                      <span>Complete</span>
+                    </button>
+
+                    {/* 3. PDF Sheet (Last item) */}
+                    <button
+                      type="button"
+                      onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-white/[0.08] active:bg-white/[0.12] text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
+                      title="Download PDF Sheet"
+                    >
+                      <i className="pi pi-file-pdf text-xs font-bold text-red-400" aria-hidden="true" />
+                      <span>Download</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               {trek.isLocked && (
