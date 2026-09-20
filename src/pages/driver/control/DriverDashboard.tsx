@@ -15,21 +15,26 @@ import {
 } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 import type { DriverTrek } from '../../../api-client/treks';
+import type { Product } from '../../../api-client/products';
 import { FlatButton } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay/FlatModal';
 import type { DriverDevice } from './api';
-import type { FieldCustomer } from './api';
+import type { FieldCustomer, QueuedAction, QueuedPhoto } from './api';
 import type { Weather } from './useDeviceStatus';
 import { RegionMapBackdrop } from './RegionMapBackdrop';
 import { CockpitButton } from './CockpitButton';
+import { SyncNotifications } from './SyncNotifications';
 
 interface Props {
   trek: DriverTrek;
   customers: FieldCustomer[];
   regionalCount: number | null;
   pendingCount: number;
+  queue: QueuedAction[];
+  photoQueue: QueuedPhoto[];
+  products: Product[];
   controlAvailable: boolean;
-  syncing: boolean;
+  syncBusy: boolean;
   onSync: () => Promise<void>;
   online: boolean;
   device: DriverDevice | null;
@@ -156,8 +161,11 @@ export function DriverDashboard({
   customers,
   regionalCount,
   pendingCount,
+  queue,
+  photoQueue,
+  products,
   controlAvailable,
-  syncing,
+  syncBusy,
   onSync,
   online,
   device,
@@ -283,7 +291,7 @@ export function DriverDashboard({
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-portal-canvas">
       {/* Top Application Bar */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
+      <header className="relative z-[1400] flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" className="h-8 w-8 object-contain" />
           <p className="truncate text-xs font-bold tracking-wide text-white">
@@ -314,21 +322,18 @@ export function DriverDashboard({
           <span className="font-mono text-[11px] font-medium text-portal-text">
             {status}
           </span>
-          {pendingCount > 0 && <span className="text-portal-muted">|</span>}
-          {pendingCount > 0 && (
-            <FlatButton
-              size="sm"
-              variant="primary"
-              leftIcon={syncing ? 'pi pi-spin pi-spinner' : 'pi pi-cloud-upload'}
-              loading={syncing}
-              disabled={syncing || !online || !controlAvailable}
-              onClick={() => void onSync()}
-              title={!online ? 'Connect to sync pending work' : 'Sync pending work'}
-              className="text-[11px] sm:text-xs"
-            >
-              {syncing ? 'Syncing…' : `Sync ${pendingCount}`}
-            </FlatButton>
-          )}
+          <SyncNotifications
+            queue={queue}
+            photos={photoQueue}
+            trek={trek}
+            customers={customers}
+            products={products}
+            online={online}
+            controlAvailable={controlAvailable}
+            busy={syncBusy}
+            onSync={onSync}
+            onOpenSyncCenter={() => setActiveView('offline')}
+          />
         </div>
       </header>
 

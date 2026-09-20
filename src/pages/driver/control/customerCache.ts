@@ -11,6 +11,8 @@ export function mergeCachedCustomer(previous: FieldCustomer | undefined, incomin
     ...incoming,
     premisesPhotoUrl: incoming.premisesPhotoUrl ?? previous?.premisesPhotoUrl ?? null,
     portraitUrl: incoming.portraitUrl ?? previous?.portraitUrl ?? null,
+    primaryPersonId: incoming.primaryPersonId ?? previous?.primaryPersonId ?? null,
+    primaryPerson: incoming.primaryPerson ?? previous?.primaryPerson ?? null,
   };
   const flatLocation = ['districtId', 'streetAddress', 'landmarkAndDirections', 'latitude', 'longitude', 'accuracyMetres']
     .some((field) => Object.prototype.hasOwnProperty.call(incoming, field));
@@ -53,6 +55,7 @@ export function registrationDetails(action: QueuedAction, districts: FieldDistri
     primaryContactPhone: asText(representative.primaryPhoneNumber),
     primaryContactRelationshipType: asText(representative.relationshipType),
     primaryContactGhanaCardNumber: asText(representative.ghanaCardNumber),
+    primaryPersonId: action.personId ?? null,
     districtId,
     streetAddress: asText(payload.streetAddress),
     landmarkAndDirections: asText(payload.landmarkAndDirections),

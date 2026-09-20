@@ -462,7 +462,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
+  const { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
@@ -633,8 +633,11 @@ const isStopRecorded = (s: DriverStop) =>
           customers={customers}
           regionalCount={regionTreks.length || null}
           pendingCount={pendingCount}
+          queue={queue}
+          photoQueue={photoQueue}
+          products={products}
           controlAvailable={controlAvailable}
-          syncing={syncing}
+          syncBusy={syncing || refreshing || uploadingPhotos || completingTrek}
           onSync={sync}
           online={online}
           device={device}

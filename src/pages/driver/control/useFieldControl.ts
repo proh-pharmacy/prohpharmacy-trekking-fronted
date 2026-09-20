@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetTableData } from '../../../components/data-table';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
-import { fieldApi, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek } from './api';
+import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek } from './api';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
 
@@ -24,6 +24,7 @@ export function useFieldControl(token: string) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingPhotoCount, setUploadingPhotoCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [error, setError] = useState<string | null>(null);
@@ -141,28 +142,38 @@ export function useFieldControl(token: string) {
   }, [token]);
 
   const uploadCustomerPremisesPhoto = useCallback(async (customerId: string, file: File) => {
-    const result = await fieldApi.uploadPremisesPhoto(token, customerId, file);
-    resetTableData();
-    const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
-    const updated = saved.map((customer) => customer.id === customerId
-      ? { ...customer, premisesPhotoUrl: result.premisesPhotoUrl }
-      : customer);
-    await fieldStore.set(token, 'customers', updated);
-    setCustomers(updated);
-    return result;
+    setUploadingPhotoCount((count) => count + 1);
+    try {
+      const result = await fieldApi.uploadPremisesPhoto(token, customerId, file);
+      resetTableData();
+      const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
+      const updated = saved.map((customer) => customer.id === customerId
+        ? { ...customer, premisesPhotoUrl: result.premisesPhotoUrl }
+        : customer);
+      await fieldStore.set(token, 'customers', updated);
+      setCustomers(updated);
+      return result;
+    } finally {
+      setUploadingPhotoCount((count) => count - 1);
+    }
   }, [token]);
 
   const uploadCustomerPortrait = useCallback(async (customerId: string, personId: string, file: File) => {
-    const result = await fieldApi.uploadCustomerPortrait(token, customerId, personId, file);
-    resetTableData();
-    const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
-    const updated = saved.map((customer) => customer.id === customerId
-      ? { ...customer, primaryPersonId: personId, portraitUrl: result.portraitUrl,
-        primaryPerson: customer.primaryPerson ? { ...customer.primaryPerson, id: personId, portraitUrl: result.portraitUrl } : customer.primaryPerson }
-      : customer);
-    await fieldStore.set(token, 'customers', updated);
-    setCustomers(updated);
-    return result;
+    setUploadingPhotoCount((count) => count + 1);
+    try {
+      const result = await fieldApi.uploadCustomerPortrait(token, customerId, personId, file);
+      resetTableData();
+      const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
+      const updated = saved.map((customer) => customer.id === customerId
+        ? { ...customer, primaryPersonId: personId, portraitUrl: result.portraitUrl,
+          primaryPerson: customer.primaryPerson ? { ...customer.primaryPerson, id: personId, portraitUrl: result.portraitUrl } : customer.primaryPerson }
+        : customer);
+      await fieldStore.set(token, 'customers', updated);
+      setCustomers(updated);
+      return result;
+    } finally {
+      setUploadingPhotoCount((count) => count - 1);
+    }
   }, [token]);
 
   const processPhotoQueue = useCallback(async () => {
@@ -172,6 +183,7 @@ export function useFieldControl(token: string) {
     ]);
     let next = [...photos];
     let customersSnapshot = savedCustomers ?? [];
+    let fullCustomersRefreshed = false;
     for (const photo of photos.filter((item) => item.status === 'pending')) {
       const customerAction = actions.find((action) => action.clientId === photo.customerClientId);
       if (!customerAction || customerAction.status === 'conflict') {
@@ -182,11 +194,19 @@ export function useFieldControl(token: string) {
         next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'Waiting for customer registration to finish.' } : item);
         continue;
       }
+      if (photo.kind === 'portrait' && customerAction.personId === null) {
+        next = next.map((item) => item.photoId === photo.photoId ? {
+          ...item, status: 'conflict' as const,
+          reason: 'No representative is registered for this customer. The portrait was not uploaded.',
+        } : item);
+        continue;
+      }
+      const customerId = customerAction.serverId;
       let customer = customersSnapshot.find((item) => item.id === customerAction.serverId);
-      // A newly-created customer may not be visible in the incremental
-      // customer download immediately after the batch response. Refresh the
-      // customer list before leaving the photo stuck without an explanation.
-      if (!customer) {
+      // Older sync responses may lack personId. The full customer seed is a fallback.
+      if (photo.kind === 'portrait' && customerAction.personId === undefined
+        && !customer?.primaryPersonId && !customer?.primaryPerson?.id && !fullCustomersRefreshed) {
+        fullCustomersRefreshed = true;
         try {
           const downloaded = await fieldApi.getCustomers(token);
           const priorById = new Map(customersSnapshot.map((item) => [item.id, item]));
@@ -199,24 +219,22 @@ export function useFieldControl(token: string) {
           // Keep the photo pending so the next sync can retry the lookup.
         }
       }
-      if (!customer) {
-        next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'Customer was synced, but its photo record is not available yet. Try Sync again.' } : item);
-        continue;
-      }
       try {
+        validateCustomerPhoto(photo.file);
         if (photo.kind === 'premises') {
-          const result = await fieldApi.uploadPremisesPhoto(token, customer.id, photo.file);
-          customersSnapshot = customersSnapshot.map((item) => item.id === customer.id
+          const result = await fieldApi.uploadPremisesPhoto(token, customerId, photo.file);
+          customersSnapshot = customersSnapshot.map((item) => item.id === customerId
             ? { ...item, premisesPhotoUrl: result.premisesPhotoUrl } : item);
         }
-        else if (customer.primaryPersonId) {
-          const result = await fieldApi.uploadCustomerPortrait(token, customer.id, customer.primaryPersonId, photo.file);
-          customersSnapshot = customersSnapshot.map((item) => item.id === customer.id
-            ? { ...item, portraitUrl: result.portraitUrl,
+        else if (customerAction.personId || customer?.primaryPersonId || customer?.primaryPerson?.id) {
+          const personId = customerAction.personId || customer?.primaryPersonId || customer?.primaryPerson?.id || '';
+          const result = await fieldApi.uploadCustomerPortrait(token, customerId, personId, photo.file);
+          customersSnapshot = customersSnapshot.map((item) => item.id === customerId
+            ? { ...item, primaryPersonId: personId, portraitUrl: result.portraitUrl,
               primaryPerson: item.primaryPerson ? { ...item.primaryPerson, portraitUrl: result.portraitUrl } : item.primaryPerson } : item);
         }
         else {
-          next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'The representative ID is not available yet. Try Sync again.' } : item);
+          next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'Representative details are not available from the server yet. Try Sync again.' } : item);
           continue;
         }
         next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'uploaded' as const } : item);
@@ -293,18 +311,40 @@ export function useFieldControl(token: string) {
               return action;
             }
             return { ...action, status: result.status === 'Conflict' ? 'conflict' as const : 'synced' as const,
-              serverId: result.serverId, reason: result.reason };
+              serverId: result.serverId,
+              ...(action.type === 'RegisterCustomer' && result.personId !== undefined ? { personId: result.personId } : {}),
+              reason: result.reason };
           });
           await fieldStore.setQueue(token, next); setQueue(next);
-          if (locationIds.size) {
-            const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
-            const updated = saved.map((customer) => ({
-              ...customer,
-              primaryLocation: customer.primaryLocation?.id && locationIds.has(customer.primaryLocation.id)
-                ? { ...customer.primaryLocation, id: locationIds.get(customer.primaryLocation.id) } : customer.primaryLocation,
-              additionalLocations: customer.additionalLocations?.map((location) => locationIds.has(location.id)
-                ? { ...location, id: locationIds.get(location.id)! } : location),
-            }));
+          const registrations = next.filter((action) => action.type === 'RegisterCustomer' && action.status === 'synced' && action.serverId);
+          if (locationIds.size || registrations.length) {
+            const [saved, savedDistricts, savedTrek] = await Promise.all([
+              fieldStore.get<FieldCustomer[]>(token, 'customers'),
+              fieldStore.get<FieldDistrict[]>(token, 'districts'),
+              fieldStore.get<DriverTrek>(token, 'trek'),
+            ]);
+            const registrationById = new Map(registrations.map((action) => [action.serverId!, action]));
+            const updated: FieldCustomer[] = (saved ?? []).map((customer) => {
+              const registration = registrationById.get(customer.id);
+              const personId = registration?.personId;
+              return {
+                ...customer,
+                ...(personId !== undefined ? {
+                  primaryPersonId: personId,
+                  primaryPerson: personId && customer.primaryPerson
+                    ? { ...customer.primaryPerson, id: personId } : personId === null ? null : customer.primaryPerson,
+                } : {}),
+                primaryLocation: customer.primaryLocation?.id && locationIds.has(customer.primaryLocation.id)
+                  ? { ...customer.primaryLocation, id: locationIds.get(customer.primaryLocation.id) } : customer.primaryLocation,
+                additionalLocations: customer.additionalLocations?.map((location) => locationIds.has(location.id)
+                  ? { ...location, id: locationIds.get(location.id)! } : location),
+              };
+            });
+            for (const registration of registrations) {
+              if (updated.some((customer) => customer.id === registration.serverId)) continue;
+              const customer = registrationDetails(registration, savedDistricts ?? [], savedTrek?.regionName ?? '');
+              if (customer) updated.unshift(customer);
+            }
             await fieldStore.set(token, 'customers', updated); setCustomers(updated);
           }
         });
@@ -455,6 +495,7 @@ export function useFieldControl(token: string) {
   }, [token]);
 
   const queuePhoto = useCallback(async (customerClientId: string, kind: QueuedPhoto['kind'], file: File) => {
+    validateCustomerPhoto(file);
     const photo: QueuedPhoto = { photoId: crypto.randomUUID(), customerClientId, kind, file, status: 'pending' };
     const next = [...await fieldStore.photoQueue(token), photo];
     await fieldStore.setPhotoQueue(token, next);
@@ -532,5 +573,5 @@ export function useFieldControl(token: string) {
     if (navigator.onLine) await processPhotoQueue();
   }, [token, processPhotoQueue]);
 
-  return { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
+  return { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
 }

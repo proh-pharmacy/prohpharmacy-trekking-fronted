@@ -143,6 +143,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    if (file.size === 0) { toast.error('Choose a non-empty premises photo.'); return; }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       toast.error('Choose a JPEG, PNG, or WebP premises photo.');
       return;
@@ -158,6 +159,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size === 0) { toast.error('Choose a non-empty photo.'); return; }
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
       toast.error('Only JPEG, PNG, or WebP images are accepted.');

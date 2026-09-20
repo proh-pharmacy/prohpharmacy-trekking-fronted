@@ -1,4 +1,4 @@
-import { publicApi } from '../../../api-client/api';
+import { baseURL, publicApi } from '../../../api-client/api';
 import { treksApi, type DriverTrek, type DriverReturn } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
 import type { CustomerPerson } from '../../../api-client/customers';
@@ -116,6 +116,7 @@ export interface QueuedAction {
   payload: Record<string, unknown>;
   status: 'pending' | 'conflict' | 'synced';
   serverId?: string | null;
+  personId?: string | null;
   reason?: string;
   localBeforeLocation?: FieldCustomerLocation;
 }
@@ -135,10 +136,52 @@ export interface SyncResult {
   type: ActionType;
   status: 'Created' | 'AlreadySynced' | 'Conflict';
   serverId: string | null;
+  personId?: string | null;
   reason?: string;
 }
 
 const path = (token: string, suffix: string) => `/treks/driver/${encodeURIComponent(token)}${suffix}`;
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+export function validateCustomerPhoto(file: File): void {
+  if (!(file instanceof Blob) || file.size === 0) throw new Error('Choose a non-empty photo.');
+  if (!PHOTO_TYPES.has(file.type)) throw new Error('Choose a JPEG, PNG, or WebP photo.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Photo must be 5 MB or smaller.');
+}
+
+async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): Promise<T> {
+  validateCustomerPhoto(file);
+  const formData = new FormData();
+  formData.append('file', file, file.name || 'photo');
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30000);
+  let response: Response;
+  try {
+    response = await fetch(`${baseURL}${path(token, suffix)}`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Photo upload timed out. Try again.');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null) as {
+      detail?: string;
+      message?: string;
+      title?: string;
+      errors?: Record<string, string[]>;
+    } | null;
+    const fieldError = problem?.errors && Object.values(problem.errors).flat().join(' ');
+    throw new Error(problem?.detail || problem?.message || fieldError || problem?.title || `Photo upload failed (${response.status}).`);
+  }
+  return response.json() as Promise<T>;
+}
+
 const unwrapList = <T>(value: unknown): T[] => {
   if (Array.isArray(value)) return value as T[];
   if (value && typeof value === 'object') {
@@ -212,26 +255,14 @@ export const fieldApi = {
     return unwrapList<FieldDistrict>(response.data);
   },
   uploadPremisesPhoto: async (token: string, customerId: string, file: File): Promise<{ customerId: string; premisesPhotoUrl: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await publicApi.post<{ customerId: string; premisesPhotoUrl: string }>(
-      path(token, `/customers/${encodeURIComponent(customerId)}/premises-photo`),
-      formData,
-      // Let the browser/Axios add the multipart boundary. Setting this header
-      // manually can make the server reject an otherwise valid FormData body.
-      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
+    return uploadDriverPhoto<{ customerId: string; premisesPhotoUrl: string }>(
+      token, `/customers/${encodeURIComponent(customerId)}/premises-photo`, file
     );
-    return response.data;
   },
   uploadCustomerPortrait: async (token: string, customerId: string, personId: string, file: File): Promise<{ personId: string; portraitUrl: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await publicApi.post<{ personId: string; portraitUrl: string }>(
-      path(token, `/customers/${encodeURIComponent(customerId)}/people/${encodeURIComponent(personId)}/portrait`),
-      formData,
-      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
+    return uploadDriverPhoto<{ personId: string; portraitUrl: string }>(
+      token, `/customers/${encodeURIComponent(customerId)}/people/${encodeURIComponent(personId)}/portrait`, file
     );
-    return response.data;
   },
   getTrek: async (token: string): Promise<DriverTrek> => {
     const response = await publicApi.get<DriverTrek>(path(token, '/offline/trek'));

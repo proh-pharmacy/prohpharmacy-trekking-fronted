@@ -318,7 +318,7 @@ export const customersApi = {
     const res = await apiClient.post(
       `/customers/${customerId}/people/${personId}/portrait`,
       formData,
-      { headers: { Accept: 'application/json', 'Content-Type': 'multipart/form-data' } }
+      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
     );
     return res.data;
   },
@@ -329,7 +329,7 @@ export const customersApi = {
     const res = await apiClient.post<{ customerId: string; premisesPhotoUrl: string }>(
       `/customers/${customerId}/premises-photo`,
       formData,
-      { headers: { Accept: 'application/json', 'Content-Type': 'multipart/form-data' } }
+      { headers: { Accept: 'application/json', 'Content-Type': undefined } }
     );
     return res.data;
   },

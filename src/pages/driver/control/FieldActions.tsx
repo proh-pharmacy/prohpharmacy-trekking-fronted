@@ -117,6 +117,7 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    if (file.size === 0) { toast.error('Choose a non-empty photo.'); return; }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('Choose a JPEG, PNG, or WebP photo.'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be 5 MB or smaller.'); return; }
     previewSetter(URL.createObjectURL(file));
