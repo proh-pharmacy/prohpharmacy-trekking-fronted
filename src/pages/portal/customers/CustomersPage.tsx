@@ -329,8 +329,10 @@ export const CustomersPage: React.FC = () => {
         heading="Customers"
         hasAction
         actionName="Add Customer"
+        actionNameMobile="Add"
         secondaryAction
         secondaryActionName="Import Customers"
+        secondaryActionNameMobile="Import"
         secondaryActionIcon="pi pi-upload"
         onSecondaryAction={() => setImportVisible(true)}
         onAction={() => {

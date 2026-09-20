@@ -88,10 +88,12 @@ export interface FlatDataTableProps<TData> {
   enablePaginator?: boolean;
   hasAction?: boolean;
   actionName?: string;
+  actionNameMobile?: string;
   onAction?: () => void;
   actionOptions?: { asLink: boolean; link: string };
   secondaryAction?: boolean;
   secondaryActionName?: string;
+  secondaryActionNameMobile?: string;
   secondaryActionIcon?: string;
   onSecondaryAction?: () => void;
   heading?: string | React.ReactNode;
@@ -167,10 +169,12 @@ export function FlatDataTable<TData extends Record<string, any>>({
   enablePaginator = true,
   hasAction,
   actionName = 'Add Record',
+  actionNameMobile,
   onAction,
   actionOptions,
   secondaryAction,
   secondaryActionName = 'Import',
+  secondaryActionNameMobile,
   secondaryActionIcon,
   onSecondaryAction,
   heading,
@@ -778,7 +782,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   className="h-[44px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
                 >
                   {secondaryActionIcon && <i className={`${secondaryActionIcon} text-xs`} />}
-                  {secondaryActionName}
+                  {secondaryActionNameMobile ? <><span className="hidden sm:inline">{secondaryActionName}</span><span className="sm:hidden">{secondaryActionNameMobile}</span></> : secondaryActionName}
                 </button>
               )}
               {hasAction && (
@@ -790,7 +794,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
-                      {actionName}
+                      {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   ) : (
                     <button
@@ -799,7 +803,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
-                      {actionName}
+                      {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   )}
                 </>

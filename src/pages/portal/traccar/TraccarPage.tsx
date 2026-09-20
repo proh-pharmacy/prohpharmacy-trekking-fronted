@@ -623,10 +623,12 @@ export const TraccarPage: React.FC = () => {
             heading="Fleet Drivers"
             secondaryAction
             secondaryActionName="Sync Drivers to Traccar"
+            secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
             onSecondaryAction={() => { setSyncDriversForce(false); setSyncDriversVisible(true); }}
             hasAction
             actionName="Register Driver"
+            actionNameMobile="Register"
             onAction={() => setRegisterDriverVisible(true)}
             emptyDataText="No fleet drivers registered."
             dataMapper={fleetDriverDataMapper}
@@ -641,10 +643,12 @@ export const TraccarPage: React.FC = () => {
             heading="Tracking Devices"
             secondaryAction
             secondaryActionName="Sync to Traccar"
+            secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
             onSecondaryAction={() => { setSyncDevicesForce(false); setSyncDevicesVisible(true); }}
             hasAction
             actionName="Register Device"
+            actionNameMobile="Register"
             onAction={() => { setEditingDevice(null); setDeviceModalVisible(true); }}
             filterable="search"
             filterablePlaceholder="Search by name, unique ID, or phone..."

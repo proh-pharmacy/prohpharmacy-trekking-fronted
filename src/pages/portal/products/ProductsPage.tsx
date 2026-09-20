@@ -383,10 +383,12 @@ export const ProductsPage: React.FC = () => {
           heading="Products List"
           secondaryAction
           secondaryActionName="Import"
+          secondaryActionNameMobile="Import"
           secondaryActionIcon="pi pi-upload"
           onSecondaryAction={() => setImportModalVisible(true)}
           hasAction
           actionName="Add Product"
+          actionNameMobile="Add"
           onAction={() => {
             setEditingProduct(null);
             setProductModalVisible(true);
