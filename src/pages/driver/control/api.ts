@@ -151,8 +151,12 @@ export function validateCustomerPhoto(file: File): void {
 
 async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): Promise<T> {
   validateCustomerPhoto(file);
+  // WebKit can send an IndexedDB-restored File as an empty multipart body.
+  // Reading it first gives FormData an in-memory Blob it can upload reliably.
+  const bytes = await file.arrayBuffer();
+  if (bytes.byteLength !== file.size) throw new Error('The saved photo could not be read. Choose the photo again.');
   const formData = new FormData();
-  formData.append('file', file, file.name || 'photo');
+  formData.append('file', new Blob([bytes], { type: file.type }), file.name || 'photo');
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 30000);
   let response: Response;
