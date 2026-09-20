@@ -186,6 +186,19 @@ export function useFieldControl(token: string) {
     let fullCustomersRefreshed = false;
     for (const photo of photos.filter((item) => item.status === 'pending')) {
       const customerAction = actions.find((action) => action.clientId === photo.customerClientId);
+      console.info('[Driver photo queue] attempting upload', {
+        photoId: photo.photoId,
+        kind: photo.kind,
+        customerClientId: photo.customerClientId,
+        fileName: photo.file?.name || '(unnamed)',
+        fileType: photo.file?.type || '(unknown)',
+        fileSizeBytes: photo.file?.size ?? 0,
+        fileIsFile: photo.file instanceof File,
+        fileIsBlob: photo.file instanceof Blob,
+        customerActionStatus: customerAction?.status ?? 'missing',
+        customerServerId: customerAction?.serverId ?? null,
+        customerPersonId: customerAction?.personId ?? null,
+      });
       if (!customerAction || customerAction.status === 'conflict') {
         next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'conflict' as const, reason: customerAction?.reason || 'Customer registration conflicted.' } : item);
         continue;

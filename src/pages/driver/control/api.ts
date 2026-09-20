@@ -151,12 +151,36 @@ export function validateCustomerPhoto(file: File): void {
 
 async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): Promise<T> {
   validateCustomerPhoto(file);
+  console.groupCollapsed(`[Driver photo upload] ${suffix}`);
+  console.table({
+    stage: 'before serialization',
+    name: file.name || '(unnamed)',
+    type: file.type || '(unknown)',
+    sizeBytes: file.size,
+    isFile: file instanceof File,
+    isBlob: file instanceof Blob,
+  });
   // WebKit can send an IndexedDB-restored File as an empty multipart body.
   // Reading it first gives FormData an in-memory Blob it can upload reliably.
   const bytes = await file.arrayBuffer();
-  if (bytes.byteLength !== file.size) throw new Error('The saved photo could not be read. Choose the photo again.');
+  console.table({ stage: 'after arrayBuffer', sizeBytes: bytes.byteLength, matchesFileSize: bytes.byteLength === file.size });
+  if (bytes.byteLength !== file.size) {
+    console.groupEnd();
+    throw new Error('The saved photo could not be read. Choose the photo again.');
+  }
   const formData = new FormData();
-  formData.append('file', new Blob([bytes], { type: file.type }), file.name || 'photo');
+  const uploadBlob = new Blob([bytes], { type: file.type });
+  formData.append('file', uploadBlob, file.name || 'photo');
+  const formValue = formData.get('file');
+  console.table({
+    stage: 'formData ready',
+    fieldName: 'file',
+    formValuePresent: formValue !== null,
+    formValueIsBlob: formValue instanceof Blob,
+    formValueSizeBytes: formValue instanceof Blob ? formValue.size : 0,
+    formValueType: formValue instanceof Blob ? formValue.type : '(missing)',
+  });
+  console.groupEnd();
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 30000);
   let response: Response;
@@ -167,7 +191,9 @@ async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): 
       body: formData,
       signal: controller.signal,
     });
+    console.info('[Driver photo upload] response', { suffix, status: response.status, ok: response.ok });
   } catch (error) {
+    console.error('[Driver photo upload] request error', { suffix, error });
     if (controller.signal.aborted) throw new Error('Photo upload timed out. Try again.');
     throw error;
   } finally {
@@ -180,6 +206,7 @@ async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): 
       title?: string;
       errors?: Record<string, string[]>;
     } | null;
+    console.error('[Driver photo upload] server rejected upload', { suffix, status: response.status, problem });
     const fieldError = problem?.errors && Object.values(problem.errors).flat().join(' ');
     throw new Error(problem?.detail || problem?.message || fieldError || problem?.title || `Photo upload failed (${response.status}).`);
   }
