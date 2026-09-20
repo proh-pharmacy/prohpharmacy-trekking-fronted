@@ -63,6 +63,8 @@ interface DeliveryRow {
   notes: string;
 }
 
+type ProductTableRow = TrekStopProduct & { displayRow?: Partial<DeliveryRow> };
+
 function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
   trek.stops.forEach((stop) => {
@@ -743,6 +745,10 @@ const StopCard: React.FC<StopCardProps> = ({
   const landmark = stop.primaryLocationLandmark?.trim() || null;
   const street = stop.primaryLocationStreet?.trim() || null;
   const selectedReturnProduct = stop.products.find((product) => product.productId === returnProductId);
+  const productRows: ProductTableRow[] = stop.products.map((product) => ({
+    ...product,
+    displayRow: deliveryRows[product.stopProductId] ?? {},
+  }));
   const returnTotal = selectedReturnProduct
     ? parseNumericInput(returnBasicQty) * Number(selectedReturnProduct.basicUnitPrice || 0)
       + parseNumericInput(returnPackagingQty) * Number(selectedReturnProduct.packagingUnitPrice || 0)
@@ -874,16 +880,16 @@ const StopCard: React.FC<StopCardProps> = ({
             {activeStopTab === 'products' && stop.products.length > 0 && (
               <div className="ml-0 sm:ml-10">
                 <FlatDataTable
-                  data={stop.products}
+                  data={productRows}
                   enablePaginator={false}
                   enableTableFilter={false}
                   emptyDataText="No products recorded for this stop."
                   columns={[
                     { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-semibold text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
                     { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
-                    { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = deliveryRows[product.stopProductId] ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
-                    { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (deliveryRows[product.stopProductId] ?? {}).paymentMethod)?.label || '—'}</span> },
-                    { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, deliveryRows[product.stopProductId] ?? {}))}</span> },
+                    { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
+                    { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.displayRow ?? {}).paymentMethod)?.label || '—'}</span> },
+                    { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
                     { field: 'actions', header: 'Record', body: (product) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> },
                   ]}
                 />
@@ -944,8 +950,9 @@ const StopCard: React.FC<StopCardProps> = ({
         title="Record return"
         subtitle="Log products returned at this stop"
         size="md"
-        footer={<div className="flex justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => { setReturnModalOpen(false); resetReturnForm(); }} disabled={savingReturn}>Cancel</FlatButton><FlatButton size="sm" loading={savingReturn} disabled={savingReturn || returnTotal <= 0} onClick={async () => {
+        footer={<div className="flex justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => { setReturnModalOpen(false); resetReturnForm(); }} disabled={savingReturn}>Cancel</FlatButton><FlatButton size="sm" loading={savingReturn} disabled={savingReturn || returnTotal <= 0 || !returnMethod} onClick={async () => {
           if (!selectedReturnProduct || !returnBasicQty || parseNumericInput(returnBasicQty) <= 0) { toast.error('Select a product and enter a positive basic quantity.'); return; }
+          if (!returnMethod) { toast.error('Select a refund method.'); return; }
           if (returnTotal <= 0) { toast.error('The calculated refund must be greater than zero.'); return; }
           setSavingReturn(true);
           const saved = await onRecordReturn(stop, { productId: selectedReturnProduct.productId, basicQtyReturned: parseNumericInput(returnBasicQty), ...(returnPackagingQty && { packagingQtyReturned: parseNumericInput(returnPackagingQty) }), refundAmount: returnTotal, ...(returnMethod && { refundMethod: returnMethod as PaymentMethod }), ...(returnReason.trim() ? { reason: returnReason.trim() } : {}) });

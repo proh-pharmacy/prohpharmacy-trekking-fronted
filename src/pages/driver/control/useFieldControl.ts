@@ -392,8 +392,8 @@ export function useFieldControl(token: string) {
       fieldStore.queue(token),
       fieldStore.photoQueue(token),
     ]);
-    if (pendingActions.some((action) => action.status === 'pending') || pendingPhotos.some((photo) => photo.status === 'pending')) {
-      throw new Error('Pending offline work could not be synced. Try Sync again before completing the trek.');
+    if (pendingActions.some((action) => action.status !== 'synced') || pendingPhotos.some((photo) => photo.status !== 'uploaded')) {
+      throw new Error('Some offline work is still awaiting sync or needs attention. Sync all queued work before completing the trek.');
     }
 
     const completed = await fieldApi.completeTrek(token);

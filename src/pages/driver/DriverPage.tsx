@@ -36,7 +36,7 @@ type DeliveryRow = {
 };
 
 type CustomerListRow = FieldCustomer & { syncStatus?: 'pending' | 'conflict'; syncReason?: string };
-type ProductLedgerRow = DriverStopProduct & { queuedSale?: QueuedAction };
+type ProductLedgerRow = DriverStopProduct & { queuedSale?: QueuedAction; displayRow?: Partial<DeliveryRow> };
 type ReturnLedgerRow = DriverReturn & { queuedReturn?: QueuedAction; queuedVoid?: QueuedAction };
 
 function customerForModal(customer: FieldCustomer, districts: { id: string; name: string; regionId: string }[]): Customer {
@@ -216,7 +216,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
     };
   };
   const productRows: ProductLedgerRow[] = [
-    ...stop.products,
+    ...stop.products.map((product) => ({ ...product, displayRow: displayRowFor(product) })),
     ...queuedSales.map((action): ProductLedgerRow => {
       const product = products.find((item) => item.id === action.payload.productId);
       return {
@@ -261,7 +261,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
         queuedVoid: queuedVoids.find((item) => item.payload.returnClientId === action.clientId),
       };
     }),
-  ].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
+  ].sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
 
   return (
     <div className="px-4 sm:px-5 py-3">
@@ -294,7 +294,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
-        {queuedStop && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
+        {queuedStop && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
       </div>
 
@@ -363,11 +363,11 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           columns={[
             { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-semibold text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
             { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
-            { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
-            { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : displayRowFor(product).paymentMethod))?.label || '—'}</span> },
-            { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : displayRowFor(product)))}</span> },
+            { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
+            { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : (product.displayRow ?? displayRowFor(product)).paymentMethod))?.label || '—'}</span> },
+            { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product)))}</span> },
             { field: 'actions', header: 'Record', body: (product) => {
-              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button></div>;
+              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button></div>;
               const pending = pendingDeliveryFor(product);
               return pending.length ? (
                 <div className="flex flex-col items-start gap-1">
@@ -376,7 +376,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
                   </span>
                   <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onCancelQueuedDelivery(product, pending)}>Cancel</button>
                 </div>
-              ) : <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Use Unplanned sale action' : 'Record delivery'} aria-label={`Record ${product.productName} delivery`} disabled={locked || product.isUnplanned} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>;
+              ) : <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Edit unplanned sale' : 'Record delivery'} aria-label={`${product.isUnplanned ? 'Edit' : 'Record'} ${product.productName} delivery`} disabled={locked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>;
             } },
           ]}
         />
@@ -400,7 +400,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
             { field: 'actions', header: 'Action', body: (item) => {
               if (item.queuedReturn || item.queuedVoid) {
                 const action = item.queuedReturn || item.queuedVoid!;
-                return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${action.status === 'conflict' ? 'text-red-accent' : 'text-portal-orange'}`}>{action.status === 'conflict' ? 'Needs review' : item.queuedVoid ? 'Removal pending' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onRemoveQueued(action.clientId)}>Cancel</button></div>;
+                return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${action.status === 'conflict' ? 'text-red-accent' : 'text-portal-orange'}`}>{action.status === 'conflict' ? 'Needs review' : item.queuedVoid ? 'Removal pending' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(action.clientId)}>Cancel</button></div>;
               }
               return !locked ? <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-accent/10 hover:text-red-accent" title="Remove return" aria-label={`Remove return for ${item.productName}`} onClick={() => setReturnToRemove({ stopId: stop.stopId, returnId: item.returnId, productName: item.productName })}><i className="pi pi-trash text-xs" /></button> : null;
             } },
@@ -759,7 +759,7 @@ export const DriverPage: React.FC = () => {
                 queue={queue}
                 enqueue={enqueue}
                 queuePhoto={queuePhoto}
-                request={assignedStopRequest}
+                request={trek.isLocked ? null : assignedStopRequest}
                 backendReady={controlAvailable}
                 modalOnly
                 fixedTrekId={trek.trekId}
@@ -790,7 +790,7 @@ export const DriverPage: React.FC = () => {
                         onRecordProduct={handleRecordProduct}
                         recordingProduct={recordingProduct}
                         onVoid={handleVoid}
-                        onFieldAction={(kind, stopId) => setAssignedStopRequest({ kind, stopId, nonce: Date.now() })}
+                        onFieldAction={(kind, stopId) => { if (!trek.isLocked) setAssignedStopRequest({ kind, stopId, nonce: Date.now() }); }}
                         products={products}
                         queuedReturns={queue.filter(
                           (action) =>
@@ -844,7 +844,7 @@ export const DriverPage: React.FC = () => {
                         onRecordProduct={handleRecordProduct}
                         recordingProduct={recordingProduct}
                         onVoid={handleVoid}
-                        onFieldAction={(kind) => setAssignedStopRequest({ kind, stopClientId: action.clientId, nonce: Date.now() })}
+                        onFieldAction={(kind) => { if (!trek.isLocked) setAssignedStopRequest({ kind, stopClientId: action.clientId, nonce: Date.now() }); }}
                         products={products}
                         queuedReturns={queuedReturnsForStop}
                         queuedVoids={queue.filter((item) => item.type === 'VoidReturn' && item.status !== 'synced'

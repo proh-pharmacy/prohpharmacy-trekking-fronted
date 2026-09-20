@@ -68,6 +68,20 @@ export function normalizeGhanaPhoneNumber(value: string | null | undefined): str
   return digits ? `+233${digits}` : '';
 }
 
+/** Convert an API/input date (YYYY-MM-DD) to a local calendar date. */
+export function parseDateInput(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (![year, month, day].every(Number.isFinite)) return null;
+  return new Date(year, month - 1, day);
+}
+
+/** Format a calendar date without a timezone shift for API date fields. */
+export function formatDateInput(value: Date | null | undefined): string {
+  if (!value || Number.isNaN(value.getTime())) return '';
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
 // Abbreviated for stat tiles: 1B / 1.2M / 123.4K / 1,234.56
 // Always pair with title={fmtGhs(amount)} for the full value on hover
 export function fmtGhsShort(amount: number): string {

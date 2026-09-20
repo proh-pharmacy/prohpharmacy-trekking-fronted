@@ -72,7 +72,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
           ${errorMessage ? '!border-red-500' : ''}
           ${inputClassName}
         `}
-        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white p-datepicker-${effectiveSize} ${panelClassName}`}
+        panelClassName={`rounded shadow-2xl !z-[2100] !bg-portal-surface !border !border-portal-border !text-white p-datepicker-${effectiveSize} ${panelClassName}`}
         {...props}
       />
 

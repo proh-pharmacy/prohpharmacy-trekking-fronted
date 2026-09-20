@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
-import { FlatButton, FlatDropdown, FlatAsyncSelect } from '../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown, FlatAsyncSelect } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay';
 import { reportsApi, organisationApi, type ProductReportItem } from '../../../api-client';
-import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
+import { fmtGhs, fmtGhsShort, formatDateInput, parseDateInput } from '../../../lib/utils';
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -233,13 +233,11 @@ export const ProductsReportPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">From</label>
-              <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent" />
+              <FlatDatePicker size="sm" value={parseDateInput(exportFrom)} onChange={(value) => setExportFrom(formatDateInput(value))} />
             </div>
             <div>
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">To</label>
-              <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent" />
+              <FlatDatePicker size="sm" value={parseDateInput(exportTo)} onChange={(value) => setExportTo(formatDateInput(value))} />
             </div>
           </div>
           <div>

@@ -4,6 +4,7 @@ import { FlatModal } from '../../../../components/overlay';
 import {
   FlatButton,
   FlatInputText,
+  FlatDatePicker,
   FlatDropdown,
   FlatSwitch,
   FlatMultiSelect,
@@ -11,7 +12,7 @@ import {
 import { staffApi, type Branch, type Role, type CreateStaffResponse } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
-import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
+import { formatDateInput, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber, parseDateInput } from '../../../../lib/utils';
 
 const createStaffSchema = z.object({
   firstName:    z.string().min(1, 'First name is required'),
@@ -439,12 +440,11 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             size="sm"
             errorMessage={errors.branchId}
           />
-          <FlatInputText
+          <FlatDatePicker
             label="Joined Date"
-            type="date"
             required
-            value={joinedOn}
-            onChange={(e) => { setJoinedOn(e.target.value); clearError('joinedOn'); }}
+            value={parseDateInput(joinedOn)}
+            onChange={(value) => { setJoinedOn(formatDateInput(value)); clearError('joinedOn'); }}
             size="sm"
             errorMessage={errors.joinedOn}
           />

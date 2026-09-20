@@ -115,6 +115,10 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
     ? (parseNumericInput(values.basicQty) * Number(selectedProduct.basicUnitPrice || 0))
       + (parseNumericInput(values.packagingQty) * Number(selectedProduct.packagingUnitPrice || 0))
     : 0;
+  const saleAmountPaid = values.amount?.trim() ? parseNumericInput(values.amount) : null;
+  const saleBalance = saleAmountPaid == null || !Number.isFinite(saleAmountPaid)
+    ? 0
+    : Math.max(0, calculatedSaleAmount - saleAmountPaid);
   const selectedStop = values.stopId ?? '';
   const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
   const choosePhoto = (setter: (file: File | null) => void, previewSetter: (preview: string | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +135,7 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
   async function save() {
     try {
       setSaving(true);
+      if (trek.isLocked && kind !== 'customer') throw new Error('This trek is completed and no further changes can be made.');
       if ((values.notes?.length ?? 0) > 500) throw new Error('Notes or reason must be at most 500 characters.');
       if (kind === 'customer') {
         if (!values.businessName?.trim() || !values.primaryPhoneNumber?.trim() || !values.customerType ||
@@ -159,13 +164,14 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
           ...(values.notes && { notes: values.notes.trim() }), ...(gps && { gps }) });
       } else if (kind === 'sale' || kind === 'return') {
         if (!selectedStop || !values.productId || !values.basicQty || parseNumericInput(values.basicQty) <= 0) throw new Error('Select a stop, product and positive basic quantity.');
+        if (kind === 'return' && !values.paymentMethod) throw new Error('Select a refund method.');
         if (kind === 'return' && calculatedReturnAmount <= 0) throw new Error('The calculated refund must be greater than zero.');
         const stopReference = selectedStop.startsWith('client:') ? { stopClientId: selectedStop.slice(7) } : { stopId: selectedStop.slice(3) };
         if (kind === 'sale') {
           await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId, basicQtyDelivered: parseNumericInput(values.basicQty),
             ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
             ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
-            ...((values.amount ?? '').trim() ? { amtPaid: parseNumericInput(values.amount), balance: parseNumericInput(values.balance) } : {}),
+            ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
             ...(values.notes && { notes: values.notes.trim() }) });
         } else {
           const gps = await captureGps();
@@ -201,7 +207,7 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
       <p className="flex items-center gap-2 text-[11px] text-portal-muted"><i className="pi pi-database text-portal-accent" aria-hidden="true" />{backendReady ? 'Saved on this device · syncs when connected' : 'Saved on this device · upload when the backend is available'}</p>
     </div>}
     <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale', return: 'Record return' }[kind ?? 'customer']} size="md"
-      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (kind === 'return' && calculatedReturnAmount <= 0)}>Save action</FlatButton></>}>
+      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (trek.isLocked && kind !== 'customer') || (kind === 'sale' && calculatedSaleAmount <= 0) || (kind === 'return' && calculatedReturnAmount <= 0)}>Save action</FlatButton></>}> 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {kind === 'stop' && !customerChoices.length && <p className="col-span-full text-xs text-yellow-400">Customer list is empty. Download offline customers or register a new customer first.</p>}
         {(kind === 'sale' || kind === 'return') && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
@@ -255,9 +261,9 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
           {selectedProduct?.packagingUnitName && number('packagingQty', `${kind === 'sale' ? 'Packaging qty delivered' : 'Packaging qty returned'} (${selectedProduct.packagingUnitName})`)}
           {kind === 'sale' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
           {kind === 'return' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated return amount</span><span className="text-sm font-semibold text-portal-orange">{fmtGhs(calculatedReturnAmount)}</span></div>}
-          {select('paymentMethod', kind === 'sale' ? 'Payment method' : 'Refund method', options(PAYMENTS))}
+          {select('paymentMethod', kind === 'sale' ? 'Payment method' : 'Refund method', options(PAYMENTS), kind === 'return')}
           {kind === 'sale' && number('amount', 'Amount paid')}
-          {kind === 'sale' && number('balance', 'Balance')}
+          {kind === 'sale' && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>}
           {text('notes', kind === 'sale' ? 'Notes' : 'Reason')}
         </>}
       </div>

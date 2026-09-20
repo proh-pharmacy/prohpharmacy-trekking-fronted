@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
-import { FlatButton, FlatDropdown } from '../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay';
 import { type LedgerSummaryCustomer, customersApi, organisationApi } from '../../../api-client';
-import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
+import { fmtGhs, fmtGhsShort, formatDateInput, parseDateInput } from '../../../lib/utils';
 
 // ── Filter options ──────────────────────────────────────────────────────
 const HAS_BALANCE_OPTIONS = [
@@ -316,23 +316,13 @@ export const LedgerSummaryPage: React.FC = () => {
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
                 From <span className="font-normal normal-case">(optional)</span>
               </label>
-              <input
-                type="date"
-                value={exportFrom}
-                onChange={(e) => setExportFrom(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
-              />
+              <FlatDatePicker size="sm" value={parseDateInput(exportFrom)} onChange={(value) => setExportFrom(formatDateInput(value))} />
             </div>
             <div>
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
                 To <span className="font-normal normal-case">(optional)</span>
               </label>
-              <input
-                type="date"
-                value={exportTo}
-                onChange={(e) => setExportTo(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
-              />
+              <FlatDatePicker size="sm" value={parseDateInput(exportTo)} onChange={(value) => setExportTo(formatDateInput(value))} />
             </div>
           </div>
 

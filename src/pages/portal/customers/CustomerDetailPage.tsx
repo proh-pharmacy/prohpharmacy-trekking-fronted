@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
-import { FlatButton, FlatDropdown } from '../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown } from '../../../components/flat-form';
 import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import {
@@ -15,7 +15,7 @@ import {
   organisationApi,
 } from '../../../api-client';
 import { CustomerModal, CustomerLocationModal } from './components/CustomerModal';
-import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
+import { fmtGhs, fmtGhsShort, formatDateInput, parseDateInput } from '../../../lib/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -88,34 +88,6 @@ export const CustomerDetailPage: React.FC = () => {
   // ── Customer state ─────────────────────────────────────────────────
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uploadingPremisesPhoto, setUploadingPremisesPhoto] = useState(false);
-  const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
-
-  const handlePremisesPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file || !customerId) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Choose a JPEG, PNG, or WebP photo.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Premises photo must be 5 MB or smaller.');
-      return;
-    }
-    setUploadingPremisesPhoto(true);
-    try {
-      const result = await customersApi.uploadPremisesPhoto(customerId, file);
-      setCustomer((current) => current ? { ...current, premisesPhotoUrl: result.premisesPhotoUrl } : current);
-      resetTableData();
-      toast.success('Premises photo uploaded.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || error.response?.data?.detail || 'Could not upload premises photo.');
-    } finally {
-      setUploadingPremisesPhoto(false);
-    }
-  };
-
   // ── Ledger totals (populated via dataMapper side effect) ───────────
   const [totals, setTotals] = useState({ totalDebits: 0, totalCredits: 0, currentBalance: 0 });
   const [refreshTick, setRefreshTick] = useState(0);
@@ -375,10 +347,7 @@ export const CustomerDetailPage: React.FC = () => {
   const typeLabel = CUSTOMER_TYPE_LABELS[customer.customerType] ?? customer.customerType;
 
   const infoTiles = [
-    { label: 'Phone', value: customer.primaryPhoneNumber },
     { label: 'WhatsApp', value: customer.whatsAppNumber },
-    { label: 'Primary Contact', value: customer.primaryPerson?.fullName },
-    { label: 'Branch', value: customer.owningBranchName },
   ].filter((t) => t.value);
 
   return (
@@ -407,6 +376,16 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {customer.primaryPhoneNumber && (
+            <FlatButton
+              variant="outline"
+              size="sm"
+              leftIcon="pi pi-phone"
+              onClick={() => { window.location.href = `tel:${customer.primaryPhoneNumber}`; }}
+            >
+              Call
+            </FlatButton>
+          )}
           <FlatButton
             variant="outline"
             size="sm"
@@ -438,30 +417,14 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       )}
 
-      <section className="bg-portal-surface border border-portal-border/60 p-3 sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xs font-semibold text-white">Business premises</h2>
-            <p className="mt-1 text-[11px] text-portal-muted">JPEG, PNG, or WebP · up to 5 MB</p>
-          </div>
-          <FlatButton
-            size="sm"
-            variant="outline"
-            leftIcon="pi pi-camera"
-            loading={uploadingPremisesPhoto}
-            disabled={uploadingPremisesPhoto}
-            onClick={() => premisesPhotoInputRef.current?.click()}
-          >
-            {customer.premisesPhotoUrl ? 'Replace photo' : 'Upload photo'}
-          </FlatButton>
-        </div>
-        <input ref={premisesPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handlePremisesPhotoChange(event)} />
-        {customer.premisesPhotoUrl ? (
+      {customer.premisesPhotoUrl && (
+        <section className="bg-portal-surface border border-portal-border/60 p-3 sm:p-4">
+          <h2 className="text-xs font-semibold text-white">Business premises</h2>
           <a href={customer.premisesPhotoUrl} target="_blank" rel="noreferrer" className="mt-3 block w-fit">
             <img src={customer.premisesPhotoUrl} alt={`${customer.businessName} premises`} className="h-40 max-w-full rounded object-cover" />
           </a>
-        ) : <p className="mt-3 text-xs text-portal-muted">No premises photo uploaded.</p>}
-      </section>
+        </section>
+      )}
 
       {/* ── Balance summary tiles ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -540,23 +503,13 @@ export const CustomerDetailPage: React.FC = () => {
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
                 From
               </label>
-              <input
-                type="date"
-                value={exportFrom}
-                onChange={(e) => setExportFrom(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
-              />
+              <FlatDatePicker size="sm" value={parseDateInput(exportFrom)} onChange={(value) => setExportFrom(formatDateInput(value))} />
             </div>
             <div>
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
                 To
               </label>
-              <input
-                type="date"
-                value={exportTo}
-                onChange={(e) => setExportTo(e.target.value)}
-                className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
-              />
+              <FlatDatePicker size="sm" value={parseDateInput(exportTo)} onChange={(value) => setExportTo(formatDateInput(value))} />
             </div>
           </div>
         </div>
@@ -698,12 +651,7 @@ export const CustomerDetailPage: React.FC = () => {
             <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
               Date <span className="text-portal-muted font-normal normal-case">(optional)</span>
             </label>
-            <input
-              type="date"
-              value={addRecordedAt}
-              onChange={(e) => setAddRecordedAt(e.target.value)}
-              className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
-            />
+            <FlatDatePicker size="sm" value={parseDateInput(addRecordedAt)} onChange={(value) => setAddRecordedAt(formatDateInput(value))} />
           </div>
         </div>
       </FlatModal>
