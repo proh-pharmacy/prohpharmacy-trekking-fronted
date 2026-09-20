@@ -56,31 +56,39 @@ function NavRailButton({
   label,
   active,
   onClick,
+  mobile = false,
+  expanded,
+  controls,
 }: {
   icon: string;
   label: string;
   active: boolean;
   onClick: () => void;
+  mobile?: boolean;
+  expanded?: boolean;
+  controls?: string;
 }) {
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active}
+      aria-expanded={expanded}
+      aria-controls={controls}
       onClick={onClick}
-      className={`group relative flex h-[72px] w-full flex-col items-center justify-center gap-1 px-0.5 text-center transition-all sm:h-[94px] sm:gap-1.5 sm:px-1 ${active
+      className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 text-center transition-all ${mobile ? 'h-16 flex-1 px-0.5' : 'h-[72px] w-full px-0.5 sm:h-[94px] sm:gap-1.5 sm:px-1'} ${active
           ? 'bg-portal-surface/90 text-white'
           : 'text-portal-muted hover:bg-white/[0.04] hover:text-portal-text'
         }`}
     >
       <i
-        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 sm:text-2xl ${active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
+        className={`pi ${icon} text-lg transition-transform group-hover:scale-110 ${mobile ? '' : 'sm:text-2xl'} ${active ? 'text-white drop-shadow-[0_0_8px_rgba(65,204,132,0.6)]' : 'text-portal-muted'
           }`}
         aria-hidden="true"
       />
-      <span className="text-[9px] font-semibold leading-tight tracking-wide sm:text-[11px]">{label}</span>
+      <span className={`font-semibold leading-tight tracking-wide ${mobile ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'}`}>{label}</span>
       {active && (
-        <span className="absolute bottom-2.5 h-1 w-7 rounded-full bg-portal-accent shadow-[0_0_8px_var(--color-portal-accent)]" />
+        <span className={`absolute h-1 w-7 rounded-full bg-portal-accent shadow-[0_0_8px_var(--color-portal-accent)] ${mobile ? 'bottom-0.5' : 'bottom-2.5'}`} />
       )}
     </button>
   );
@@ -212,8 +220,51 @@ export function DriverDashboard({
     }
   };
 
+  const moreMenuContents = (includeMap: boolean) => (
+    <>
+      <div className="mb-2.5 flex items-center justify-between border-b border-portal-border/50 pb-2 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
+        <span className="text-portal-text">Field Operations</span>
+        <button
+          type="button"
+          onClick={() => setMoreOpen(false)}
+          aria-label="Close more actions"
+          className="rounded p-1 text-portal-muted hover:bg-white/[0.08] hover:text-white"
+        >
+          <i className="pi pi-times text-xs" />
+        </button>
+      </div>
+
+      <div className="space-y-0.5">
+        {includeMap && (
+          <ActionDrawerLink icon="pi-map" label="Map" onClick={() => { setActiveView('map'); setMoreOpen(false); }} />
+        )}
+        <ActionDrawerLink icon="pi-bolt" label="Battery & vehicle" onClick={() => { setActiveView('vehicle'); setMoreOpen(false); }} />
+        <ActionDrawerLink icon="pi-plus-circle" label="Field actions" onClick={() => { setActiveView('actions'); setMoreOpen(false); }} />
+        <ActionDrawerLink icon="pi-database" label="Offline & sync center" badge={pendingCount || undefined} onClick={() => { setActiveView('offline'); setMoreOpen(false); }} />
+      </div>
+
+      <div className="my-2 border-t border-portal-border/50" />
+
+      <div className="space-y-1">
+        <ActionDrawerLink
+          icon="pi-compass"
+          label={reporting ? 'Updating location…' : 'Update GPS location'}
+          disabled={!online || reporting}
+          onClick={() => void reportLocation()}
+        />
+        <ActionDrawerLink
+          icon="pi-exclamation-triangle"
+          label="SOS Emergency Alert"
+          danger
+          disabled={!online}
+          onClick={() => { setConfirmSos(true); setMoreOpen(false); }}
+        />
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-portal-canvas">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-portal-canvas">
       {/* Top Application Bar */}
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -268,7 +319,7 @@ export function DriverDashboard({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Navigation Rail (matches image) */}
         <aside
-          className="relative z-[1000] flex h-full w-[64px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:w-[96px]"
+          className="relative z-[1000] hidden h-full w-[96px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:flex"
           aria-label="Desktop control rail"
         >
           {/* Back Arrow Button */}
@@ -357,73 +408,12 @@ export function DriverDashboard({
             className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
               }`}
           >
-            <div className="mb-2.5 flex items-center justify-between border-b border-portal-border/50 pb-2 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
-              <span className="flex items-center gap-1.5 text-white">
-                <span>Field Operations</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setMoreOpen(false)}
-                aria-label="Close more actions"
-                className="rounded p-1 text-portal-muted hover:bg-white/[0.08] hover:text-white"
-              >
-                <i className="pi pi-times text-xs" />
-              </button>
-            </div>
-
-            <div className="space-y-0.5">
-              <ActionDrawerLink
-                icon="pi-bolt"
-                label="Battery & vehicle"
-                onClick={() => {
-                  setActiveView('vehicle');
-                  setMoreOpen(false);
-                }}
-              />
-              <ActionDrawerLink
-                icon="pi-plus-circle"
-                label="Field actions"
-                onClick={() => {
-                  setActiveView('actions');
-                  setMoreOpen(false);
-                }}
-              />
-              <ActionDrawerLink
-                icon="pi-database"
-                label="Offline & sync center"
-                badge={pendingCount || undefined}
-                onClick={() => {
-                  setActiveView('offline');
-                  setMoreOpen(false);
-                }}
-              />
-            </div>
-
-            <div className="my-2 border-t border-portal-border/50" />
-
-            <div className="space-y-1">
-              <ActionDrawerLink
-                icon="pi-compass"
-                label={reporting ? 'Updating location…' : 'Update GPS location'}
-                disabled={!online || reporting}
-                onClick={() => void reportLocation()}
-              />
-              <ActionDrawerLink
-                icon="pi-exclamation-triangle"
-                label="SOS Emergency Alert"
-                danger
-                disabled={!online}
-                onClick={() => {
-                  setConfirmSos(true);
-                  setMoreOpen(false);
-                }}
-              />
-            </div>
+            {moreMenuContents(false)}
           </div>
         </aside>
 
         {/* Center Workspace (Desktop SPA Area) */}
-        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-portal-canvas p-2 sm:p-5" role="tabpanel">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-portal-canvas p-2 sm:p-5" role="tabpanel">
           {/* ─────────────────────────────────────────────────────────────────
               1. OVERVIEW TELEMETRY COCKPIT (Matches user design image)
               ───────────────────────────────────────────────────────────────── */}
@@ -923,6 +913,34 @@ export function DriverDashboard({
           )}
         </main>
       </div>
+
+      {/* Mobile navigation stays in view while the selected page scrolls. */}
+      <nav
+        role="tablist"
+        aria-label="Field navigation"
+        className="relative z-[1200] flex shrink-0 items-stretch border-t border-portal-border/60 bg-portal-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+      >
+        <NavRailButton mobile icon="pi-gauge" label="Overview" active={activeView === 'dashboard' || activeView === 'overview'} onClick={() => { setActiveView('dashboard'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon="pi-map-marker" label="Stops" active={activeView === 'assigned'} onClick={() => { setActiveView('assigned'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon="pi-sitemap" label="Treks" active={activeView === 'treks'} onClick={() => { setActiveView('treks'); setMoreOpen(false); }} />
+        <NavRailButton mobile icon="pi-users" label="Customers" active={activeView === 'customers'} onClick={() => { setActiveView('customers'); setMoreOpen(false); }} />
+        <NavRailButton
+          mobile
+          icon="pi-ellipsis-h"
+          label="More"
+          active={moreOpen || ['map', 'vehicle', 'actions', 'offline'].includes(activeView)}
+          expanded={moreOpen}
+          controls="mobile-action-drawer"
+          onClick={() => setMoreOpen((open) => !open)}
+        />
+        <div
+          id="mobile-action-drawer"
+          aria-hidden={!moreOpen}
+          className={`absolute bottom-[calc(100%+0.5rem)] right-2 z-[1300] w-[min(17rem,calc(100vw-1rem))] max-h-[min(65dvh,26rem)] origin-bottom-right overflow-y-auto rounded border border-portal-border bg-portal-surface p-3 shadow-2xl transition-all duration-200 ${moreOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-2 pointer-events-none opacity-0'}`}
+        >
+          {moreMenuContents(true)}
+        </div>
+      </nav>
 
       {/* SOS Alert Confirmation Modal */}
       <FlatModal

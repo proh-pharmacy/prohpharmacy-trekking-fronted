@@ -561,7 +561,7 @@ export const DriverPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-portal-canvas flex items-center justify-center">
+      <div className="h-dvh bg-portal-canvas flex items-center justify-center">
         <span className="text-xs text-portal-muted flex items-center gap-2">
           <i className="pi pi-spin pi-spinner" /> Loading...
         </span>
@@ -571,7 +571,7 @@ export const DriverPage: React.FC = () => {
 
   if (!trek) {
     return (
-      <div className="min-h-screen bg-portal-canvas flex items-center justify-center p-6">
+      <div className="h-dvh bg-portal-canvas flex items-center justify-center p-6">
         <div className="text-center">
           <p className="text-sm font-semibold text-portal-text mb-1">Field data unavailable</p>
           <p className="text-xs text-portal-muted">{error || 'Connect once to download this trek.'}</p>
@@ -626,8 +626,8 @@ const isStopRecorded = (s: DriverStop) =>
     s.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
 
   return (
-    <div className="min-h-screen bg-portal-canvas flex flex-col">
-      <div className="min-h-screen w-full">
+    <div className="flex h-dvh flex-col overflow-hidden bg-portal-canvas">
+      <div className="min-h-0 w-full flex-1">
         <DriverDashboard
           trek={trek}
           customers={customers}
