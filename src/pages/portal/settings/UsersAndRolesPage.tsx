@@ -626,7 +626,7 @@ export const UsersAndRolesPage: React.FC = () => {
               <div className="text-portal-text text-xs font-semibold truncate group-hover:text-portal-accent transition-colors">
                 {user.fullName}
               </div>
-              <div className="text-[11px] text-portal-accent font-mono truncate">{user.email}</div>
+              <div className="text-[11px] text-portal-muted font-mono truncate">{user.email}</div>
             </div>
           );
         },
