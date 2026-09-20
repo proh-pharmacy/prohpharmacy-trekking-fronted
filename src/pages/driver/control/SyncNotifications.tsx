@@ -103,7 +103,7 @@ export function SyncNotifications({ queue, photos, trek, customers, products, on
         className={`relative flex h-10 w-10 items-center justify-center rounded transition-colors ${open ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.08] hover:text-white'}`}
       >
         <i className="pi pi-bell text-base" aria-hidden="true" />
-        {attentionCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-portal-accent px-0.5 text-[10px] font-semibold leading-none text-portal-canvas">{attentionCount > 99 ? '99+' : attentionCount}</span>}
+        {attentionCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-accent px-0.5 text-[10px] font-semibold leading-none text-white">{attentionCount > 9 ? '9+' : attentionCount}</span>}
       </button>
 
       {open && (
