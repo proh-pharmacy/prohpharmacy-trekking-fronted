@@ -98,7 +98,7 @@ export const RegisterDriverModal: React.FC<RegisterDriverModalProps> = ({ visibl
               )}
             </div>
           )}
-          size="sm"
+          size="md"
         />
 
         <div

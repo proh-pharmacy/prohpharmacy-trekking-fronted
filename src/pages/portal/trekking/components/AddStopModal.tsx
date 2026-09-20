@@ -217,7 +217,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
             options={regionOptions}
             value={trekRegionId}
             disabled
-            size="sm"
+            size="md"
           />
           <FlatDropdown
             label="District"
@@ -226,7 +226,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
             onChange={(v: any) => setDistrictId(v?.value !== undefined ? v.value : v)}
             placeholder="All Districts"
             disabled={!trekRegionId || loadingDistricts}
-            size="sm"
+            size="md"
           />
         </div>}
 
@@ -262,11 +262,11 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                   )}
                 </div>
               )}
-              size="sm"
+              size="md"
               errorMessage={errors.customerAccountId}
             />
           </div>
-          <FlatInputNumber label="Sequence" required min={1} useGrouping={false} size="sm"
+          <FlatInputNumber label="Sequence" required min={1} useGrouping={false} size="md"
             value={sequence} onChange={(value) => setSequence(value ?? 0)} errorMessage={errors.sequence} />
         </div>
 
@@ -309,7 +309,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                         )}
                       </div>
                     )}
-                    size="sm"
+                    size="md"
                     clearable={false}
                   />
                 </div>
@@ -318,13 +318,13 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                   aria-hidden={!row.hasPackagingUnit}
                 >
                   <FlatInputNumber id={`stop-packaging-${i}`} label={row.product?.packagingUnitName || 'Packaging unit'}
-                    min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
+                    min={0} maxFractionDigits={2} useGrouping={false} size="md" placeholder="0"
                     value={row.plannedPackagingQuantity === '' ? null : Number(row.plannedPackagingQuantity)}
                     onChange={(value) => updateProductRow(i, { plannedPackagingQuantity: value == null ? '' : String(value) })}
                     disabled={!row.hasPackagingUnit} />
                 </div>
                 <FlatInputNumber id={`stop-basic-${i}`} label={row.product?.basicUnitName || 'Basic unit'}
-                  min={0} maxFractionDigits={2} useGrouping={false} size="sm" placeholder="0"
+                  min={0} maxFractionDigits={2} useGrouping={false} size="md" placeholder="0"
                   value={row.plannedBasicQuantity === '' ? null : Number(row.plannedBasicQuantity)}
                   onChange={(value) => updateProductRow(i, { plannedBasicQuantity: value == null ? '' : String(value) })} />
                 {products.length > 1 && (
@@ -344,7 +344,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
         </div>
 
         <FlatTextarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)}
-          placeholder="Optional notes for this stop..." rows={2} maxLength={500} size="sm" />
+          placeholder="Optional notes for this stop..." rows={2} maxLength={500} size="md" />
       </div>
     </FlatModal>
   );

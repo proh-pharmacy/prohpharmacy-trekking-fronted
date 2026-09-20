@@ -169,7 +169,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
             placeholder="e.g. GR-1234-24"
             value={registrationNumber}
             onChange={(e) => setRegistrationNumber(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={30}
             required
           />
@@ -187,7 +187,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           placeholder="e.g. Sprinter Van 1"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          size="sm"
+          size="md"
           maxLength={80}
           required
         />
@@ -204,7 +204,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           placeholder={loadingRegions ? 'Loading regions...' : 'Select trekking region'}
           filter
           filterPlaceholder="Search region..."
-          size="sm"
+          size="md"
           required
         />
 
@@ -217,7 +217,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
           filter
           filterPlaceholder="Search branch..."
           showClear
-          size="sm"
+          size="md"
           disabled={!regionId}
         />
 
@@ -227,7 +227,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
             placeholder="e.g. Mercedes-Benz"
             value={make}
             onChange={(e) => setMake(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={80}
             required
           />
@@ -236,7 +236,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
             placeholder="e.g. Sprinter"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={80}
             required
           />
@@ -251,14 +251,14 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
             placeholder="Select year"
             filter
             filterPlaceholder="Search year..."
-            size="sm"
+            size="md"
           />
           <FlatInputText
             label="Colour"
             placeholder="e.g. White"
             value={colour}
             onChange={(e) => setColour(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={50}
             required
           />

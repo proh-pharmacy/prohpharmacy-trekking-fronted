@@ -452,7 +452,6 @@ export const ProductsPage: React.FC = () => {
           dataSourceUrl="/products"
           columns={packagingColumns}
           heading="Packaging Units"
-          headerNotes="Assign a packaging unit and price to each product. Units are shared with the Basic Units tab."
           hasAction
           actionName="Add Unit"
           onAction={() => { setEditingUnit(null); setUnitModalVisible(true); }}

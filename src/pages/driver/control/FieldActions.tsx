@@ -63,7 +63,7 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [customerGps, setCustomerGps] = useState<Awaited<ReturnType<typeof captureGps>>>(null);
   const set = (field: string, value: string) => setValues((prev) => ({ ...prev, [field]: value }));
-  const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="sm" />;
+  const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="md" />;
   const number = (field: string, label: string, required = false, min = 0) => (
     <FlatInputNumber
       id={`${kind ?? 'action'}-${field}`}
@@ -76,10 +76,10 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
       maxFractionDigits={2}
       useGrouping
       required={required}
-      size="sm"
+      size="md"
     />
   );
-  const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="sm" />;
+  const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="md" />;
   const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setKind(next); };
   const requestedKind = request?.kind;
   const requestedTrekId = request?.trekId;

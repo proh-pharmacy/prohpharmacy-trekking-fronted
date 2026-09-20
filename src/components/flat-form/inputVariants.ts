@@ -15,7 +15,7 @@ export interface InputSizeConfig {
  * - 'lg': 50px height (large/spacious)
  */
 export const getInputSizeClasses = (
-  size: FlatInputSize = 'sm',
+  size: FlatInputSize = 'md',
   hasLeftIcon = false,
   hasRightIcon = false
 ): InputSizeConfig => {

@@ -68,7 +68,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   clearable = true,
   className = '',
   fullWidth = true,
-  size = 'sm',
+  size = 'md',
   variant = 'dark',
   filter,
 }: FlatAsyncSelectProps<T>) {
@@ -94,7 +94,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const requestIdRef = useRef(0);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = size || 'sm';
+  const effectiveSize: FlatInputSize = size || 'md';
   const sizeConfig = getInputSizeClasses(effectiveSize);
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
@@ -351,7 +351,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         </label>
       )}
 
-      {/* Main Trigger (Matches 38px FlatDropdown exactly) */}
+      {/* Main Trigger (Matches the selected FlatDropdown size) */}
       <div
         id={inputId}
         ref={triggerRef}
@@ -416,7 +416,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             className="bg-portal-surface border border-portal-border rounded shadow-2xl overflow-hidden animate-scaleIn font-sans flex flex-col"
           >
             {/* Search Input Filter Container */}
-            <div className="p-2 border-b border-portal-border/60 bg-portal-canvas flex items-center gap-2 shrink-0">
+            <div className="px-2 border-b border-portal-border/60 bg-portal-canvas flex items-center gap-2 shrink-0">
               <i className="pi pi-search text-portal-muted text-xs shrink-0 pl-1" />
               <input
                 ref={searchInputRef}
@@ -424,7 +424,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="min-w-0 flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-portal-muted focus:ring-0"
+                className="h-[44px] min-w-0 flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button

@@ -444,7 +444,7 @@ export const CustomersPage: React.FC = () => {
           {importFile && <div className="border-t border-portal-border/50 pt-4">
             <p className="mb-3 text-[11px] text-portal-muted">{importHeaders.length ? `Detected ${importHeaders.length} headers and matched the available fields. You can adjust any mapping below.` : 'Map each field to the exact spreadsheet header.'}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {importFields.map((field) => <FlatDropdown key={field.key} label={`${field.label}${field.required ? ' *' : ''}`} options={[{ label: 'Not mapped', value: '' }, ...importHeaders.map((header) => ({ label: header, value: header }))]} value={importMapping[field.key] ?? ''} onChange={(value) => setImportMapping((current) => ({ ...current, [field.key]: value ?? '' }))} placeholder="Select spreadsheet column" size="sm" />)}
+            {importFields.map((field) => <FlatDropdown key={field.key} label={`${field.label}${field.required ? ' *' : ''}`} options={[{ label: 'Not mapped', value: '' }, ...importHeaders.map((header) => ({ label: header, value: header }))]} value={importMapping[field.key] ?? ''} onChange={(value) => setImportMapping((current) => ({ ...current, [field.key]: value ?? '' }))} placeholder="Select spreadsheet column" size="md" />)}
             </div>
           </div>}
         </div>

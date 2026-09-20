@@ -232,7 +232,6 @@ export const FleetPage: React.FC = () => {
         dataSourceUrl="/fleet/vehicles"
         columns={vehicleColumns}
         heading="Vehicle Fleet"
-        headerNotes="Manage vehicles, operational status, and staff assignments."
         hasAction
         actionName="Register Vehicle"
         onAction={() => { setEditingVehicle(null); setVehicleModalVisible(true); }}

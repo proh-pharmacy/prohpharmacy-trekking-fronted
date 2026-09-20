@@ -95,7 +95,6 @@ export interface FlatDataTableProps<TData> {
   secondaryActionIcon?: string;
   onSecondaryAction?: () => void;
   heading?: string | React.ReactNode;
-  headerNotes?: React.ReactNode;
   isFilterVisibleOnStart?: boolean;
   showErrorAsBanner?: boolean;
   emptyDataText?: string;
@@ -175,7 +174,6 @@ export function FlatDataTable<TData extends Record<string, any>>({
   secondaryActionIcon,
   onSecondaryAction,
   heading,
-  headerNotes,
   isFilterVisibleOnStart = false,
   showErrorAsBanner = true,
   emptyDataText = 'No records found.',
@@ -620,6 +618,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatInputText
             label={filter.label}
+            size="md"
             value={value || ''}
             onChange={(e) => handleFilterChange(filter.accessor, e.target.value)}
             placeholder={`Filter ${filter.label}`}
@@ -631,6 +630,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDropdown
             label={filter.label}
+            size="md"
             value={value !== undefined ? value : ''}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
@@ -646,6 +646,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatMultiSelect
             label={filter.label}
+            size="md"
             value={Array.isArray(value) ? value : value ? [value] : []}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
@@ -662,6 +663,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
+            size="md"
             value={value ? new Date(value) : null}
             onChange={(val) => handleFilterChange(filter.accessor, val ? new Date(val).toISOString() : null)}
             placeholder={`Pick ${filter.label}`}
@@ -674,6 +676,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
+            size="md"
             value={value}
             selectionMode="range"
             onChange={(val) => handleFilterChange(filter.accessor, val)}
@@ -687,6 +690,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
+            size="md"
             value={value ? new Date(value) : null}
             view="month"
             dateFormat="mm/yy"
@@ -709,7 +713,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
             optionLabel={filter.args?.optionLabel || 'name'}
             pageSize={filter.args?.pageSize || 20}
             clearable
-            size="sm"
+            size="md"
             onChange={(val) => handleFilterChange(filter.accessor, val ?? '')}
           />
         );
@@ -754,19 +758,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
         </div>
       )}
 
-      {/* 2. Flat Top Bar (Heading + Action + Header Notes) styled as header card */}
-      {(heading || hasAction || secondaryAction || headerNotes) && (
+      {/* 2. Flat Top Bar (Heading + Actions) styled as header card */}
+      {(heading || hasAction || secondaryAction) && (
         <div className="bg-portal-surface border border-portal-border/60 rounded p-3 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
             {typeof heading === 'string' ? (
               <h2 className="text-base sm:text-xl font-semibold tracking-tight text-portal-text">{heading}</h2>
             ) : (
               heading
-            )}
-            {headerNotes && (
-              <p className="text-[11px] sm:text-xs text-portal-muted max-w-2xl leading-relaxed mt-1">
-                {headerNotes}
-              </p>
             )}
           </div>
 
@@ -776,7 +775,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onSecondaryAction}
-                  className="px-4 py-2 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
+                  className="h-[44px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
                 >
                   {secondaryActionIcon && <i className={`${secondaryActionIcon} text-xs`} />}
                   {secondaryActionName}
@@ -788,7 +787,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     <button
                       type="button"
                       onClick={() => navigate(actionOptions.link)}
-                      className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                      className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
                       {actionName}
@@ -797,7 +796,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     <button
                       type="button"
                       onClick={onAction}
-                      className="px-4 py-2 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                      className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
                       {actionName}
@@ -824,7 +823,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(globalSearch)}
                   placeholder={filterablePlaceholder}
-                  className="w-full h-[38px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
+                  className="w-full h-[44px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-sm text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
                 />
                 {globalSearch && (
                   <button
@@ -843,17 +842,19 @@ export function FlatDataTable<TData extends Record<string, any>>({
               <button
                 type="button"
                 onClick={() => setIsFilterVisible(!isFilterVisible)}
+                aria-label="Filters"
+                aria-expanded={isFilterVisible}
                 className={cn(
-                  'h-[38px] px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 transition-colors cursor-pointer shrink-0',
+                  'h-[44px] w-[44px] sm:w-auto sm:px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0',
                   isFilterVisible
                     ? 'bg-portal-accent border-portal-accent text-portal-canvas'
                     : 'bg-portal-canvas border-portal-border text-white hover:border-portal-border/80'
                 )}
               >
                 <ListFilter className="w-4 h-4" />
-                <span>Filters</span>
+                <span className="hidden sm:inline">Filters</span>
                 {activeFiltersCount > 0 && (
-                  <span className="w-5 h-5 bg-portal-accent text-portal-canvas text-[10px] font-bold flex items-center justify-center rounded">
+                  <span className="hidden sm:flex w-5 h-5 bg-portal-accent text-portal-canvas text-[10px] font-bold items-center justify-center rounded">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -865,7 +866,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               type="button"
               title="Refresh Records"
               onClick={() => refetch()}
-              className="h-[38px] w-[38px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              className="h-[44px] w-[44px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
             >
               <RotateCcw className={cn('w-4 h-4', isBusy && 'animate-spin text-portal-accent')} />
             </button>

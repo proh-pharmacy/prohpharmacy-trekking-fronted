@@ -390,7 +390,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="e.g. Kwame"
             value={firstName}
             onChange={(e) => { setFirstName(e.target.value); clearError('firstName'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.firstName}
           />
           <FlatInputText
@@ -399,7 +399,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="e.g. Asante"
             value={lastName}
             onChange={(e) => { setLastName(e.target.value); clearError('lastName'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.lastName}
           />
         </div>
@@ -413,7 +413,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="k.asante@prohpharmacy.com"
             value={emailAddress}
             onChange={(e) => { setEmailAddress(e.target.value); clearError('emailAddress'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.emailAddress}
           />
           <FlatInputText
@@ -422,7 +422,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="+233 20 123 4567"
             value={phoneNumber}
             onChange={(e) => { setPhoneNumber(e.target.value); clearError('phoneNumber'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.phoneNumber}
           />
         </div>
@@ -435,7 +435,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             options={branchOptions}
             value={branchId}
             onChange={(val: any) => { setBranchId(val?.value !== undefined ? val.value : val); clearError('branchId'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.branchId}
           />
           <FlatInputText
@@ -444,7 +444,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             required
             value={joinedOn}
             onChange={(e) => { setJoinedOn(e.target.value); clearError('joinedOn'); }}
-            size="sm"
+            size="md"
             errorMessage={errors.joinedOn}
           />
         </div>
@@ -456,7 +456,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             placeholder="Auto-generated if omitted"
             value={employeeNumber}
             onChange={(e) => setEmployeeNumber(e.target.value)}
-            size="sm"
+            size="md"
             helperText="Leave blank to automatically assign the next sequential employee number."
           />
         </div>
@@ -499,7 +499,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
                   placeholder={`Defaults to "${autoDefaultPassword}" if omitted`}
                   value={initialPassword}
                   onChange={(e) => setInitialPassword(e.target.value)}
-                  size="sm"
+                  size="md"
                   helperText={`Min 8 chars. If left blank, will automatically default to "${autoDefaultPassword}".`}
                 />
                 <button

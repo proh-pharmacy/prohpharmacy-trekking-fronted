@@ -270,7 +270,7 @@ export const GrantStaffAccessModal: React.FC<GrantStaffAccessModalProps> = ({
               placeholder={`Defaults to "${autoDefaultPassword}" if omitted`}
               value={initialPassword}
               onChange={(e) => setInitialPassword(e.target.value)}
-              size="sm"
+              size="md"
               helperText={`Min 8 chars. If left blank, will automatically default to "${autoDefaultPassword}".`}
             />
             <button

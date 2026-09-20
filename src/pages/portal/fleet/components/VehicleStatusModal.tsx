@@ -76,7 +76,7 @@ export const VehicleStatusModal: React.FC<VehicleStatusModalProps> = ({ visible,
           options={STATUS_OPTIONS}
           onChange={(val: any) => setStatus(val?.value !== undefined ? val.value : val)}
           placeholder="Select status"
-          size="sm"
+          size="md"
         />
       </form>
     </FlatModal>

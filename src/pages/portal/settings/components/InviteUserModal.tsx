@@ -229,7 +229,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
               )}
             </div>
           )}
-          size="sm"
+          size="md"
         />
 
         {/* Step 2: Show details, role selector, and password (kept in DOM with opacity-0 to prevent modal resizing) */}
@@ -283,7 +283,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             onChange={(val) => setSelectedRoles(val || [])}
             options={roleOptions}
             placeholder="Select roles..."
-            size="sm"
+            size="md"
             display="chip"
             errorMessage={selectedStaff && selectedRoles.length === 0 ? 'At least one role is required.' : undefined}
           />
@@ -295,7 +295,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             placeholder="Defaults to firstnamelastname if omitted"
             value={initialPassword}
             onChange={(e) => setInitialPassword(e.target.value)}
-            size="sm"
+            size="md"
           />
         </div>
       </form>

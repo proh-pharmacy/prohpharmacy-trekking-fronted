@@ -519,7 +519,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             placeholder="e.g. Accra Pharmacy Ltd"
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={200}
             required
           />
@@ -528,7 +528,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             placeholder="e.g. Accra Pharma"
             value={tradingName}
             onChange={(e) => setTradingName(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={200}
           />
         </div>
@@ -542,7 +542,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             placeholder="Select type"
             filter
             filterPlaceholder="Search..."
-            size="sm"
+            size="md"
           />
         </div>
 
@@ -552,7 +552,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             placeholder="+233..."
             value={primaryPhone}
             onChange={(e) => setPrimaryPhone(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={30}
             required
           />
@@ -561,7 +561,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             placeholder="+233..."
             value={whatsAppNumber}
             onChange={(e) => setWhatsAppNumber(e.target.value)}
-            size="sm"
+            size="md"
             maxLength={30}
           />
         </div>
@@ -574,7 +574,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="First name"
                 value={repFirstName}
                 onChange={(e) => setRepFirstName(e.target.value)}
-                size="sm"
+                size="md"
                 maxLength={80}
                 required
               />
@@ -583,7 +583,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="Middle name"
                 value={repMiddleName}
                 onChange={(e) => setRepMiddleName(e.target.value)}
-                size="sm"
+                size="md"
                 maxLength={80}
               />
               <FlatInputText
@@ -591,7 +591,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="Last name"
                 value={repLastName}
                 onChange={(e) => setRepLastName(e.target.value)}
-                size="sm"
+                size="md"
                 maxLength={80}
                 required
               />
@@ -606,14 +606,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="Select role"
                 filter
                 filterPlaceholder="Search..."
-                size="sm"
+                size="md"
               />
               <FlatInputText
                 label="Phone"
                 placeholder="+233..."
                 value={repPhone}
                 onChange={(e) => setRepPhone(e.target.value)}
-                size="sm"
+                size="md"
                 maxLength={30}
                 required
               />
@@ -622,7 +622,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="GHA-..."
                 value={repGhanaCard}
                 onChange={(e) => setRepGhanaCard(e.target.value)}
-                size="sm"
+                size="md"
                 maxLength={30}
               />
             </div>
@@ -640,7 +640,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {driverMode ? (
-                <FlatInputText label="Region" value={customer?.primaryLocation?.regionName || driverMode.region?.name || ''} disabled size="sm" />
+                <FlatInputText label="Region" value={customer?.primaryLocation?.regionName || driverMode.region?.name || ''} disabled size="md" />
               ) : (
                 <FlatDropdown
                   label="Region"
@@ -650,7 +650,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   placeholder={loadingRegions ? 'Loading...' : 'Select region'}
                   filter
                   filterPlaceholder="Search region..."
-                  size="sm"
+                  size="md"
                 />
               )}
               <FlatDropdown
@@ -667,7 +667,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 }
                 filter
                 filterPlaceholder="Search district..."
-                size="sm"
+                size="md"
                 disabled={!locationRegionId && !driverMode}
               />
             </div>
@@ -682,7 +682,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               placeholder="12 Liberation Road, Accra"
               value={streetAddress}
               onChange={(e) => setStreetAddress(e.target.value)}
-              size="sm"
+              size="md"
               rows={2}
               maxLength={300}
             />
@@ -692,7 +692,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               placeholder="Next to Accra Mall, ground floor..."
               value={landmark}
               onChange={(e) => setLandmark(e.target.value)}
-              size="sm"
+              size="md"
               rows={2}
               maxLength={500}
             />
@@ -1070,15 +1070,15 @@ export const CustomerLocationModal: React.FC<CustomerLocationModalProps> = ({
   return <FlatModal visible={visible} onHide={() => !saving && onHide()} title={`${location ? 'Edit location' : 'Add additional location'}${customerName ? ` · ${customerName}` : ''}`} size="md"
     footer={<><FlatButton variant="ghost" size="sm" onClick={onHide} disabled={saving}>Cancel</FlatButton><FlatButton size="sm" onClick={submit} loading={saving} disabled={saving || capturing}>Save location</FlatButton></>}>
     <div className="space-y-3">
-      {!driverEdit && <FlatDropdown label="Location type" value={locationType} options={[{ label: 'Business premises', value: 'BusinessPremises' }, { label: 'Delivery location', value: 'DeliveryLocation' }, { label: 'Residential', value: 'Residential' }, { label: 'Other', value: 'Other' }]} onChange={(value: any) => setLocationType((value?.value ?? value) as LocationType)} size="sm" />}
+      {!driverEdit && <FlatDropdown label="Location type" value={locationType} options={[{ label: 'Business premises', value: 'BusinessPremises' }, { label: 'Delivery location', value: 'DeliveryLocation' }, { label: 'Residential', value: 'Residential' }, { label: 'Other', value: 'Other' }]} onChange={(value: any) => setLocationType((value?.value ?? value) as LocationType)} size="md" />}
       {regionLocked ? (
-        <FlatInputText label="Region" value={location?.regionName || region?.name || ''} disabled size="sm" />
+        <FlatInputText label="Region" value={location?.regionName || region?.name || ''} disabled size="md" />
       ) : (
-        <FlatDropdown label={`Region${districtRequired && !location ? ' *' : ''}`} value={regionId} options={regions.map((item) => ({ label: item.name, value: item.id }))} onChange={(value: any) => { setRegionId(value?.value ?? value ?? ''); setDistrictId(''); }} placeholder="Select region" filter size="sm" />
+        <FlatDropdown label={`Region${districtRequired && !location ? ' *' : ''}`} value={regionId} options={regions.map((item) => ({ label: item.name, value: item.id }))} onChange={(value: any) => { setRegionId(value?.value ?? value ?? ''); setDistrictId(''); }} placeholder="Select region" filter size="md" />
       )}
-      <FlatDropdown label={`District${districtRequired && !location ? ' *' : ''}`} value={districtId} options={availableDistricts.map((district) => ({ label: district.name, value: district.id }))} onChange={(value: any) => setDistrictId(value?.value ?? value ?? '')} placeholder="Select district" filter size="sm" disabled={!regionId && districtRequired} />
-      <FlatTextarea label="Street Address" value={streetAddress} onChange={(event) => setStreetAddress(event.target.value)} rows={2} maxLength={300} size="sm" />
-      <FlatTextarea label="Landmark & Directions" value={landmark} onChange={(event) => setLandmark(event.target.value)} rows={2} maxLength={500} size="sm" />
+      <FlatDropdown label={`District${districtRequired && !location ? ' *' : ''}`} value={districtId} options={availableDistricts.map((district) => ({ label: district.name, value: district.id }))} onChange={(value: any) => setDistrictId(value?.value ?? value ?? '')} placeholder="Select district" filter size="md" disabled={!regionId && districtRequired} />
+      <FlatTextarea label="Street Address" value={streetAddress} onChange={(event) => setStreetAddress(event.target.value)} rows={2} maxLength={300} size="md" />
+      <FlatTextarea label="Landmark & Directions" value={landmark} onChange={(event) => setLandmark(event.target.value)} rows={2} maxLength={500} size="md" />
       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
         <span className="text-[11px] text-portal-muted">{latitude !== null && longitude !== null ? `GPS captured · ±${(accuracy ?? 0).toFixed(1)}m` : online ? 'GPS is optional for an additional location.' : 'Saved offline and queued for sync.'}</span>
         <FlatButton variant="outline" size="sm" leftIcon="pi pi-map-marker" onClick={capture} loading={capturing} disabled={capturing}>{capturing ? 'Capturing...' : latitude !== null ? 'Recapture GPS' : 'Capture GPS'}</FlatButton>

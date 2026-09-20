@@ -208,7 +208,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
               options={headerOptions}
               onChange={(val: any) => setProductNameColumn(val?.value !== undefined ? val.value : val)}
               placeholder="Select column..."
-              size="sm"
+              size="md"
             />
           </div>
 
@@ -221,7 +221,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
               options={headerOptions}
               onChange={(val: string) => setBasicUnitColumn(val || '')}
               placeholder="Select column..."
-              size="sm"
+              size="md"
             />
           </div>
 
@@ -232,7 +232,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
             onChange={(val: string) => setBasicUnitPriceColumn(val || '')}
             placeholder="Defaults to 0"
             showClear
-            size="sm"
+            size="md"
           />
 
           <FlatDropdown
@@ -245,7 +245,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
             }}
             placeholder="No packaging unit"
             showClear
-            size="sm"
+            size="md"
           />
 
           <FlatDropdown
@@ -256,7 +256,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
             placeholder="Defaults to 0"
             showClear
             disabled={!packagingUnitColumn}
-            size="sm"
+            size="md"
           />
 
           <label className="flex items-start gap-2 text-xs text-portal-text cursor-pointer">

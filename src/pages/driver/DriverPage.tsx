@@ -420,13 +420,13 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Planned</span><span className="text-xs text-portal-text">{editingProduct.packagingUnitName && Number(editingProduct.plannedPackagingQuantity || 0) > 0 ? `${editingProduct.plannedPackagingQuantity} ${editingProduct.packagingUnitName} · ` : ''}{editingProduct.plannedBasicQuantity} {editingProduct.basicUnitName || 'basic units'}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Due</span><span className="text-xs text-portal-accent">{fmtGhs(Number(editingProduct.amountDue ?? 0))}</span></div></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FlatInputNumber id={`${editingProduct.stopProductId}-basic-driver-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />
-              {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />}
-              <FlatDropdown id={`${editingProduct.stopProductId}-payment-driver-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={row.paymentMethod} onChange={(value) => onRowChange(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={locked} size="sm" />
-              <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-driver-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.amtPaid)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={locked} />
+              <FlatInputNumber id={`${editingProduct.stopProductId}-basic-driver-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="md" value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />
+              {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="md" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />}
+              <FlatDropdown id={`${editingProduct.stopProductId}-payment-driver-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={row.paymentMethod} onChange={(value) => onRowChange(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={locked} size="md" />
+              <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-driver-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="md" value={numberInputValue(row.amtPaid)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={locked} />
             </div>
             <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedTotal)}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(balance)}</span></div></div>
-            <FlatInputText id={`${editingProduct.stopProductId}-notes-driver-modal`} label="Delivery note" value={row.notes} onChange={(event) => onRowChange(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
+            <FlatInputText id={`${editingProduct.stopProductId}-notes-driver-modal`} label="Delivery note" value={row.notes} onChange={(event) => onRowChange(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="md" />
           </div>
         </FlatModal>;
       })()}
@@ -897,7 +897,6 @@ const isStopRecorded = (s: DriverStop) =>
                   { field: 'actions', header: 'Action', body: (item) => item.syncStatus ? null : <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
                 heading={`Customers in ${trek.regionName}`}
-                headerNotes={<span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>}
                 hasAction
                 actionName="Add customer"
                 onAction={() => setCustomerRequest({ kind: 'customer', nonce: Date.now() })}
@@ -951,15 +950,6 @@ const isStopRecorded = (s: DriverStop) =>
                   },
                 ]}
                 heading={trekListTab === 'mine' ? 'Assigned treks' : `Treks in ${trek.regionName}`}
-                headerNotes={<div className="flex flex-col gap-1">
-                  {trekListTab === 'mine' && !assignedTreks.length ? (
-                    <span className="text-[11px] text-yellow-400">Assigned trek list not downloaded; showing your current trek.</span>
-                  ) : trekListTab === 'region' && !regionTreks.length ? (
-                    <span className="text-[11px] text-yellow-400">Regional list not downloaded; showing your assigned trek.</span>
-                  ) : (
-                    <span className="text-[11px] text-portal-muted">Saved on this device for offline use.</span>
-                  )}
-                </div>}
                 filterablePlaceholder="Search trek, driver or region..."
                 enableTableFilter
                 enablePaginator

@@ -42,7 +42,7 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = size || inputSize || 'sm';
+  const effectiveSize: FlatInputSize = size || inputSize || 'md';
   const sizeConfig = getInputSizeClasses(effectiveSize);
   const textareaSizeClasses = getTextareaSizeClasses(effectiveSize);
 

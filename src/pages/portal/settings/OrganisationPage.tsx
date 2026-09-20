@@ -459,7 +459,6 @@ export const OrganisationPage: React.FC = () => {
           dataSourceUrl="/organisation/branches"
           columns={branchColumns}
           heading="Branches & Dispatch Hubs"
-          headerNotes="Physical dispatch hubs, fulfillment points, and branch facilities."
           hasAction
           actionName="Add Branch"
           onAction={() => {
@@ -520,7 +519,6 @@ export const OrganisationPage: React.FC = () => {
           dataSourceUrl="/organisation/districts"
           columns={districtColumns}
           heading="Operational Districts"
-          headerNotes="District jurisdictions mapped to administrative regions across Ghana."
           hasAction
           actionName="Add District"
           onAction={() => setDistrictModalVisible(true)}
@@ -561,7 +559,6 @@ export const OrganisationPage: React.FC = () => {
           dataSourceUrl="/organisation/regions"
           columns={regionColumns}
           heading="Administrative Regions"
-          headerNotes="Ghana's 16 pre-seeded administrative regions."
           hasAction={false}
           filterable="search"
           filterablePlaceholder="Search regions by name or code..."

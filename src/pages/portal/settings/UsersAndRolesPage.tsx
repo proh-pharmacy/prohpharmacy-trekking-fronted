@@ -933,7 +933,6 @@ export const UsersAndRolesPage: React.FC = () => {
           dataSourceUrl="/users?sort=createdAt_desc"
           columns={userColumns}
           heading="Users & Access Control"
-          headerNotes="Manage system accounts, assign roles, handle invitations, and control access permissions."
           hasAction
           actionName="Invite User"
           onAction={() => setInviteModalVisible(true)}
@@ -955,7 +954,6 @@ export const UsersAndRolesPage: React.FC = () => {
           dataSourceUrl="/staff?sort=createdAt_desc"
           columns={staffColumns}
           heading="Staff Directory"
-          headerNotes="Directory of all organization personnel across hubs and branches. Access-enabled staff can log in to operations."
           hasAction
           actionName="Add Staff"
           onAction={() => setCreateStaffVisible(true)}

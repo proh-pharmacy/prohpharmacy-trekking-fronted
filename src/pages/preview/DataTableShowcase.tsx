@@ -302,7 +302,6 @@ export const DataTableShowcase: React.FC = () => {
             columns={columns}
             data={MOCK_STAFF_DATA}
             heading="Staff & Courier Roster"
-            headerNotes="High-altitude trekking personnel assigned to remote medical logistics stations"
             filterable="search"
             filterablePlaceholder="Search by staff name, permit, or station..."
             hasAction

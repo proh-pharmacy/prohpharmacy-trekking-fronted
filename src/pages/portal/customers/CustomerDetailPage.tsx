@@ -646,7 +646,7 @@ export const CustomerDetailPage: React.FC = () => {
               options={ENTRY_TYPE_OPTIONS}
               onChange={(val: any) => setAddType(val?.value !== undefined ? val.value : val)}
               placeholder="Select type"
-              size="sm"
+              size="md"
             />
           </div>
 
@@ -660,7 +660,7 @@ export const CustomerDetailPage: React.FC = () => {
                 options={PAYMENT_METHOD_OPTIONS}
                 onChange={(val: any) => setAddPaymentMethod(val?.value !== undefined ? val.value : val)}
                 placeholder="Select method"
-                size="sm"
+                size="md"
               />
             </div>
           )}

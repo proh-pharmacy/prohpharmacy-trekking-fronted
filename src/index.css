@@ -631,13 +631,6 @@ div.p-icon-field {
   font-size: 0.75rem !important;
 }
 
-.p-dropdown-panel-sm .p-dropdown-filter-container input,
-.p-multiselect-panel-sm .p-multiselect-filter-container input {
-  height: 28px !important;
-  font-size: 0.75rem !important;
-  padding: 2px 8px !important;
-}
-
 .p-multiselect-panel-sm .p-checkbox .p-checkbox-box {
   width: 14px !important;
   height: 14px !important;
@@ -687,6 +680,9 @@ div.p-icon-field {
 
 .p-dropdown-panel .p-dropdown-filter-container input,
 .p-multiselect-panel .p-multiselect-filter-container input {
+  height: 44px !important;
+  font-size: 0.875rem !important;
+  padding: 2px 8px !important;
   background: var(--color-portal-surface) !important;
   border-color: var(--color-portal-border) !important;
   color: #ffffff !important;

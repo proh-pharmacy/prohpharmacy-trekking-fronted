@@ -39,7 +39,7 @@ export const FlatInputText = forwardRef<HTMLInputElement, FlatInputTextProps>(
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     const isDark = variant === 'dark';
     const isWhite = variant === 'white';
-    const effectiveSize: FlatInputSize = size || inputSize || 'sm';
+    const effectiveSize: FlatInputSize = size || inputSize || 'md';
     const sizeConfig = getInputSizeClasses(effectiveSize, !!leftIcon, !!rightIcon);
 
     return (

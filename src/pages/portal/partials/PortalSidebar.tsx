@@ -196,7 +196,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 placeholder="Search navigation..."
                 className="bg-transparent border-none outline-none text-xs text-portal-text placeholder-portal-muted w-full"
               />
-              {searchQuery ? (
+              {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
@@ -205,10 +205,6 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 >
                   <i className="pi pi-times" />
                 </button>
-              ) : (
-                <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-portal-surface text-portal-muted rounded border border-portal-border">
-                  ⌘K
-                </span>
               )}
             </div>
           ) : (
@@ -217,7 +213,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 type="button"
                 onClick={onToggleCollapse}
                 className="p-2 text-portal-muted hover:text-white hover:bg-white/[0.06] rounded transition portal-tooltip-item"
-                data-pr-tooltip="Search (⌘K)"
+                data-pr-tooltip="Search navigation"
                 data-pr-position="right"
               >
                 <i className="pi pi-search text-xs" />
@@ -262,15 +258,17 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                     data-pr-position="right"
                     className={`relative flex items-center ${
                       showCollapsed ? 'justify-center px-0' : 'gap-3 px-3'
-                    } py-2.5 text-xs rounded transition-all duration-150 group portal-tooltip-item ${
+                    } py-3 text-sm rounded transition-all duration-150 group portal-tooltip-item ${
                       isActive
-                        ? 'bg-portal-accent hover:bg-portal-accent-hover text-white font-bold shadow-[0_0_12px_rgba(65,204,132,0.25)]'
-                        : 'text-light-green font-normal hover:text-white hover:bg-white/[0.08]'
+                        ? 'bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas font-semibold'
+                        : 'text-white/85 font-medium hover:text-white hover:bg-white/[0.08]'
                     }`}
                   >
-                    <i
-                      className={`${item.icon} text-sm shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-light-green/80 group-hover:text-white'
+                    <item.icon
+                      size={20}
+                      weight="duotone"
+                      className={`shrink-0 transition-colors ${
+                        isActive ? 'text-portal-canvas' : 'text-portal-accent group-hover:text-portal-accent'
                       }`}
                     />
 

@@ -208,7 +208,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. WarehouseOfficer, Pharmacist"
-              size="sm"
+              size="md"
               required
             />
             <p className="text-[11px] text-portal-muted mt-1">Unique alphanumeric role identifier.</p>
@@ -220,7 +220,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of role responsibilities"
-              size="sm"
+              size="md"
             />
             <p className="text-[11px] text-portal-muted mt-1">Maximum 200 characters.</p>
           </div>

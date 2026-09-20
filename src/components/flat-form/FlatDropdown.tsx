@@ -22,7 +22,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
   errorMessage,
   fullWidth = true,
   variant = 'dark',
-  size = 'sm',
+  size = 'md',
   inputSize,
   className = '',
   id,
@@ -33,7 +33,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
+  const effectiveSize: FlatInputSize = inputSize || size || 'md';
   const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (

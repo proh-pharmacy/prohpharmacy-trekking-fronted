@@ -90,7 +90,7 @@ export const PackagingUnitModal: React.FC<PackagingUnitModalProps> = ({ visible,
           placeholder={loadingUnits ? 'Loading units...' : 'Select packaging unit'}
           filter
           filterPlaceholder="Search unit..."
-          size="sm"
+          size="md"
           required
         />
         <FlatInputNumber
@@ -100,7 +100,7 @@ export const PackagingUnitModal: React.FC<PackagingUnitModalProps> = ({ visible,
           min={0}
           minFractionDigits={2}
           maxFractionDigits={2}
-          size="sm"
+          size="md"
           required
         />
       </div>

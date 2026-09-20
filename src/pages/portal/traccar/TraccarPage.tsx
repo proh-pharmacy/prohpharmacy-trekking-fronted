@@ -608,7 +608,6 @@ export const TraccarPage: React.FC = () => {
           dataSourceUrl="/fleet/traccar-users"
           columns={traccarUserColumns}
           heading="Traccar Users"
-          headerNotes="Users who can log directly into the Traccar web interface."
           hasAction
           actionName="Add Traccar User"
           onAction={() => { setEditingTraccarUser(null); setTraccarUserModalVisible(true); }}
@@ -623,7 +622,6 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/drivers"
             columns={driverColumns}
             heading="Fleet Drivers"
-            headerNotes="Staff registered as fleet drivers. Sync to Traccar for live tracking attribution."
             secondaryAction
             secondaryActionName="Sync Drivers to Traccar"
             secondaryActionIcon="pi pi-refresh"
@@ -642,7 +640,6 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/devices"
             columns={deviceColumns}
             heading="Tracking Devices"
-            headerNotes="GPS and smartphone tracking devices assigned to staff members."
             secondaryAction
             secondaryActionName="Sync to Traccar"
             secondaryActionIcon="pi pi-refresh"
