@@ -91,7 +91,8 @@ export function useFieldControl(token: string) {
             ? applyCustomerUpdate(customer, action.payload, availableDistricts) : customer);
         } else if (action.type === 'AddCustomerLocation') {
           data = data.map((customer) => {
-            if (customer.id !== action.payload.customerId) return customer;
+            const reference = String(action.payload.customerId || action.payload.customerClientId || '');
+            if (customer.id !== reference && customer.clientGeneratedId !== reference) return customer;
             if (customer.primaryLocation?.id === action.clientId || customer.additionalLocations?.some((location) => location.id === action.clientId)) return customer;
             return addCachedLocation(customer, action.payload, availableDistricts, action.clientId);
           });
@@ -475,13 +476,14 @@ export function useFieldControl(token: string) {
           fieldStore.get<FieldDistrict[]>(token, 'districts'),
         ]);
         const customerId = String(payload.customerId || '');
+        const customerReference = String(payload.customerId || payload.customerClientId || '');
         const locationId = String(payload.locationId || payload.locationClientId || '');
         const updated = (savedCustomers ?? []).map((customer) => {
           if (type === 'UpdateCustomerLocation') {
             return customer.primaryLocation?.id === locationId || customer.additionalLocations?.some((location) => location.id === locationId)
               ? updateCachedLocation(customer, locationId, payload, savedDistricts ?? []) : customer;
           }
-          if (customer.id !== customerId) return customer;
+          if (customer.id !== customerId && customer.id !== customerReference && customer.clientGeneratedId !== customerReference) return customer;
           return type === 'UpdateCustomer'
             ? applyCustomerUpdate(customer, payload, savedDistricts ?? [])
             : addCachedLocation(customer, payload, savedDistricts ?? [], action.clientId);

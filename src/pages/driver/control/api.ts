@@ -22,6 +22,8 @@ export interface FieldCustomer {
   primaryPhoneNumber: string;
   customerType?: string;
   registrationStatus?: string;
+  createdAt?: string | null;
+  recordedAt?: string | null;
   regionId?: string | null;
   regionName?: string | null;
   primaryPerson?: CustomerPerson | null;

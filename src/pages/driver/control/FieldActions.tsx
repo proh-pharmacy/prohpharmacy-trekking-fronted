@@ -92,11 +92,15 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
     setValues({ ...(requestedKind === 'stop' && { trekId: fixedTrekId || requestedTrekId || trek.trekId }), ...(requestedStopId && { stopId: `id:${requestedStopId}` }), ...(requestedStopClientId && { stopId: `client:${requestedStopClientId}` }), ...(requestedSequence && { sequence: String(requestedSequence) }) });
     setKind(requestedKind);
   }, [requestedKind, requestedTrekId, requestedStopId, requestedStopClientId, requestedSequence, requestedNonce, fixedTrekId, trek.trekId]);
-  const pendingCustomers = queue.filter((action) => action.type === 'RegisterCustomer' && action.status !== 'conflict');
+  const pendingCustomers = queue
+    .filter((action) => action.type === 'RegisterCustomer' && action.status === 'pending')
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const pendingStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status !== 'conflict');
   const customerChoices = [
-    ...customers.map((customer) => ({ label: `${customer.businessName} · ${customer.primaryPhoneNumber}`, value: `id:${customer.id}` })),
     ...pendingCustomers.map((action) => ({ label: `${action.payload.businessName} · saved on device`, value: `client:${action.clientId}` })),
+    ...[...customers]
+      .sort((a, b) => String(b.createdAt || b.recordedAt || '').localeCompare(String(a.createdAt || a.recordedAt || '')))
+      .map((customer) => ({ label: `${customer.businessName} · ${customer.primaryPhoneNumber}`, value: `id:${customer.id}` })),
   ];
   const stopChoices = [
     ...(!trek.isLocked ? trek.stops : []).map((stop) => ({ label: `${stop.sequence}. ${stop.customerName}`, value: `id:${stop.stopId}` })),

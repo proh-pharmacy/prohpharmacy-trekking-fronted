@@ -42,6 +42,7 @@ export function registrationDetails(action: QueuedAction, districts: FieldDistri
   return {
     id: action.serverId,
     clientGeneratedId: action.clientId,
+    createdAt: action.occurredAt,
     businessName: asText(payload.businessName) || '',
     customerType: asText(payload.customerType),
     primaryPhoneNumber: asText(payload.primaryPhoneNumber) || '',
@@ -134,8 +135,8 @@ export function addCachedLocation(customer: FieldCustomer, payload: Record<strin
   const location: FieldCustomerLocation = {
     id: locationId,
     locationType: asText(payload.locationType) || 'BusinessPremises',
-    regionId: district?.regionId,
-    regionName: customer.regionName,
+    regionId: asText(payload.regionId) ?? district?.regionId ?? customer.regionId,
+    regionName: asText(payload.regionName) ?? customer.regionName,
     districtId,
     districtName: district?.name,
     streetAddress: asText(payload.streetAddress),
