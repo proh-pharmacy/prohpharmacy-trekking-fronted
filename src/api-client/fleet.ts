@@ -75,6 +75,7 @@ export interface TraccarDeviceMetadata {
   staffName: string | null;
   branchId?: string | null;
   branchName?: string | null;
+  regionName?: string | null;
 }
 
 export interface CreateDevicePayload {
@@ -307,6 +308,7 @@ export interface DeviceLastPosition {
   vehicleId: string;
   vehicleRegistration: string;
   vehicleDisplayName?: string | null;
+  regionName?: string | null;
   branchId: string | null;
   branchName: string | null;
   latitude: number;

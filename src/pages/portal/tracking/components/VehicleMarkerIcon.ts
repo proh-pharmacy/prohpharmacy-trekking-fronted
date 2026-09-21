@@ -59,85 +59,37 @@ export function createVehicleMarkerIcon({
   }[status];
 
   const rotation = typeof course === 'number' && !isNaN(course) ? course : 0;
-  const isMoving = status === 'moving';
   const shortPlate = registrationNumber || '';
 
   const html = `
-    <div class="relative flex flex-col items-center group cursor-pointer" style="transform: translate(-50%, -50%);">
+    <div class="relative flex flex-col items-center group cursor-pointer" style="transform: translate(-50%, -50%); width: 58px;">
       ${
         isSelected
           ? `<div style="
               position: absolute;
-              width: 44px;
-              height: 44px;
-              top: -6px;
-              left: -6px;
+              width: 58px;
+              height: 58px;
+              top: -2px;
+              left: 0;
               border-radius: 50%;
-              border: 2px dashed #41cc84;
-              animation: spin 8s linear infinite;
+              border: 3px solid #41cc84;
+              box-shadow: 0 0 0 5px rgba(65,204,132,0.22);
               pointer-events: none;
             "></div>`
           : ''
       }
 
-      <!-- Outer Pulse Ring for moving vehicles -->
-      ${
-        isMoving
-          ? `<div style="
-              position: absolute;
-              width: 38px;
-              height: 38px;
-              top: -3px;
-              left: -3px;
-              border-radius: 50%;
-              background: ${colors.pulse};
-              animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-              pointer-events: none;
-            "></div>`
-          : ''
-      }
-
-      <!-- Main Marker Circle & Direction Arrow -->
-      <div style="
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background-color: ${colors.bg};
-        border: 2.5px solid ${isSelected ? '#41cc84' : colors.border};
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        z-index: 2;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      ">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          stroke="currentColor"
-          stroke-width="1.5"
-          style="
-            color: #ffffff;
-            transform: rotate(${rotation}deg);
-            transform-origin: center center;
-            transition: transform 0.3s ease;
-          "
-        >
-          <!-- Sleek Navigation / Arrow Icon pointing UP (0 deg) -->
-          <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
-        </svg>
+      <div style="position: relative; width: 58px; height: 66px; z-index: 2;">
+        <img src="/images/vehicle-marker.png" alt="" style="width: 58px; height: 66px; object-fit: contain; transform: rotate(${rotation}deg); filter: drop-shadow(0 4px 5px rgba(0,0,0,0.45));" />
+        <span style="position: absolute; right: 2px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: ${colors.bg}; border: 2px solid #22272e;"></span>
       </div>
 
-      <!-- Compact Plate Tag Pill -->
+      <!-- Vehicle label -->
       ${
         shortPlate
           ? `<div style="
               position: absolute;
-              top: 34px;
+              top: 64px;
               background-color: #22272e;
               color: #adbac7;
               border: 1px solid #444c56;
@@ -162,8 +114,8 @@ export function createVehicleMarkerIcon({
   return L.divIcon({
     className: 'custom-vehicle-marker-icon',
     html,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -20],
+    iconSize: [58, 76],
+    iconAnchor: [29, 33],
+    popupAnchor: [0, -32],
   });
 }

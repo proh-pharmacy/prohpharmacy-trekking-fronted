@@ -65,6 +65,7 @@ export const TrackingPage: React.FC = () => {
             staffName: item.staffName ?? device.staffName,
             branchId: item.branchId ?? device.branchId,
             branchName: item.branchName ?? device.branchName,
+            regionName: item.regionName ?? device.regionName,
             vehicleDisplayName: item.name || device.vehicleDisplayName,
           } : device;
         }));
@@ -80,6 +81,7 @@ export const TrackingPage: React.FC = () => {
             staffName: item.staffName ?? selected.staffName,
             branchId: item.branchId ?? selected.branchId,
             branchName: item.branchName ?? selected.branchName,
+            regionName: item.regionName ?? selected.regionName,
             vehicleDisplayName: item.name || selected.vehicleDisplayName,
           } : selected;
         });
@@ -111,6 +113,7 @@ export const TrackingPage: React.FC = () => {
             vehicleDisplayName: metadata?.name ?? existing?.vehicleDisplayName ?? null,
             branchId: metadata?.branchId ?? existing?.branchId ?? null,
             branchName: metadata?.branchName ?? existing?.branchName ?? null,
+            regionName: metadata?.regionName ?? existing?.regionName ?? null,
             latitude: position.latitude,
             longitude: position.longitude,
             lastAddress: position.address ?? existing?.lastAddress ?? null,

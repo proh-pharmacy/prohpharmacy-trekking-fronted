@@ -140,7 +140,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold text-sm text-white tracking-wide">
-                {device.vehicleRegistration}
+                {device.vehicleDisplayName || device.deviceName}
               </span>
               <span
                 className={`px-1.5 py-0.5 text-[10px] font-bold uppercase rounded ${
@@ -155,7 +155,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
               </span>
             </div>
             <div className="text-[11px] text-portal-muted truncate max-w-[210px] mt-0.5">
-              {device.staffName ? `Driver: ${device.staffName}` : 'No driver assigned'}
+              {device.regionName || 'Region unavailable'}
             </div>
           </div>
         </div>

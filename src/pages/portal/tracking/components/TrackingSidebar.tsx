@@ -49,13 +49,13 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
       // Text search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const plate = (d.vehicleRegistration || '').toLowerCase();
-        const driver = (d.staffName || '').toLowerCase();
+        const displayName = (d.vehicleDisplayName || d.deviceName || '').toLowerCase();
+        const region = (d.regionName || '').toLowerCase();
         const branch = (d.branchName || '').toLowerCase();
         const deviceName = (d.deviceName || '').toLowerCase();
         return (
-          plate.includes(q) ||
-          driver.includes(q) ||
+          displayName.includes(q) ||
+          region.includes(q) ||
           branch.includes(q) ||
           deviceName.includes(q)
         );
@@ -131,7 +131,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search plate, driver, branch..."
+            placeholder="Search vehicle, region, branch..."
             className="w-full pl-8 pr-7 h-[34px] bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:border-portal-accent focus:outline-none transition"
           />
           {searchQuery && (
@@ -205,7 +205,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                 {/* Top Row: Plate & Status */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-bold text-xs text-white tracking-wide">
-                    {device.vehicleRegistration}
+                    {device.vehicleDisplayName || device.deviceName}
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span
@@ -231,10 +231,10 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                   </div>
                 </div>
 
-                {/* Second Row: Driver Name */}
+                {/* Second Row: Region */}
                 <div className="mt-1 flex items-center justify-between text-xs">
                   <span className="font-semibold text-white truncate max-w-[170px]">
-                    {device.staffName || 'Unassigned'}
+                    {device.regionName || 'Region unavailable'}
                   </span>
                   <span className="font-mono text-xs font-bold text-portal-accent">
                     {typeof device.speed === 'number' ? `${device.speed.toFixed(1)} km/h` : '0.0 km/h'}

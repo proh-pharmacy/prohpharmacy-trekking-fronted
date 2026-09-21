@@ -238,7 +238,9 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
             speed: device.speed,
             course: device.course,
             isSelected,
-            registrationNumber: device.vehicleRegistration,
+            registrationNumber: [device.regionName, device.vehicleDisplayName || device.deviceName]
+              .filter(Boolean)
+              .join(' · '),
           });
 
           return (
@@ -255,7 +257,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
                   {/* Header: Status & Plate */}
                   <div className="flex items-center justify-between border-b border-portal-border/60 pb-2 mb-2">
                     <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
-                      {device.vehicleRegistration}
+                      {device.vehicleDisplayName || device.deviceName}
                     </span>
                     <span
                       className={`px-1.5 py-0.5 text-[10px] font-bold uppercase rounded ${
@@ -270,12 +272,12 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
                     </span>
                   </div>
 
-                  {/* Driver & Branch */}
+                  {/* Region & Branch */}
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center justify-between text-portal-text">
-                      <span className="text-portal-muted text-[11px] uppercase font-medium">Driver</span>
+                      <span className="text-portal-muted text-[11px] uppercase font-medium">Region</span>
                       <span className="font-semibold text-white truncate max-w-[140px]">
-                        {device.staffName || 'Unassigned'}
+                        {device.regionName || 'Unavailable'}
                       </span>
                     </div>
                     {device.branchName && (
