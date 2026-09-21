@@ -93,23 +93,23 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
     <div className="relative w-full md:w-80 lg:w-96 flex flex-col h-full bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-visible">
       {/* Floating panel control */}
       <button
-          type="button"
-          onClick={onToggleCollapse}
-          title="Collapse Fleet List"
-          className="absolute top-2 -right-8 z-20 w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+        type="button"
+        onClick={onToggleCollapse}
+        title="Collapse Fleet List"
+        className="absolute top-2 -right-8 z-20 w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
       >
         <i className="pi pi-angle-double-left text-xs" />
       </button>
 
       {/* Status Filter Segmented Tabs */}
-      <div className="px-2.5 pt-2.5 pb-0 bg-portal-canvas/40">
-        <div className="grid grid-cols-4 gap-0 mt-2 border-b border-portal-border">
+      <div className="px-2.5 pb-0 bg-portal-canvas/40">
+        <div className="grid grid-cols-4 gap-0 border-b border-portal-border">
           {(
             [
-              { id: 'all', label: 'All', count: counts.all, dot: 'bg-portal-text' },
-              { id: 'moving', label: 'Moving', count: counts.moving, dot: 'bg-portal-accent' },
-              { id: 'idling', label: 'Idle', count: counts.idling, dot: 'bg-portal-orange' },
-              { id: 'stopped', label: 'Off', count: counts.stopped, dot: 'bg-portal-muted' },
+              { id: 'all', label: 'All', count: counts.all, dot: 'bg-portal-text', color: 'text-portal-text' },
+              { id: 'moving', label: 'Moving', count: counts.moving, dot: 'bg-portal-accent', color: 'text-portal-accent' },
+              { id: 'idling', label: 'Idle', count: counts.idling, dot: 'bg-portal-orange', color: 'text-portal-orange' },
+              { id: 'stopped', label: 'Off', count: counts.stopped, dot: 'bg-portal-muted', color: 'text-portal-muted' },
             ] as const
           ).map((tab) => {
             const isActive = statusFilter === tab.id;
@@ -118,17 +118,16 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`py-1.5 px-1.5 rounded-none border-b-2 text-[11px] font-semibold transition flex flex-col items-center justify-center cursor-pointer ${
-                  isActive
-                    ? 'bg-transparent text-white border-portal-accent'
-                    : 'bg-transparent hover:bg-white/[0.04] text-portal-muted border-transparent'
-                }`}
+                className={`py-4.5 px-1.5 !rounded-none border-b-2 text-xs font-semibold transition flex flex-col items-center justify-center cursor-pointer ${isActive
+                  ? `bg-transparent ${tab.color} border-portal-accent`
+                  : `bg-transparent hover:bg-white/[0.04] ${tab.color} border-transparent`
+                  }`}
               >
                 <div className="flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${tab.dot}`} />
                   <span>{tab.label}</span>
+                  <span className="text-portal-muted/70">·</span>
+                  <span className="font-mono text-[10px] opacity-90">{tab.count}</span>
                 </div>
-                <span className="font-mono text-[10px] mt-0.5 opacity-90">{tab.count}</span>
               </button>
             );
           })}
@@ -136,7 +135,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
       </div>
 
       {/* Vehicle List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-portal-border/40">
+      <div className="flex-1  overflow-y-auto custom-scrollbar divide-y divide-portal-border/40">
         {filteredDevices.length === 0 ? (
           <div className="p-8 flex flex-col items-center justify-center gap-2 text-portal-muted text-xs">
             <i className="pi pi-inbox text-2xl opacity-40" />
@@ -153,11 +152,10 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
               <div
                 key={device.deviceId}
                 onClick={() => onSelectDevice(device)}
-                className={`p-4 rounded-none transition cursor-pointer relative ${
-                  isSelected
-                    ? 'bg-white/[0.08] border-l-4 border-l-transparent text-white'
-                    : 'hover:bg-white/[0.03] text-portal-text border-l-4 border-l-transparent'
-                }`}
+                className={`p-4 rounded-none transition cursor-pointer relative ${isSelected
+                  ? 'bg-white/[0.08] border-l-4 border-l-transparent text-white'
+                  : 'hover:bg-white/[0.03] text-portal-text border-l-4 border-l-transparent'
+                  }`}
               >
                 {/* Vehicle identity and status */}
                 <div className="flex items-center justify-between gap-3">
@@ -173,22 +171,20 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                   <div className="shrink-0 flex flex-col items-end gap-1">
                     <div className="flex items-center gap-1.5">
                       <span
-                        className={`w-2 h-2 rounded-full ${
-                          isMoving
-                            ? 'bg-portal-accent animate-pulse'
-                            : isIdle
-                              ? 'bg-portal-orange'
-                              : 'bg-portal-muted'
-                        }`}
+                        className={`w-2 h-2 rounded-full ${isMoving
+                          ? 'bg-portal-accent animate-pulse'
+                          : isIdle
+                            ? 'bg-portal-orange'
+                            : 'bg-portal-muted'
+                          }`}
                       />
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isMoving
-                            ? 'text-portal-accent'
-                            : isIdle
-                              ? 'text-portal-orange'
-                              : 'text-portal-muted'
-                        }`}
+                        className={`text-[10px] font-bold uppercase tracking-wider ${isMoving
+                          ? 'text-portal-accent'
+                          : isIdle
+                            ? 'text-portal-orange'
+                            : 'text-portal-muted'
+                          }`}
                       >
                         {status}
                       </span>

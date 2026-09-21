@@ -5,7 +5,6 @@ import {
   type DeviceLivePosition,
   type PositionHistoryPoint,
 } from '../../../../api-client';
-import { getVehicleStatus } from './VehicleMarkerIcon';
 import toast from 'react-hot-toast';
 
 interface VehicleTelemetryCardProps {
@@ -32,12 +31,9 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
   // Merged position data (live Traccar fetch takes precedence over cached position)
   const currentSpeed = liveOverride?.speed ?? device.speed ?? 0;
   const currentIgnition = liveOverride?.ignition ?? device.ignition;
-  const currentMotion = liveOverride?.motion ?? device.motion;
   const currentBattery = liveOverride?.batteryLevel ?? device.batteryLevel;
   const currentAddress = liveOverride?.address ?? device.lastAddress;
   const lastReportTime = liveOverride?.fixTime ?? device.lastReportedAt;
-
-  const status = getVehicleStatus(currentIgnition, currentMotion, currentSpeed);
 
   // Fetch live direct Traccar position
   const handleRefreshLive = async () => {
