@@ -8,8 +8,6 @@ interface TrackingSidebarProps {
   onSelectDevice: (device: DeviceLastPosition) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
 }
 
 export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
@@ -18,8 +16,6 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
   onSelectDevice,
   collapsed,
   onToggleCollapse,
-  searchQuery,
-  onSearchChange,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | VehicleTelemetryStatus>('all');
 
@@ -46,35 +42,22 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
       const status = getVehicleStatus(d.ignition, d.motion, d.speed);
       if (statusFilter !== 'all' && status !== statusFilter) return false;
 
-      // Text search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const displayName = (d.vehicleDisplayName || d.deviceName || '').toLowerCase();
-        const region = (d.regionName || '').toLowerCase();
-        const branch = (d.branchName || '').toLowerCase();
-        const deviceName = (d.deviceName || '').toLowerCase();
-        return (
-          displayName.includes(q) ||
-          region.includes(q) ||
-          branch.includes(q) ||
-          deviceName.includes(q)
-        );
-      }
       return true;
     });
-  }, [devices, statusFilter, searchQuery]);
+  }, [devices, statusFilter]);
 
   const formatRelativeTime = (dateStr?: string | null): string => {
     if (!dateStr) return 'Never';
     const diffMs = Date.now() - new Date(dateStr).getTime();
     if (diffMs < 0) return 'Just now';
     const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return `${diffSec}s ago`;
+    if (diffSec < 60) return `${diffSec} ${diffSec === 1 ? 'second' : 'seconds'} ago`;
     const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 60) return `${diffMin} ${diffMin === 1 ? 'minute' : 'minutes'} ago`;
     const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
   };
 
   if (collapsed) {
@@ -107,46 +90,20 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
   }
 
   return (
-    <div className="w-full md:w-80 lg:w-96 flex flex-col h-full bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-hidden">
-      {/* Sidebar Header */}
-      <div className="p-3 border-b border-portal-border flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-white">
-          Active Fleet ({devices.length})
-        </h2>
-        <button
+    <div className="relative w-full md:w-80 lg:w-96 flex flex-col h-full bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-visible">
+      {/* Floating panel control */}
+      <button
           type="button"
           onClick={onToggleCollapse}
           title="Collapse Fleet List"
-          className="w-7 h-7 rounded flex items-center justify-center text-portal-muted hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
-        >
-          <i className="pi pi-angle-double-left text-xs" />
-        </button>
-      </div>
+          className="absolute top-2 -right-8 z-20 w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+      >
+        <i className="pi pi-angle-double-left text-xs" />
+      </button>
 
-      {/* Search Input */}
-      <div className="p-2.5 border-b border-portal-border/60 bg-portal-canvas/40">
-        <div className="relative flex items-center">
-          <i className="pi pi-search absolute left-2.5 text-portal-muted text-xs pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search vehicle, region, branch..."
-            className="w-full pl-8 pr-7 h-[34px] bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:border-portal-accent focus:outline-none transition"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => onSearchChange('')}
-              className="absolute right-2 text-portal-muted hover:text-white text-xs cursor-pointer"
-            >
-              <i className="pi pi-times" />
-            </button>
-          )}
-        </div>
-
-        {/* Status Filter Segmented Tabs */}
-        <div className="grid grid-cols-4 gap-1 mt-2">
+      {/* Status Filter Segmented Tabs */}
+      <div className="px-2.5 pt-2.5 pb-0 bg-portal-canvas/40">
+        <div className="grid grid-cols-4 gap-0 mt-2 border-b border-portal-border">
           {(
             [
               { id: 'all', label: 'All', count: counts.all, dot: 'bg-portal-text' },
@@ -161,10 +118,10 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`py-1 px-1.5 rounded text-[11px] font-semibold transition flex flex-col items-center justify-center cursor-pointer ${
+                className={`py-1.5 px-1.5 rounded-none border-b-2 text-[11px] font-semibold transition flex flex-col items-center justify-center cursor-pointer ${
                   isActive
-                    ? 'bg-portal-accent/15 text-white border border-portal-accent/50'
-                    : 'bg-portal-surface hover:bg-white/[0.04] text-portal-muted border border-transparent'
+                    ? 'bg-transparent text-white border-portal-accent'
+                    : 'bg-transparent hover:bg-white/[0.04] text-portal-muted border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-1">
@@ -196,55 +153,50 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
               <div
                 key={device.deviceId}
                 onClick={() => onSelectDevice(device)}
-                className={`p-3 transition cursor-pointer relative ${
+                className={`p-4 rounded-none transition cursor-pointer relative ${
                   isSelected
-                    ? 'bg-portal-accent/10 border-l-4 border-l-portal-accent text-white'
+                    ? 'bg-white/[0.08] border-l-4 border-l-transparent text-white'
                     : 'hover:bg-white/[0.03] text-portal-text border-l-4 border-l-transparent'
                 }`}
               >
-                {/* Top Row: Plate & Status */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold text-xs text-white tracking-wide">
-                    {device.vehicleDisplayName || device.deviceName}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        isMoving
-                          ? 'bg-portal-accent animate-pulse'
-                          : isIdle
-                            ? 'bg-portal-orange'
-                            : 'bg-portal-muted'
-                      }`}
-                    />
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider ${
-                        isMoving
-                          ? 'text-portal-accent'
-                          : isIdle
-                            ? 'text-portal-orange'
-                            : 'text-portal-muted'
-                      }`}
-                    >
-                      {status}
+                {/* Vehicle identity and status */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 my-auto flex items-center gap-2">
+                    <span className="w-9 h-9 !rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
+                      <i className="pi pi-map-marker text-white text-base" aria-hidden="true" />
+                    </span>
+                    <span className="font-semibold text-sm text-white truncate leading-tight">
+                      {device.regionName ? `${device.regionName} - ` : ''}
+                      {device.vehicleDisplayName || device.deviceName}
                     </span>
                   </div>
-                </div>
-
-                {/* Second Row: Region */}
-                <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-white truncate max-w-[170px]">
-                    {device.regionName || 'Region unavailable'}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-portal-accent">
-                    {typeof device.speed === 'number' ? `${device.speed.toFixed(1)} km/h` : '0.0 km/h'}
-                  </span>
-                </div>
-
-                {/* Third Row: Branch & Last Report Time */}
-                <div className="mt-1.5 flex items-center justify-between text-[11px] text-portal-muted">
-                  <span className="truncate max-w-[140px]">{device.branchName || 'No Branch'}</span>
-                  <span>{formatRelativeTime(device.lastReportedAt)}</span>
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isMoving
+                            ? 'bg-portal-accent animate-pulse'
+                            : isIdle
+                              ? 'bg-portal-orange'
+                              : 'bg-portal-muted'
+                        }`}
+                      />
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider ${
+                          isMoving
+                            ? 'text-portal-accent'
+                            : isIdle
+                              ? 'text-portal-orange'
+                              : 'text-portal-muted'
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-portal-muted whitespace-nowrap">
+                      {formatRelativeTime(device.lastReportedAt)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Optional Address snippet */}

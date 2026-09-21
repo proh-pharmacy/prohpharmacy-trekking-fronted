@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fleetApi,
-  organisationApi,
   type DeviceLastPosition,
   type TraccarDeviceMetadata,
   type PositionHistoryPoint,
-  type Branch,
 } from '../../../api-client';
-import { FlatDropdown, FlatButton } from '../../../components/flat-form';
+import { FlatButton } from '../../../components/flat-form';
 import { useTraccarSocket, type TraccarMessage } from './hooks/useTraccarSocket';
 import { TrackingMap, type MapTileMode } from './components/TrackingMap';
 import { TrackingSidebar } from './components/TrackingSidebar';
@@ -18,34 +16,14 @@ export const TrackingPage: React.FC = () => {
   // ── Fleet & Map State ──────────────────────────────────────────────
   const [allDevices, setAllDevices] = useState<DeviceLastPosition[]>([]);
   const deviceMetadataRef = useRef<Map<number, TraccarDeviceMetadata>>(new Map());
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<DeviceLastPosition | null>(null);
   const [trailPoints, setTrailPoints] = useState<PositionHistoryPoint[] | null>(null);
   const [fitBoundsTrigger, setFitBoundsTrigger] = useState<number>(0);
 
   // ── View & Controls State ──────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [tileMode, setTileMode] = useState<MapTileMode>('dark');
+  const [tileMode, setTileMode] = useState<MapTileMode>('street');
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // ── Load Branches ──────────────────────────────────────────────────
-  useEffect(() => {
-    let isMounted = true;
-    const loadBranches = async () => {
-      try {
-        const list = await organisationApi.getBranches();
-        if (isMounted) setBranches(list);
-      } catch (err) {
-        console.error('Failed to load branches for tracking filter:', err);
-      }
-    };
-    loadBranches();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // ── Load vehicle/staff metadata once; live positions come from Traccar ──
   useEffect(() => {
@@ -140,27 +118,11 @@ export const TrackingPage: React.FC = () => {
   }, []);
 
   const { status: hubStatus, reconnect, lastEventTime } = useTraccarSocket(handleTraccarMessage);
-  const devices = useMemo(
-    () => selectedBranchId ? allDevices.filter((device) => device.branchId === selectedBranchId) : allDevices,
-    [allDevices, selectedBranchId]
-  );
+  const devices = allDevices;
   const loadPositions = useCallback(() => {
     setIsLoading(true);
     reconnect();
   }, [reconnect]);
-
-  useEffect(() => {
-    setSelectedDevice(null);
-    setTrailPoints(null);
-  }, [selectedBranchId]);
-
-  // Branch dropdown options
-  const branchOptions = useMemo(() => {
-    return [
-      { label: 'All Branches (Entire Fleet)', value: '' },
-      ...branches.map((b) => ({ label: b.name, value: b.id })),
-    ];
-  }, [branches]);
 
   return (
     <div className="flex flex-col h-[calc(100dvh-5rem)] md:h-[calc(100dvh-4.5rem)] -m-4 sm:-m-6 md:-m-8 overflow-hidden bg-portal-canvas select-none">
@@ -170,7 +132,7 @@ export const TrackingPage: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* Connection Status - Minimal, unbordered text with green/amber/red tint */}
           <div
-            className={`flex items-center gap-1.5 text-[11px] font-semibold ${
+            className={`flex items-center text-[11px] font-semibold ${
               hubStatus === 'connected'
                 ? 'text-portal-accent'
                 : hubStatus === 'connecting' || hubStatus === 'reconnecting'
@@ -178,15 +140,6 @@ export const TrackingPage: React.FC = () => {
                   : 'text-red-accent'
             }`}
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                hubStatus === 'connected'
-                  ? 'bg-portal-accent animate-pulse'
-                  : hubStatus === 'connecting' || hubStatus === 'reconnecting'
-                    ? 'bg-portal-orange animate-ping'
-                    : 'bg-red-accent'
-              }`}
-            />
             <span>
               {hubStatus === 'connected'
                 ? 'Connected'
@@ -209,25 +162,13 @@ export const TrackingPage: React.FC = () => {
 
           {lastEventTime && (
             <span className="hidden lg:inline text-[10px] text-portal-muted font-mono">
-              Last signal: {lastEventTime.toLocaleTimeString()}
+              Last signal: {lastEventTime.toLocaleTimeString()} · Fleets ({devices.length})
             </span>
           )}
         </div>
 
         {/* Right: Branch Selector & Action Buttons */}
         <div className="flex items-center gap-2">
-          {/* Branch Filter Dropdown */}
-          <div className="w-48 sm:w-56">
-            <FlatDropdown
-              value={selectedBranchId || ''}
-              onChange={(val) => setSelectedBranchId(val ? String(val) : null)}
-              options={branchOptions}
-              placeholder="All Branches"
-              size="sm"
-              variant="dark"
-            />
-          </div>
-
           {/* Fit Bounds Button */}
           <FlatButton
             variant="outline"
@@ -278,8 +219,6 @@ export const TrackingPage: React.FC = () => {
           }}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
         />
 
         {/* Main Map Container */}
@@ -309,10 +248,6 @@ export const TrackingPage: React.FC = () => {
               onClose={() => {
                 setSelectedDevice(null);
                 setTrailPoints(null);
-              }}
-              onFocus={() => {
-                // Re-trigger flyTo by updating state reference
-                setSelectedDevice({ ...selectedDevice });
               }}
               onTrailLoaded={setTrailPoints}
               hasActiveTrail={Boolean(trailPoints && trailPoints.length > 0)}
