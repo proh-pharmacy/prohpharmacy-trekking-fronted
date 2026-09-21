@@ -42,10 +42,10 @@ const FocusPin: React.FC<{ pin: CustomerMapPin | null }> = ({ pin }) => {
 export type PinSize = 'xs' | 'sm' | 'normal';
 type MapMode = 'pins' | 'heatmap';
 
-const PIN_SIZES: Record<PinSize, { size: number; anchor: number; popupY: number; border: number; font: number; label: string }> = {
-  xs: { size: 18, anchor: 9, popupY: -12, border: 1.5, font: 7, label: 'Extra Small' },
-  sm: { size: 28, anchor: 14, popupY: -17, border: 2, font: 10, label: 'Small' },
-  normal: { size: 38, anchor: 19, popupY: -22, border: 2.5, font: 12, label: 'Normal' },
+const PIN_SIZES: Record<PinSize, { size: number; anchor: number; popupY: number; border: number; label: string }> = {
+  xs: { size: 18, anchor: 9, popupY: -12, border: 1.5, label: 'Extra Small' },
+  sm: { size: 28, anchor: 14, popupY: -17, border: 2, label: 'Small' },
+  normal: { size: 38, anchor: 19, popupY: -22, border: 2.5, label: 'Normal' },
 };
 
 function getInitials(businessName: string): string {
@@ -55,39 +55,36 @@ function getInitials(businessName: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+function escapeSvgAttribute(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function makePin(pin: CustomerMapPin, pinSize: PinSize = 'normal'): L.DivIcon {
   const conf = PIN_SIZES[pinSize] || PIN_SIZES.normal;
   const portrait = pin.primaryContactPortraitUrl;
   const initials = getInitials(pin.businessName);
-  const borderColor = pin.isPrimary ? '#f0883e' : '#768390';
-
-  if (portrait) {
-    return L.divIcon({
-      className: 'customer-pin-icon',
-      html: `<div style="
-        width:${conf.size}px;height:${conf.size}px;border-radius:50%;overflow:hidden;
-        border:${conf.border}px solid ${borderColor};
-        box-shadow:0 2px 8px rgba(0,0,0,0.5);
-        box-sizing:border-box;
-      "><img src="${portrait}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`,
-      iconSize: [conf.size, conf.size],
-      iconAnchor: [conf.anchor, conf.anchor],
-      popupAnchor: [0, conf.popupY],
-    });
-  }
+  const height = Math.round(conf.size * 1.32);
+  const markerId = `customer-pin-${(pin.locationId || pin.customerAccountId).replace(/[^a-zA-Z0-9_-]/g, '')}-${pinSize}`;
+  const borderColor = pin.isPrimary ? '#f0883e' : '#41cc84';
+  const portraitMarkup = portrait
+    ? `<clipPath id="${markerId}-clip"><circle cx="24" cy="21" r="12.5" /></clipPath>
+       <image href="${escapeSvgAttribute(portrait)}" x="11.5" y="8.5" width="25" height="25" preserveAspectRatio="xMidYMid slice" clip-path="url(#${markerId}-clip)" />`
+    : `<circle cx="24" cy="21" r="12.5" fill="#22272e" />
+       <text x="24" y="25" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="${Math.max(9, Math.round(conf.size * 0.34))}" font-weight="700" letter-spacing="0.4">${initials}</text>`;
 
   return L.divIcon({
     className: 'customer-pin-icon',
-    html: `<div style="
-      width:${conf.size}px;height:${conf.size}px;border-radius:50%;
-      background:${pin.isPrimary ? '#15803d' : '#2d333b'};
-      border:${conf.border}px solid ${borderColor};
-      box-shadow:0 2px 8px rgba(0,0,0,0.5);
-      display:flex;align-items:center;justify-content:center;
-      box-sizing:border-box;
-    "><span style="font-size:${conf.font}px;font-weight:700;color:#fff;font-family:system-ui,sans-serif;letter-spacing:0.02em;line-height:1;">${initials}</span></div>`,
-    iconSize: [conf.size, conf.size],
-    iconAnchor: [conf.anchor, conf.anchor],
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="${conf.size}" height="${height}" viewBox="0 0 48 58" role="img" aria-label="${escapeSvgAttribute(pin.businessName)}">
+      <defs>
+        <filter id="${markerId}-shadow" x="-30%" y="-20%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.45" />
+        </filter>
+      </defs>
+      <path d="M24 2.5C12.1 2.5 3.5 10.8 3.5 21.2c0 13.9 14.6 26.9 20.5 32.3 5.9-5.4 20.5-18.4 20.5-32.3C44.5 10.8 35.9 2.5 24 2.5Z" fill="#2d333b" stroke="${borderColor}" stroke-width="${conf.border}" filter="url(#${markerId}-shadow)" />
+      ${portraitMarkup}
+    </svg>`,
+    iconSize: [conf.size, height],
+    iconAnchor: [conf.anchor, height],
     popupAnchor: [0, conf.popupY],
   });
 }
