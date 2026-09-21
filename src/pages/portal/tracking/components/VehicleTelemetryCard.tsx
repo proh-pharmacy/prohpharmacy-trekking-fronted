@@ -119,7 +119,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
   };
 
   return (
-    <div className="absolute top-4 left-4 z-[999] w-[calc(100%-2rem)] sm:w-96 bg-portal-surface/80 border border-portal-border rounded shadow-2xl backdrop-blur-xl overflow-hidden animate-fadeIn">
+    <div className="absolute top-4 left-4 z-[1100] w-[calc(100%-2rem)] sm:w-96 bg-portal-surface/80 border border-portal-border rounded shadow-2xl backdrop-blur-xl overflow-hidden animate-fadeIn">
       {/* Header */}
       <div className="p-3.5 bg-transparent border-b border-portal-border flex items-center justify-between">
         <div className="flex items-center gap-2.5">

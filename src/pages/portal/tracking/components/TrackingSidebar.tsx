@@ -60,43 +60,133 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
     return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
   };
 
-  if (collapsed) {
-    return (
-      <div className="hidden md:flex flex-col items-center bg-portal-surface border-r border-portal-border w-12 py-4 z-10 select-none">
+  // Mobile uses one persistent bottom sheet. Its filter row remains visible
+  // when closed, and the device list slides up from that same surface.
+  const mobileFleetSheet = (
+    <div
+      className="md:hidden absolute inset-x-0 bottom-0 z-[1050] h-[70%] flex flex-col bg-portal-surface/95 border-t border-portal-border shadow-2xl backdrop-blur-xl transform-gpu will-change-transform transition-transform duration-500 ease-in-out pointer-events-auto"
+      style={{ transform: collapsed ? 'translateY(calc(100% - 52px))' : 'translateY(0)' }}
+    >
+      <div className="shrink-0 grid grid-cols-[repeat(4,minmax(0,1fr))_44px]">
+        {(
+          [
+            { id: 'all', label: 'All', count: counts.all, color: 'text-portal-text' },
+            { id: 'moving', label: 'Moving', count: counts.moving, color: 'text-portal-accent' },
+            { id: 'idling', label: 'Idle', count: counts.idling, color: 'text-portal-orange' },
+            { id: 'stopped', label: 'Off', count: counts.stopped, color: 'text-portal-muted' },
+          ] as const
+        ).map((tab) => {
+          const isActive = statusFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`!rounded-none min-w-0 py-3 border-t-2 text-[11px] font-semibold transition cursor-pointer ${isActive
+                ? `${tab.color} border-portal-accent bg-white/[0.05]`
+                : `${tab.color} border-transparent hover:bg-white/[0.04]`
+                }`}
+            >
+              <span className="truncate">{tab.label}</span>
+              <span className="text-portal-muted/70"> · </span>
+              <span className="font-mono text-[10px]">{tab.count}</span>
+            </button>
+          );
+        })}
         <button
           type="button"
           onClick={onToggleCollapse}
-          title="Expand Fleet List"
-          className="w-8 h-8 rounded flex items-center justify-center text-portal-muted hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+          title={collapsed ? 'Show devices' : 'Hide devices'}
+          className="!rounded-none flex items-center justify-center border-t-2 border-transparent text-portal-text hover:bg-white/[0.08] hover:text-white transition cursor-pointer"
         >
-          <i className="pi pi-angle-double-right text-sm" />
+          <i className={`pi ${collapsed ? 'pi-list' : 'pi-angle-down'} text-sm`} />
         </button>
-        <div className="mt-8 flex flex-col items-center gap-4 text-portal-muted">
-          <div className="flex flex-col items-center text-[10px]">
-            <span className="w-2 h-2 rounded-full bg-portal-accent mb-1" />
-            <span className="font-mono font-bold text-white">{counts.moving}</span>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar divide-y divide-portal-border/40">
+        {filteredDevices.length === 0 ? (
+          <div className="p-8 flex flex-col items-center justify-center gap-2 text-portal-muted text-xs">
+            <i className="pi pi-inbox text-2xl opacity-40" />
+            <span>{devices.length === 0 ? 'No reported positions yet.' : 'No vehicles match filter.'}</span>
           </div>
-          <div className="flex flex-col items-center text-[10px]">
-            <span className="w-2 h-2 rounded-full bg-portal-orange mb-1" />
-            <span className="font-mono font-bold text-white">{counts.idling}</span>
-          </div>
-          <div className="flex flex-col items-center text-[10px]">
-            <span className="w-2 h-2 rounded-full bg-portal-muted mb-1" />
-            <span className="font-mono font-bold text-white">{counts.stopped}</span>
+        ) : (
+          filteredDevices.map((device) => {
+            const isSelected = selectedDevice?.deviceId === device.deviceId;
+            const status = getVehicleStatus(device.ignition, device.motion, device.speed);
+            const isMoving = status === 'moving';
+            const isIdle = status === 'idling';
+            return (
+              <div
+                key={device.deviceId}
+                onClick={() => onSelectDevice(device)}
+                className={`p-4 transition cursor-pointer relative ${isSelected ? 'bg-white/[0.08] text-white' : 'hover:bg-white/[0.03] text-portal-text'}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 my-auto flex items-center gap-2">
+                    <span className="w-9 h-9 !rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
+                      <i className="pi pi-map-marker text-white text-base" aria-hidden="true" />
+                    </span>
+                    <span className="font-semibold text-sm text-white truncate leading-tight">
+                      {device.regionName ? `${device.regionName} - ` : ''}{device.vehicleDisplayName || device.deviceName}
+                    </span>
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isMoving ? 'text-portal-accent' : isIdle ? 'text-portal-orange' : 'text-portal-muted'}`}>
+                      {status}
+                    </span>
+                    <span className="text-[11px] text-portal-muted whitespace-nowrap">{formatRelativeTime(device.lastReportedAt)}</span>
+                  </div>
+                </div>
+                {device.lastAddress && <div className="mt-1 text-[10px] text-portal-muted/80 truncate">{device.lastAddress}</div>}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  if (collapsed) {
+    return (
+      <>
+        {mobileFleetSheet}
+        <div className="hidden md:flex flex-col items-center bg-portal-surface border-r border-portal-border w-12 py-4 z-10 select-none">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title="Expand Fleet List"
+            className="w-8 h-8 rounded flex items-center justify-center text-portal-muted hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+          >
+            <i className="pi pi-angle-double-right text-sm" />
+          </button>
+          <div className="mt-8 flex flex-col items-center gap-4 text-portal-muted">
+            <div className="flex flex-col items-center text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-portal-accent mb-1" />
+              <span className="font-mono font-bold text-white">{counts.moving}</span>
+            </div>
+            <div className="flex flex-col items-center text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-portal-orange mb-1" />
+              <span className="font-mono font-bold text-white">{counts.idling}</span>
+            </div>
+            <div className="flex flex-col items-center text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-portal-muted mb-1" />
+              <span className="font-mono font-bold text-white">{counts.stopped}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="relative w-full md:w-80 lg:w-96 flex flex-col h-full bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-visible">
+    <>
+      {mobileFleetSheet}
+      <div className="hidden md:flex relative md:inset-auto md:w-80 lg:w-96 md:h-full flex-col bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-visible">
       {/* Floating panel control */}
       <button
         type="button"
         onClick={onToggleCollapse}
         title="Collapse Fleet List"
-        className="absolute top-2 -right-8 z-20 w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+        className="absolute top-2 right-2 md:-right-8 z-[1100] w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
       >
         <i className="pi pi-angle-double-left text-xs" />
       </button>
@@ -206,6 +296,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
           })
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };

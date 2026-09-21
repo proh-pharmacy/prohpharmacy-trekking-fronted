@@ -16,12 +16,18 @@ export const TrackingPage: React.FC = () => {
   // ── Fleet & Map State ──────────────────────────────────────────────
   const [allDevices, setAllDevices] = useState<DeviceLastPosition[]>([]);
   const deviceMetadataRef = useRef<Map<number, TraccarDeviceMetadata>>(new Map());
+  const hasAutoFittedRef = useRef(false);
   const [selectedDevice, setSelectedDevice] = useState<DeviceLastPosition | null>(null);
+  const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
   const [trailPoints, setTrailPoints] = useState<PositionHistoryPoint[] | null>(null);
+  const [trailVehicleName, setTrailVehicleName] = useState<string | null>(null);
+  const [trailDeviceId, setTrailDeviceId] = useState<string | null>(null);
   const [fitBoundsTrigger, setFitBoundsTrigger] = useState<number>(0);
 
   // ── View & Controls State ──────────────────────────────────────────
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
   const [tileMode, setTileMode] = useState<MapTileMode>('street');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -73,6 +79,13 @@ export const TrackingPage: React.FC = () => {
 
   const handleTraccarMessage = useCallback((message: TraccarMessage) => {
     if (message.positions?.length) {
+      // Fit the map once when the first live positions arrive. Re-fitting on
+      // every socket update causes the map to animate continuously while a
+      // device is selected and its telemetry panel is open.
+      if (!hasAutoFittedRef.current) {
+        hasAutoFittedRef.current = true;
+        setFitBoundsTrigger((prev) => prev + 1);
+      }
       setAllDevices((previous) => {
         const next = new Map(previous.map((device) => [Number(device.deviceId), device]));
         message.positions!.forEach((position) => {
@@ -114,7 +127,6 @@ export const TrackingPage: React.FC = () => {
       }));
     }
     setIsLoading(false);
-    setFitBoundsTrigger((prev) => prev + 1);
   }, []);
 
   const { status: hubStatus, reconnect, lastEventTime } = useTraccarSocket(handleTraccarMessage);
@@ -212,9 +224,14 @@ export const TrackingPage: React.FC = () => {
           selectedDevice={selectedDevice}
           onSelectDevice={(device) => {
             setSelectedDevice(device);
+            const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+            setIsTelemetryOpen(!isMobile);
+            if (isMobile) setSidebarCollapsed(true);
             // Clear prior trail points when switching vehicles
-            if (selectedDevice?.deviceId !== device.deviceId) {
+            if (trailDeviceId && trailDeviceId !== device.deviceId) {
               setTrailPoints(null);
+              setTrailVehicleName(null);
+              setTrailDeviceId(null);
             }
           }}
           collapsed={sidebarCollapsed}
@@ -228,12 +245,15 @@ export const TrackingPage: React.FC = () => {
             selectedDevice={selectedDevice}
             onSelectDevice={(device) => {
               setSelectedDevice(device);
-              if (selectedDevice?.deviceId !== device.deviceId) {
+              setIsTelemetryOpen(true);
+              if (trailDeviceId && trailDeviceId !== device.deviceId) {
                 setTrailPoints(null);
+                setTrailVehicleName(null);
+                setTrailDeviceId(null);
               }
             }}
             trailPoints={trailPoints}
-            trailVehicleName={selectedDevice?.vehicleRegistration}
+            trailVehicleName={trailVehicleName}
             fitBoundsTrigger={fitBoundsTrigger}
             tileMode={tileMode}
             onToggleTileMode={() =>
@@ -242,14 +262,28 @@ export const TrackingPage: React.FC = () => {
           />
 
           {/* Floating Vehicle Telemetry Inspection Drawer */}
-          {selectedDevice && (
+          {selectedDevice && isTelemetryOpen && (
             <VehicleTelemetryCard
               device={selectedDevice}
               onClose={() => {
                 setSelectedDevice(null);
-                setTrailPoints(null);
+                setIsTelemetryOpen(false);
               }}
-              onTrailLoaded={setTrailPoints}
+              onTrailLoaded={(points) => {
+                setTrailPoints(points);
+                if (points) {
+                  setTrailDeviceId(selectedDevice.deviceId);
+                  setTrailVehicleName(
+                    selectedDevice.vehicleDisplayName ||
+                      selectedDevice.vehicleRegistration ||
+                      selectedDevice.deviceName ||
+                      null,
+                  );
+                } else {
+                  setTrailVehicleName(null);
+                  setTrailDeviceId(null);
+                }
+              }}
               hasActiveTrail={Boolean(trailPoints && trailPoints.length > 0)}
             />
           )}

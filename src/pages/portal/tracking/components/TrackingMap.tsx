@@ -133,6 +133,43 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
     .filter((p) => p.valid && typeof p.latitude === 'number' && typeof p.longitude === 'number')
     .map((p) => [p.latitude, p.longitude]);
 
+  // Keep markers clickable when multiple vehicles report the same location.
+  // Without a stable visual separation, overlapping Leaflet markers can fight
+  // for the pointer and make the map appear to shake when one is selected.
+  const markerPositions = React.useMemo(() => {
+    const groups = new Map<string, DeviceLastPosition[]>();
+    devices.forEach((device) => {
+      if (
+        typeof device.latitude !== 'number' ||
+        typeof device.longitude !== 'number' ||
+        isNaN(device.latitude) ||
+        isNaN(device.longitude)
+      ) return;
+      const key = `${device.latitude.toFixed(5)}:${device.longitude.toFixed(5)}`;
+      const group = groups.get(key) || [];
+      group.push(device);
+      groups.set(key, group);
+    });
+
+    const positions = new Map<string, [number, number]>();
+    groups.forEach((group) => {
+      group.forEach((device, index) => {
+        if (group.length === 1) {
+          positions.set(device.deviceId, [device.latitude, device.longitude]);
+          return;
+        }
+        const angle = (index / group.length) * Math.PI * 2 - Math.PI / 2;
+        const radius = 0.00006;
+        const longitudeScale = Math.max(0.2, Math.cos((device.latitude * Math.PI) / 180));
+        positions.set(device.deviceId, [
+          device.latitude + Math.sin(angle) * radius,
+          device.longitude + (Math.cos(angle) * radius) / longitudeScale,
+        ]);
+      });
+    });
+    return positions;
+  }, [devices]);
+
   return (
     <div className="relative w-full h-full min-h-[500px] overflow-hidden bg-portal-canvas select-none">
       <MapContainer
@@ -246,7 +283,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
           return (
             <Marker
               key={device.deviceId}
-              position={[device.latitude, device.longitude]}
+              position={markerPositions.get(device.deviceId) || [device.latitude, device.longitude]}
               icon={icon}
               eventHandlers={{
                 click: () => onSelectDevice(device),
