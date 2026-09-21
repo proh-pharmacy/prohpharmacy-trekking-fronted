@@ -629,7 +629,7 @@ export const CustomerDetailPage: React.FC = () => {
             </label>
             <input
               type="number"
-              min="0.01"
+              min="0"
               step="0.01"
               value={addAmount}
               onChange={(e) => setAddAmount(e.target.value)}
