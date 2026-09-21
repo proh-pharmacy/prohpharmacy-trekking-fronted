@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { customersApi, organisationApi, type CustomerMapPin, type Region } from '../../../api-client';
@@ -8,6 +8,11 @@ import toast from 'react-hot-toast';
 
 const GHANA_CENTER: [number, number] = [7.9465, -1.0232];
 const GHANA_BOUNDS: [[number, number], [number, number]] = [[4.5, -3.5], [11.2, 1.2]];
+const HEATMAP_COLORS = {
+  low: '#087A2D',
+  medium: '#f0883e',
+  high: '#DE2512',
+} as const;
 
 // ── Auto fit-bounds when pins change ───────────────────────────────────
 const FitBounds: React.FC<{ pins: CustomerMapPin[]; trigger: number }> = ({ pins, trigger }) => {
@@ -21,8 +26,21 @@ const FitBounds: React.FC<{ pins: CustomerMapPin[]; trigger: number }> = ({ pins
   return null;
 };
 
+const FocusPin: React.FC<{ pin: CustomerMapPin | null }> = ({ pin }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!pin) return;
+    map.flyTo([pin.latitude, pin.longitude], Math.max(map.getZoom(), 14), {
+      animate: true,
+      duration: 0.8,
+    });
+  }, [map, pin]);
+  return null;
+};
+
 // ── Pin helpers ────────────────────────────────────────────────────────
 export type PinSize = 'xs' | 'sm' | 'normal';
+type MapMode = 'pins' | 'heatmap';
 
 const PIN_SIZES: Record<PinSize, { size: number; anchor: number; popupY: number; border: number; font: number; label: string }> = {
   xs: { size: 18, anchor: 9, popupY: -12, border: 1.5, font: 7, label: 'Extra Small' },
@@ -78,6 +96,33 @@ function formatCustomerType(type: string): string {
   return type.replace(/([A-Z])/g, ' $1').trim();
 }
 
+const HeatmapLayer: React.FC<{ pins: CustomerMapPin[] }> = ({ pins }) => {
+  const points = pins.map((pin) => {
+    const nearby = pins.filter((other) => {
+      const latitudeDistance = (other.latitude - pin.latitude) * 111;
+      const longitudeDistance = (other.longitude - pin.longitude) * 111 * Math.cos((pin.latitude * Math.PI) / 180);
+      return Math.sqrt(latitudeDistance ** 2 + longitudeDistance ** 2) <= 2;
+    }).length;
+    const intensity = Math.min(1, nearby / Math.max(3, Math.min(12, pins.length)));
+    return { pin, intensity };
+  });
+
+  return <>
+    {points.map(({ pin, intensity }) => (
+      <Circle
+        key={`heat-${pin.locationId}`}
+        center={[pin.latitude, pin.longitude]}
+        radius={Math.round(900 + intensity * 2200)}
+        pathOptions={{
+          stroke: false,
+          fillColor: intensity > 0.65 ? HEATMAP_COLORS.high : intensity > 0.3 ? HEATMAP_COLORS.medium : HEATMAP_COLORS.low,
+          fillOpacity: 0.28 + intensity * 0.22,
+        }}
+      />
+    ))}
+  </>;
+};
+
 // ── Page ───────────────────────────────────────────────────────────────
 export const CustomerPinsPage: React.FC = () => {
   const [pins, setPins]           = useState<CustomerMapPin[]>([]);
@@ -87,6 +132,10 @@ export const CustomerPinsPage: React.FC = () => {
   const [regions, setRegions]             = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('');
   const [pinSize, setPinSize]             = useState<PinSize>('normal');
+  const [mapMode, setMapMode]             = useState<MapMode>('pins');
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [desktopPanelOpen, setDesktopPanelOpen] = useState(false);
+  const [focusedPin, setFocusedPin] = useState<CustomerMapPin | null>(null);
 
   useEffect(() => {
     organisationApi.getRegions()
@@ -117,7 +166,7 @@ export const CustomerPinsPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-5rem)] md:h-[calc(100dvh-4.5rem)] -m-4 sm:-m-6 md:-m-8 overflow-hidden bg-portal-canvas">
+    <div className="relative flex flex-col h-[calc(100dvh-5rem)] md:h-[calc(100dvh-4.5rem)] -m-4 sm:-m-6 md:-m-8 overflow-hidden bg-portal-canvas">
       {/* Header */}
       <div className="shrink-0 bg-portal-surface border-b border-portal-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
         <div className="flex items-center gap-3">
@@ -134,7 +183,14 @@ export const CustomerPinsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center flex-wrap gap-3">
+        <div className="hidden md:flex items-center flex-wrap gap-3">
+          <div className="inline-flex h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
+            {(['pins', 'heatmap'] as const).map((mode) => (
+              <button key={mode} type="button" onClick={() => setMapMode(mode)} className={`!rounded-none px-3 text-xs font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white border border-transparent'}`}>
+                {mode === 'pins' ? 'Pins' : 'Heatmap'}
+              </button>
+            ))}
+          </div>
           {/* Pin size toggle */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium uppercase tracking-wider text-portal-muted">
@@ -195,20 +251,30 @@ export const CustomerPinsPage: React.FC = () => {
           style={{ width: '100%', height: '100%' }}
           scrollWheelZoom
           zoomControl
-        >
+          >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
           <FitBounds pins={pins} trigger={fitTrigger} />
-          {pins.map((pin) => (
+          <FocusPin pin={focusedPin} />
+          {mapMode === 'heatmap' && <HeatmapLayer pins={pins} />}
+          {mapMode === 'pins' && pins.filter((pin) => !focusedPin || pin.locationId === focusedPin.locationId).map((pin) => (
             <Marker
               key={`${pin.locationId || `${pin.customerAccountId}-${pin.latitude}-${pin.longitude}`}-${pinSize}`}
               position={[pin.latitude, pin.longitude]}
               icon={makePin(pin, pinSize)}
+              ref={(marker) => {
+                if (marker && mapMode === 'pins' && focusedPin?.locationId === pin.locationId) {
+                  window.requestAnimationFrame(() => marker.openPopup());
+                }
+              }}
               eventHandlers={{
                 mouseover: (e) => {
                   e.target.openPopup();
+                },
+                popupclose: () => {
+                  if (focusedPin?.locationId === pin.locationId) setFocusedPin(null);
                 },
               }}
             >
@@ -250,6 +316,81 @@ export const CustomerPinsPage: React.FC = () => {
             </Marker>
           ))}
         </MapContainer>
+      </div>
+
+      {/* Desktop customer location picker */}
+      <div className={`hidden md:flex absolute left-4 bottom-4 z-[1000] w-80 max-h-[65%] flex-col bg-portal-surface/95 border border-portal-border shadow-2xl backdrop-blur-xl transform-gpu transition-transform duration-300 ease-out ${desktopPanelOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+1rem)] pointer-events-none'}`}>
+        <div className="shrink-0 flex items-center justify-between gap-3 border-b border-portal-border px-3 py-2.5">
+          <span className="text-xs font-semibold text-white">Customer locations</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-portal-muted">{pins.length} pins</span>
+            <button type="button" onClick={() => setDesktopPanelOpen(false)} title="Hide customer locations" className="!rounded-none flex h-7 w-7 items-center justify-center text-portal-muted hover:bg-white/[0.08] hover:text-white transition cursor-pointer">
+              <i className="pi pi-times text-xs" />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-portal-border/40">
+          {pins.map((pin) => (
+            <button key={`desktop-${pin.locationId}`} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); }} className="!rounded-none w-full p-3 text-left hover:bg-white/[0.06] transition cursor-pointer">
+              <span className="block text-xs font-semibold text-white truncate">{pin.businessName}</span>
+              <span className="mt-1 block text-[11px] text-portal-muted truncate">{pin.regionName || 'Region unavailable'}{pin.primaryPhoneNumber ? ` · ${pin.primaryPhoneNumber}` : ''}</span>
+            </button>
+          ))}
+          {!pins.length && <div className="p-6 text-center text-xs text-portal-muted">No customer locations found.</div>}
+        </div>
+      </div>
+      <button type="button" onClick={() => setDesktopPanelOpen(true)} title="Show customer list" className={`hidden md:flex absolute left-4 bottom-4 z-[1000] h-10 items-center gap-2 rounded border border-portal-border bg-portal-surface/95 px-3 text-xs font-semibold text-portal-text shadow-2xl backdrop-blur-xl hover:bg-portal-card hover:text-white transition ${desktopPanelOpen ? 'pointer-events-none opacity-0' : 'pointer-events-auto opacity-100'}`}>
+        <i className="pi pi-list text-sm text-portal-accent" />
+        <span>Show customer list</span>
+        <span className="font-mono text-[10px] text-portal-muted">{pins.length}</span>
+      </button>
+
+      {/* Mobile map controls and location list bottom sheet */}
+      <div className="md:hidden absolute inset-x-0 bottom-0 z-[1050] h-[70%] flex flex-col bg-portal-surface/95 border-t border-portal-border shadow-2xl backdrop-blur-xl transform-gpu will-change-transform transition-transform duration-500 ease-in-out"
+        style={{ transform: mobilePanelOpen ? 'translateY(0)' : 'translateY(calc(100% - 58px))' }}>
+        <div className="shrink-0 grid grid-cols-[1fr_1fr_1fr_44px] border-b border-portal-border">
+          <div className="flex flex-col items-center justify-center py-2 text-[11px] text-portal-text">
+            <span className="font-mono font-bold text-white">{pins.length}</span>
+            <span className="text-portal-muted">Pins</span>
+          </div>
+          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-white/[0.06] hover:text-white transition cursor-pointer">
+            <span className="block truncate px-1">{selectedRegion ? regions.find((region) => region.id === selectedRegion)?.name || 'Region' : 'All regions'}</span>
+            <span className="text-[10px] text-portal-muted">Region</span>
+          </button>
+          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-white/[0.06] hover:text-white transition cursor-pointer">
+            <span className="block text-portal-accent">{PIN_SIZES[pinSize].label}</span>
+            <span className="text-[10px] text-portal-muted">Pin size</span>
+          </button>
+          <button type="button" onClick={() => setMobilePanelOpen((open) => !open)} title={mobilePanelOpen ? 'Hide locations' : 'Show locations'} className="!rounded-none border-l border-portal-border/60 flex items-center justify-center text-portal-text hover:bg-white/[0.08] hover:text-white transition cursor-pointer">
+            <i className={`pi ${mobilePanelOpen ? 'pi-angle-down' : 'pi-list'} text-sm`} />
+          </button>
+        </div>
+        <div className="shrink-0 grid grid-cols-1 gap-3 border-b border-portal-border/60 p-3">
+          <div className="grid grid-cols-2 h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
+            {(['pins', 'heatmap'] as const).map((mode) => (
+              <button key={mode} type="button" onClick={() => { setMapMode(mode); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white'}`}>
+                {mode === 'pins' ? 'Pins' : 'Heatmap'}
+              </button>
+            ))}
+          </div>
+          <FlatDropdown value={selectedRegion} options={regionOptions} onChange={(val: any) => { const v = val?.value !== undefined ? val.value : val; setSelectedRegion(v); setMobilePanelOpen(false); }} placeholder="All Regions" size="sm" />
+          <div className="grid grid-cols-3 h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
+            {(['xs', 'sm', 'normal'] as const).map((size) => (
+              <button key={size} type="button" onClick={() => { setPinSize(size); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${pinSize === size ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white'}`}>
+                {PIN_SIZES[size].label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar divide-y divide-portal-border/40">
+          {pins.map((pin) => (
+            <button key={pin.locationId} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); setMobilePanelOpen(false); }} className="!rounded-none w-full p-3 text-left hover:bg-white/[0.06] transition cursor-pointer">
+              <span className="block text-xs font-semibold text-white truncate">{pin.businessName}</span>
+              <span className="mt-1 block text-[11px] text-portal-muted truncate">{pin.regionName || 'Region unavailable'}{pin.primaryPhoneNumber ? ` · ${pin.primaryPhoneNumber}` : ''}</span>
+            </button>
+          ))}
+          {!pins.length && <div className="p-8 text-center text-xs text-portal-muted">No customer locations found.</div>}
+        </div>
       </div>
     </div>
   );
