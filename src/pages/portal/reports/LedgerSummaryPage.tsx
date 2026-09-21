@@ -11,7 +11,7 @@ import { fmtGhs, fmtGhsShort, formatDateInput, parseDateInput } from '../../../l
 // ── Filter options ──────────────────────────────────────────────────────
 const HAS_BALANCE_OPTIONS = [
   { label: 'All Customers', value: '' },
-  { label: 'With Balance Only', value: 'true' },
+  { label: 'Customers with outstanding balances only', value: 'true' },
 ];
 
 const SORT_OPTIONS = [
@@ -233,7 +233,7 @@ export const LedgerSummaryPage: React.FC = () => {
           <p className="text-xs font-semibold text-orange-400 truncate" title={fmtGhs(stats.totalOutstanding)}>{fmtGhsShort(stats.totalOutstanding)}</p>
         </div>
         <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Customers with Balance</p>
+          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Customers with outstanding Balance</p>
           <p className="text-xs font-semibold text-portal-text truncate">{stats.customersWithBalance.toLocaleString()}</p>
         </div>
       </div>
@@ -332,7 +332,7 @@ export const LedgerSummaryPage: React.FC = () => {
             </label>
             <FlatDropdown
               value={exportHasBalance}
-              options={[{ label: 'All Customers', value: '' }, { label: 'With Balance Only', value: 'true' }]}
+              options={[{ label: 'All Customers', value: '' }, { label: 'Customers with outstanding balances only', value: 'true' }]}
               onChange={(val: any) => setExportHasBalance(val?.value !== undefined ? val.value : val)}
               placeholder="All Customers"
               size="sm"
