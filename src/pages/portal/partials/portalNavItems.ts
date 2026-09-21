@@ -32,7 +32,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
     title: 'Dashboards',
     items: [
       { label: 'Overview', to: '/portal/dashboard', icon: SquaresFour },
-      { label: 'Live Tracking', to: '/portal/tracking', icon: MapTrifold, permissions: ['Tracking.ViewAll', 'Tracking.View'] },
+      { label: 'Live Tracking', to: '/portal/tracking', icon: MapTrifold, permissions: ['Tracking.ViewAll', 'Tracking.ViewBranch', 'Tracking.View'] },
       { label: 'Customer Pins', to: '/portal/customer-pins', icon: MapPin, permissions: ['Customers.View', 'Customers.Register', 'CustomerKyc.View'] },
     ],
   },

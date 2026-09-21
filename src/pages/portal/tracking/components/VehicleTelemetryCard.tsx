@@ -45,9 +45,13 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
 
   // Fetch live direct Traccar position
   const handleRefreshLive = async () => {
+    if (!device.backendDeviceId) {
+      toast.error('Backend device link is not available for this vehicle');
+      return;
+    }
     try {
       setIsRefreshingLive(true);
-      const live = await fleetApi.getDeviceLivePosition(device.deviceId);
+      const live = await fleetApi.getDeviceLivePosition(device.backendDeviceId);
       setLiveOverride(live);
       toast.success('Live Traccar position received');
     } catch (err: any) {
@@ -60,6 +64,10 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
 
   // Fetch historical GPS trail
   const handleFetchTrail = async (preset: TrailPreset = trailPreset) => {
+    if (!device.backendDeviceId) {
+      toast.error('Backend device link is not available for this vehicle');
+      return;
+    }
     try {
       setIsLoadingTrail(true);
       setTrailPreset(preset);
@@ -80,7 +88,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
       }
 
       const history = await fleetApi.getDevicePositionHistory(
-        device.deviceId,
+        device.backendDeviceId,
         from.toISOString(),
         now.toISOString()
       );

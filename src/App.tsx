@@ -164,7 +164,7 @@ export default function App() {
                   <Route path="traccar" element={<PermissionGuard permissions={['TrackingDevices.View', 'TrackingDevices.Manage', 'Tracking.ViewAll']}><TraccarPage /></PermissionGuard>} />
                   <Route path="trekking" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekkingPage /></PermissionGuard>} />
                   <Route path="trekking/:trekId" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekDetailPage /></PermissionGuard>} />
-                  <Route path="tracking" element={<PermissionGuard permissions={['Tracking.ViewAll', 'Tracking.View']}><TrackingPage /></PermissionGuard>} />
+                  <Route path="tracking" element={<PermissionGuard permissions={['Tracking.ViewAll', 'Tracking.ViewBranch', 'Tracking.View']}><TrackingPage /></PermissionGuard>} />
                   <Route path="customer-pins" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomerPinsPage /></PermissionGuard>} />
                   <Route path="customers" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomersPage /></PermissionGuard>} />
                   <Route path="customers/:customerId" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'Customers.Edit', 'CustomerKyc.View']}><CustomerDetailPage /></PermissionGuard>} />

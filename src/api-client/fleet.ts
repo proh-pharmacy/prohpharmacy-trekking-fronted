@@ -65,6 +65,18 @@ export interface TrackingDevice {
   updatedAt: string | null;
 }
 
+export interface TraccarDeviceMetadata {
+  traccarDeviceId: number;
+  name: string;
+  isLinked: boolean;
+  backendDeviceId: string | null;
+  vehicleId: string | null;
+  vehicleRegistration: string | null;
+  staffName: string | null;
+  branchId?: string | null;
+  branchName?: string | null;
+}
+
 export interface CreateDevicePayload {
   vehicleId: string;
   uniqueId?: string;
@@ -258,6 +270,15 @@ export const fleetApi = {
     return res.data;
   },
 
+  getTraccarDeviceMetadata: async (): Promise<TraccarDeviceMetadata[]> => {
+    // This endpoint is intentionally not backed by the paginated vehicle list.
+    // Tracking needs every device in one response to build a complete label map.
+    const res = await apiClient.get<TraccarDeviceMetadata[] | { data?: TraccarDeviceMetadata[] }>(
+      '/fleet/devices/traccar'
+    );
+    return Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+  },
+
   getDeviceLivePosition: async (deviceId: string): Promise<DeviceLivePosition> => {
     const res = await apiClient.get<DeviceLivePosition>(`/fleet/devices/${deviceId}/position`);
     return res.data;
@@ -279,6 +300,7 @@ export const fleetApi = {
 // ── Live Tracking Types ────────────────────────────────────────────────
 export interface DeviceLastPosition {
   deviceId: string;
+  backendDeviceId?: string | null;
   deviceName: string;
   staffMemberId: string | null;
   staffName: string | null;
