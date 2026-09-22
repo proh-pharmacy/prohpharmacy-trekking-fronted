@@ -4,7 +4,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { FlatInputText } from '../../components/flat-form/FlatInputText';
 import { FlatInputPassword } from '../../components/flat-form/FlatInputPassword';
 import { FlatButton } from '../../components/flat-form/FlatButton';
-import { useAuth } from '../../context';
+import { useAuth, useTheme } from '../../context';
 import { getApiError } from '../../api-client';
 import { treksApi, type PortalSession } from '../../api-client/treks';
 import toast from 'react-hot-toast';
@@ -20,6 +20,7 @@ export const LoginPage: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { login, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [loginTab, setLoginTab] = useState<'admin' | 'trekking'>('admin');
@@ -145,36 +146,49 @@ export const LoginPage: React.FC = () => {
 
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center gap-0 p-4 bg-light-green overflow-hidden font-sans select-none">
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center gap-0 p-4 bg-portal-canvas overflow-hidden font-sans select-none">
       {/* Background Image: login_bg_alternate.png */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105 opacity-40 dark:opacity-100 transition-opacity"
         style={{ backgroundImage: "url('/images/login_bg_alternate.png')" }}
       />
 
       {/* Reduced subtle blur layer over the background */}
-      <div className="absolute inset-0 backdrop-blur-[5px] bg-black/5" />
+      <div className="absolute inset-0 backdrop-blur-[5px] bg-black/5 dark:bg-black/20" />
 
-      {/* Main Login Card - Solid Deep Green (bg-portal-card / #333e38) */}
-      <div className="relative z-10 w-full max-w-[390px] overflow-hidden bg-portal-card border border-white/10 shadow-2xl shadow-black/50 text-white rounded transition-[height] duration-500 ease-in-out" style={cardHeight ? { height: `${cardHeight}px` } : undefined}>
+      {/* Theme Switcher in Top Right */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center justify-center w-9 h-9 rounded border border-portal-border bg-portal-surface/80 backdrop-blur text-portal-muted hover:text-portal-heading transition-colors shadow-sm cursor-pointer"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label="Toggle theme"
+        >
+          <i className={`pi ${theme === 'dark' ? 'pi-sun' : 'pi-moon'} text-sm`} />
+        </button>
+      </div>
+
+      {/* Main Login Card */}
+      <div className="relative z-10 w-full max-w-[390px] overflow-hidden bg-portal-surface border border-portal-border shadow-2xl shadow-black/20 text-portal-text rounded transition-[height] duration-500 ease-in-out" style={cardHeight ? { height: `${cardHeight}px` } : undefined}>
         <div ref={cardContentRef} className="p-8 sm:p-10">
-        <div className="relative -mx-8 -mt-8 mb-7 grid grid-cols-2 border-b border-white/10 px-1 sm:-mx-10 sm:-mt-10">
+        <div className="relative -mx-8 -mt-8 mb-7 grid grid-cols-2 border-b border-portal-border px-1 sm:-mx-10 sm:-mt-10">
           <span className={`absolute bottom-0 left-0 h-0.5 w-1/2 !rounded-none bg-portal-accent transition-transform duration-500 ease-in-out ${loginTab === 'trekking' ? 'translate-x-full' : 'translate-x-0'}`} aria-hidden="true" />
-          <button type="button" onClick={() => { setLoginTab('admin'); setTrekError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors ${loginTab === 'admin' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Admin</button>
-          <button type="button" onClick={() => { setLoginTab('trekking'); setAuthError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors ${loginTab === 'trekking' ? 'text-portal-accent' : 'text-white/70 hover:text-white'}`}>Trekking</button>
+          <button type="button" onClick={() => { setLoginTab('admin'); setTrekError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors cursor-pointer ${loginTab === 'admin' ? 'text-portal-accent' : 'text-portal-muted hover:text-portal-heading'}`}>Admin</button>
+          <button type="button" onClick={() => { setLoginTab('trekking'); setAuthError(null); }} className={`relative z-10 px-3 py-4 text-xs font-semibold transition-colors cursor-pointer ${loginTab === 'trekking' ? 'text-portal-accent' : 'text-portal-muted hover:text-portal-heading'}`}>Trekking</button>
         </div>
         {/* Maintained ProH Pharmacy Logo & Header */}
         {!trekSession && (
           <div className="flex flex-col items-center text-center mb-7">
             <img
-              src="/images/prohpharmacy_icon_white.png"
+              src={theme === 'dark' ? '/images/prohpharmacy_icon_white.png' : '/images/prohpharmacy_icon.png'}
               alt="ProH Pharmacy Logo"
               className="w-12 h-12 object-contain drop-shadow-md mb-2"
             />
-            <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
+            <h1 className="text-2xl font-semibold tracking-tight text-portal-heading font-sans">
               {loginTab === 'admin' ? 'User Login' : 'Trekking Login'}
             </h1>
-            <p className="text-[11px] text-white/70 mt-1">
+            <p className="text-xs text-portal-muted mt-1.5 font-normal tracking-wide">
               ProH Pharmacy Trekking Operations
             </p>
           </div>
@@ -213,21 +227,21 @@ export const LoginPage: React.FC = () => {
         )}
 
         {loginTab === 'trekking' && trekSession ? (
-          <div className="space-y-4 rounded border border-white/10 bg-portal-canvas/60 p-4 text-sm">
-            <div><p className="text-[11px] uppercase tracking-wide text-portal-muted">Trek</p><p className="font-semibold text-white">{trekSession.trekNumber}</p></div>
+          <div className="space-y-4 rounded border border-portal-border bg-portal-canvas/60 p-4 text-sm">
+            <div><p className="text-[11px] uppercase tracking-wide text-portal-muted">Trek</p><p className="font-semibold text-portal-heading">{trekSession.trekNumber}</p></div>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div><p className="text-portal-muted">Region</p><p className="text-white">{trekSession.regionName}</p></div>
-              <div><p className="text-portal-muted">Scheduled</p><p className="text-white">{trekSession.scheduledDate}</p></div>
-              <div><p className="text-portal-muted">Driver</p><p className="text-white">{trekSession.driver.name}<br />{trekSession.driver.phone}</p></div>
-              {trekSession.salesRep && <div><p className="text-portal-muted">Sales rep</p><p className="text-white">{trekSession.salesRep.name}<br />{trekSession.salesRep.phone}</p></div>}
+              <div><p className="text-portal-muted">Region</p><p className="text-portal-heading">{trekSession.regionName}</p></div>
+              <div><p className="text-portal-muted">Scheduled</p><p className="text-portal-heading">{trekSession.scheduledDate}</p></div>
+              <div><p className="text-portal-muted">Driver</p><p className="text-portal-heading">{trekSession.driver.name}<br />{trekSession.driver.phone}</p></div>
+              {trekSession.salesRep && <div><p className="text-portal-muted">Sales rep</p><p className="text-portal-heading">{trekSession.salesRep.name}<br />{trekSession.salesRep.phone}</p></div>}
             </div>
-            <p className="text-xs text-white/75">Is this your trek?</p>
+            <p className="text-xs text-portal-muted">Is this your trek?</p>
             <div className="flex gap-2"><FlatButton fullWidth onClick={confirmTrek}>Yes, that&apos;s me</FlatButton><FlatButton fullWidth variant="outline" onClick={denyTrek}>Not my trek</FlatButton></div>
           </div>
         ) : loginTab === 'trekking' ? (
           <form onSubmit={onTrekkingSubmit} noValidate className="space-y-4">
             <FlatInputText id="trek-number" label="Trek number" size="md" variant="dark" value={trekNumber} onChange={(event) => onTrekNumberChange(event.target.value)} placeholder="TRK-00001" maxLength={12} />
-            {trekError && <p role="alert" className="text-xs text-red-200">{trekError}</p>}
+            {trekError && <p role="alert" className="text-xs text-red-500">{trekError}</p>}
             <FlatButton type="submit" fullWidth loading={trekLoading} disabled={trekLoading}>{trekLoading ? 'Checking trek...' : 'Continue'}</FlatButton>
           </form>
         ) : <form
@@ -306,7 +320,7 @@ export const LoginPage: React.FC = () => {
 
         {/* Bottom Assistance Section (Replaces Demo Fill) */}
         {loginTab === 'admin' && (
-          <div className="mt-8 pt-5 border-t border-white/10 text-center text-xs text-white/85">
+          <div className="mt-8 pt-5 border-t border-portal-border text-center text-xs text-portal-muted">
             <span>Need assistance? </span>
             <a
               href="#forgot-password"
@@ -314,7 +328,7 @@ export const LoginPage: React.FC = () => {
                 e.preventDefault();
                 alert('Please contact your System Administrator to reset your credentials.');
               }}
-              className="text-[#41cc84] font-semibold hover:underline cursor-pointer ml-1"
+              className="text-portal-accent font-semibold hover:underline cursor-pointer ml-1"
             >
               Forgot password?
             </a>

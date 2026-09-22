@@ -7,8 +7,10 @@ import {
   Gauge,
   MapPin,
   MapTrifold,
+  Moon,
   Path,
   PlusCircle,
+  Sun,
   UsersThree,
   UserCircle,
   Warning,
@@ -25,6 +27,7 @@ import type { Weather } from './useDeviceStatus';
 import { RegionMapBackdrop } from './RegionMapBackdrop';
 import { CockpitButton } from './CockpitButton';
 import { SyncNotifications } from './SyncNotifications';
+import { useTheme } from '../../../context/ThemeContext';
 
 interface Props {
   trek: DriverTrek;
@@ -100,20 +103,20 @@ function NavRailButton({
       aria-expanded={expanded}
       aria-controls={controls}
       onClick={onClick}
-      className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 text-center transition-all ${mobile ? 'h-16 flex-1 px-0.5' : 'h-[72px] w-full px-0.5 sm:h-[94px] sm:gap-1.5 sm:px-1'} ${active
-          ? 'bg-portal-accent/10 text-white'
-          : 'text-portal-muted hover:bg-white/[0.04] hover:text-portal-text'
+      className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 !rounded-none text-center transition-all ${mobile ? 'h-16 flex-1 px-0.5' : 'h-[72px] w-full px-0.5 sm:h-[94px] sm:gap-1.5 sm:px-1'} ${active
+          ? 'bg-sidebar-accent/15 text-sidebar-heading'
+          : 'text-white/60 hover:bg-white/[0.08] hover:text-sidebar-heading'
         }`}
     >
       <IconComponent
         size={mobile ? 22 : 26}
         weight="duotone"
-        className="text-portal-accent transition-transform group-hover:scale-110"
+        className="text-sidebar-heading transition-transform group-hover:scale-110"
         aria-hidden="true"
       />
       <span className={`font-semibold leading-tight tracking-wide ${mobile ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'}`}>{label}</span>
       {active && (
-        <span className={`absolute h-1 w-7 rounded-full bg-portal-accent shadow-[0_0_8px_var(--color-portal-accent)] ${mobile ? 'bottom-0.5' : 'bottom-2.5'}`} />
+        <span className={`driver-navigation-indicator absolute h-1 w-7 bg-white/75 shadow-sm ${mobile ? 'bottom-0.5' : 'bottom-2.5'}`} />
       )}
     </button>
   );
@@ -142,9 +145,9 @@ function ActionDrawerLink({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[40px] w-full items-center justify-between rounded px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${danger
+        className={`flex min-h-[40px] w-full items-center justify-between !rounded-none px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${danger
           ? 'text-red-accent hover:bg-red-500/10'
-          : 'text-portal-text hover:bg-white/[0.07] hover:text-white'
+          : 'text-portal-text hover:bg-portal-hover hover:text-portal-heading'
         }`}
     >
       <span className="flex items-center gap-2.5">
@@ -197,6 +200,7 @@ export function DriverDashboard({
   const [confirmSos, setConfirmSos] = useState(false);
   const [loadedMapRegion, setLoadedMapRegion] = useState<string | null>(null);
   const [mapCustomerScope, setMapCustomerScope] = useState<'trek' | 'region'>('trek');
+  const { isDark, toggleTheme } = useTheme();
 
   const mapAvailable = loadedMapRegion === trek.regionName;
   const recorded = trek.stops.filter(isStopRecorded).length;
@@ -261,7 +265,7 @@ export function DriverDashboard({
           type="button"
           onClick={() => setMoreOpen(false)}
           aria-label="Close more actions"
-          className="rounded p-1 text-portal-muted hover:bg-white/[0.08] hover:text-white"
+          className="!rounded-none p-1 text-portal-muted hover:bg-portal-hover hover:text-portal-heading"
         >
           <i className="pi pi-times text-xs" />
         </button>
@@ -286,6 +290,11 @@ export function DriverDashboard({
           onClick={() => void reportLocation()}
         />
         <ActionDrawerLink
+          icon={isDark ? Sun : Moon}
+          label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          onClick={() => { toggleTheme(); setMoreOpen(false); }}
+        />
+        <ActionDrawerLink
           icon={Warning}
           label="SOS Emergency Alert"
           danger
@@ -297,28 +306,28 @@ export function DriverDashboard({
   );
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-portal-canvas">
+    <div className="driver-dashboard-shell flex h-full min-h-0 w-full flex-col overflow-hidden bg-portal-canvas">
       {/* Top Application Bar */}
-      <header className="relative z-[1400] flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-[#1f242d] px-2.5 sm:px-6">
+      <header className="driver-dashboard-header relative z-[1400] flex h-16 shrink-0 items-center justify-between gap-2 border-b border-portal-border/60 bg-sidebar-canvas px-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" className="h-8 w-8 object-contain" />
           {/* Desktop header title & metadata */}
-          <p className="hidden truncate text-xs font-bold tracking-wide text-white sm:block">
+          <p className="hidden truncate text-xs font-bold tracking-wide text-sidebar-heading sm:block">
             Driver Control Panel
           </p>
-          <span className="hidden truncate text-[11px] font-semibold text-portal-text sm:inline">
+          <span className="hidden truncate text-[11px] font-semibold text-sidebar-text sm:inline">
             · {trek.trekNumber}
           </span>
-          <span className="hidden truncate text-xs font-semibold text-portal-accent sm:inline">
+          <span className="hidden truncate text-xs font-semibold text-sidebar-accent sm:inline">
             ({trek.regionName})
           </span>
 
           {/* Small screen: replace generic title with Region and Trek Number */}
           <div className="flex min-w-0 items-center gap-1.5 sm:hidden">
-            <span className="truncate text-xs font-bold tracking-wide text-white">
+            <span className="truncate text-xs font-bold tracking-wide text-sidebar-heading">
               {trek.regionName}
             </span>
-            <span className="truncate text-[11px] font-semibold text-portal-accent">
+            <span className="truncate text-[11px] font-semibold text-sidebar-accent">
               · {trek.trekNumber}
             </span>
           </div>
@@ -332,13 +341,13 @@ export function DriverDashboard({
                 setActiveView('treks');
                 setMoreOpen(false);
               }}
-              className="hidden sm:flex items-center text-[11px] font-medium text-portal-text hover:text-white transition-colors"
+              className="hidden sm:flex items-center text-[11px] font-medium text-sidebar-text hover:text-sidebar-heading transition-colors"
             >
               <span>{regionalCount} regional treks</span>
             </button>
           )}
-          {regionalCount != null && regionalCount > 1 && <span className="hidden sm:inline text-portal-muted">|</span>}
-          <span className="font-mono text-[11px] font-medium text-portal-text">
+          {regionalCount != null && regionalCount > 1 && <span className="hidden sm:inline text-sidebar-muted">|</span>}
+          <span className="font-mono text-[11px] font-medium text-sidebar-text">
             {status}
           </span>
           <SyncNotifications
@@ -359,12 +368,12 @@ export function DriverDashboard({
               aria-label={sessionRemembered ? 'Driver session' : 'Keep me logged in'}
               aria-expanded={sessionMenuOpen}
               onClick={() => setSessionMenuOpen((open) => !open)}
-              className="flex h-9 w-9 items-center justify-center rounded text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+              className="flex h-9 w-9 items-center justify-center !rounded-none text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-heading"
             >
               <UserCircle size={22} weight="duotone" aria-hidden="true" />
             </button>
             {sessionMenuOpen && (
-              <div className="absolute right-0 top-full z-[1600] mt-2 w-52 rounded border border-portal-border bg-portal-surface p-1.5 shadow-xl">
+              <div className="absolute right-0 top-full z-[1600] mt-2 w-52 !rounded-none border border-portal-border bg-portal-surface p-1.5 shadow-xl">
                 <div className="border-b border-portal-border/60 px-3 py-2">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-portal-muted">Region</p>
                   <p className="mt-0.5 truncate text-xs font-semibold text-portal-text">{trek.regionName}</p>
@@ -373,7 +382,7 @@ export function DriverDashboard({
                   <button
                     type="button"
                     onClick={() => { setSessionMenuOpen(false); onLogout(); }}
-                    className="flex min-h-10 w-full items-center rounded px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+                    className="flex min-h-10 w-full items-center !rounded-none px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-portal-hover hover:text-portal-heading"
                   >
                     <i className="pi pi-sign-out mr-2.5 text-sm" aria-hidden="true" />
                     Log out
@@ -382,7 +391,7 @@ export function DriverDashboard({
                   <button
                     type="button"
                     onClick={() => { setSessionMenuOpen(false); onKeepLoggedIn(); }}
-                    className="flex min-h-10 w-full items-center rounded px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-white/[0.08] hover:text-white"
+                    className="flex min-h-10 w-full items-center !rounded-none px-3 py-2 text-left text-xs font-medium text-portal-text transition-colors hover:bg-portal-hover hover:text-portal-heading"
                   >
                     <i className="pi pi-bookmark mr-2.5 text-sm text-portal-accent" aria-hidden="true" />
                     Keep me logged in
@@ -395,26 +404,26 @@ export function DriverDashboard({
       </header>
 
       {/* Main Desktop Body (Left Nav Rail + Workspace) */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div className="driver-dashboard-body relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Navigation Rail (matches image) */}
         <aside
-          className="relative z-[1000] hidden h-full w-[96px] shrink-0 flex-col border-r border-portal-border/60 bg-[#1c2128] sm:flex"
+          className="driver-field-navigation relative z-[1000] hidden h-full w-[96px] shrink-0 flex-col border-r border-portal-border/60 bg-sidebar-surface sm:flex"
           aria-label="Desktop control rail"
         >
           {/* Back Arrow Button */}
-          <div className="flex h-14 items-center justify-center border-b border-portal-border/50">
+          <div className="driver-desktop-nav-edge flex h-14 items-center justify-center border-b border-portal-border/50">
             <button
               type="button"
               onClick={handleBack}
               title={activeView === 'dashboard' || activeView === 'overview' ? 'Overview' : 'Back to Overview'}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/[0.08] hover:text-white active:scale-95"
+              className="flex h-9 w-9 items-center justify-center !rounded-none text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-heading active:scale-95"
             >
               <i className="pi pi-chevron-left text-lg font-bold" />
             </button>
           </div>
 
           {/* Primary Navigation Tabs */}
-          <div role="tablist" aria-label="Field navigation" className="flex flex-col py-1">
+          <div role="tablist" aria-label="Field navigation" className="flex flex-col">
             <NavRailButton
               icon={Gauge}
               label="Overview"
@@ -463,20 +472,21 @@ export function DriverDashboard({
           </div>
 
           {/* Bottom Fast Action Controls */}
-          <div className="mt-auto border-t border-portal-border/60 p-1.5">
+          <div className="driver-desktop-nav-edge mt-auto border-t border-portal-border/60 p-1.5">
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
               aria-expanded={moreOpen}
               aria-controls="desktop-action-drawer"
               title="More actions"
-              className={`group flex h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded transition-all ${moreOpen
-                  ? 'bg-portal-accent/20 text-portal-accent'
-                  : 'text-portal-muted hover:bg-white/[0.05] hover:text-white'
+              className={`group relative flex h-[48px] w-full flex-col items-center justify-center gap-0.5 !rounded-none transition-all ${moreOpen
+                  ? 'bg-sidebar-accent/15 text-sidebar-heading'
+                  : 'text-white/60 hover:bg-sidebar-hover hover:text-sidebar-heading'
                 }`}
             >
-              <DotsThree size={22} weight="duotone" className="transition-transform group-hover:scale-110" aria-hidden="true" />
+              <DotsThree size={22} weight="duotone" className="text-sidebar-heading transition-transform group-hover:scale-110" aria-hidden="true" />
               <span className="text-[9px] font-semibold">More</span>
+              {moreOpen && <span className="driver-navigation-indicator absolute bottom-0.5 h-1 w-7 bg-white/75 shadow-sm" />}
             </button>
           </div>
 
@@ -484,7 +494,7 @@ export function DriverDashboard({
           <div
             id="desktop-action-drawer"
             aria-hidden={!moreOpen}
-            className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left rounded-lg border border-portal-border bg-[#22272e] p-3 shadow-2xl transition-all duration-200 ease-out ${moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
+            className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left !rounded-none border border-portal-border bg-portal-surface p-3 shadow-2xl transition-all duration-200 ease-out ${moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
               }`}
           >
             {moreMenuContents(false)}
@@ -499,13 +509,13 @@ export function DriverDashboard({
           {(activeView === 'dashboard' || activeView === 'overview') && (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
               {/* TOP WIDE CARD: JOURNEY */}
-              <section className="relative overflow-hidden rounded border border-portal-border/70 bg-[#20252e] p-3 sm:p-6 shadow-xl">
+              <section className="relative overflow-hidden rounded border border-portal-border/70 bg-portal-surface p-3 sm:p-6">
                 {/* Background Map Backdrop (Real Vector Map) */}
-                <div className="pointer-events-none absolute inset-0 z-0">
+                <div className="pointer-events-none absolute inset-0 z-0 bg-sidebar-canvas">
                   <RegionMapBackdrop regionName={trek.regionName} onReady={setLoadedMapRegion} />
                 </div>
                 {/* Contrast Glass Overlay */}
-                <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-portal-canvas/95 via-portal-canvas/85 to-portal-canvas/70" />
+                <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-portal-surface/95 via-portal-surface/70 to-transparent" />
 
                 {/* Driver and vehicle info (left) with speedometer (right) */}
                 <div className="relative z-10 flex items-start justify-between gap-3">
@@ -626,7 +636,7 @@ export function DriverDashboard({
                   </div>
 
                   {/* Horizontal Progress Track Bar */}
-                  <div className="relative mt-2.5 h-1.5 w-full rounded-full bg-[#2c3442]">
+                  <div className="relative mt-2.5 h-1.5 w-full rounded-full bg-portal-border">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-400 to-emerald-400 shadow-[0_0_10px_rgba(56,189,248,0.6)] transition-all duration-700"
                       style={{ width: `${progress}%` }}
@@ -639,7 +649,7 @@ export function DriverDashboard({
                     href="https://www.openstreetmap.org/copyright"
                     target="_blank"
                     rel="noreferrer"
-                    className="absolute right-3 top-1 z-20 text-[10px] text-portal-text hover:text-white"
+                    className="absolute right-3 top-1 z-20 text-[10px] text-portal-text hover:text-portal-heading"
                   >
                     © OpenStreetMap
                   </a>
@@ -649,7 +659,7 @@ export function DriverDashboard({
               {/* BOTTOM TWO CARDS: BATTERY & WEATHER */}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* BOTTOM LEFT CARD: BATTERY */}
-                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-portal-surface p-3 shadow-xl sm:p-6">
+                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-portal-surface p-3 sm:p-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-portal-text sm:text-base">Battery</h3>
                     {device?.ignition != null && (
@@ -665,7 +675,7 @@ export function DriverDashboard({
                       {/* Top Battery Terminal Nub */}
                       <div className="h-2 w-6 rounded-t-sm bg-portal-border/80 border border-b-0 border-portal-border" />
                       {/* Outer Battery Shell */}
-                      <div className="relative flex h-36 w-16 flex-col justify-end overflow-hidden rounded-md border-2 border-portal-border/80 bg-[#161a22] p-1 shadow-inner">
+                      <div className="relative flex h-36 w-16 flex-col justify-end overflow-hidden rounded-md border-2 border-portal-border/80 bg-portal-canvas p-1 shadow-inner">
                         {battery != null ? (
                           <>
                             {/* Fluid Fill Level */}
@@ -714,7 +724,7 @@ export function DriverDashboard({
                   </div>
 
                   {/* Footer note */}
-                  <div className="flex items-center justify-between border-t border-white/10 pt-3 text-[11px] text-portal-muted">
+                  <div className="flex items-center justify-between border-t border-portal-border/50 pt-3 text-[11px] text-portal-muted">
                     <span className="truncate max-w-[220px]">
                       <i className="pi pi-map-marker text-portal-accent mr-1" />
                       {location}
@@ -722,7 +732,7 @@ export function DriverDashboard({
                     <button
                       type="button"
                       onClick={() => setActiveView('vehicle')}
-                      className="font-medium text-portal-accent hover:text-white transition-colors"
+                      className="font-medium text-portal-accent hover:text-portal-accent-hover transition-colors"
                     >
                       Diagnostics →
                     </button>
@@ -730,7 +740,7 @@ export function DriverDashboard({
                 </section>
 
                 {/* BOTTOM RIGHT CARD: WEATHER & ENVIRONMENT */}
-                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-[#20252e] p-5 sm:p-6 shadow-xl">
+                <section className="flex flex-col justify-between rounded border border-portal-border/70 bg-portal-surface p-5 sm:p-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-portal-text sm:text-base">Weather</h3>
                     {weather && (
@@ -809,12 +819,12 @@ export function DriverDashboard({
                   )}
 
                   {/* Footer metadata */}
-                  <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3 text-[10px] text-portal-muted sm:text-[11px]">
+                  <div className="flex items-center justify-between gap-2 border-t border-portal-border/50 pt-3 text-[10px] text-portal-muted sm:text-[11px]">
                     <span>{weather?.description || `${trek.regionName} Area`}</span>
                     <button
                       type="button"
                       onClick={() => setActiveView('map')}
-                      className="font-medium text-portal-accent hover:text-white transition-colors"
+                      className="font-medium text-portal-accent hover:text-portal-accent-hover transition-colors"
                     >
                       Vector Map →
                     </button>
@@ -828,7 +838,7 @@ export function DriverDashboard({
               2. SUBVIEW: VEHICLE & TELEMETRY DIAGNOSTICS
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'vehicle' && (
-            <section className="mx-auto max-w-5xl rounded border border-portal-border/70 bg-[#20252e] p-3 shadow-xl space-y-6 sm:p-6">
+            <section className="mx-auto max-w-5xl rounded border border-portal-border/70 bg-portal-surface p-3 space-y-6 sm:p-6">
               <div className="flex items-center justify-between border-b border-portal-border/50 pb-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">
@@ -910,7 +920,7 @@ export function DriverDashboard({
               3. SUBVIEW: INTERACTIVE VECTOR MAP
               ───────────────────────────────────────────────────────────────── */}
           {activeView === 'map' && (
-            <section className="mx-auto max-w-6xl overflow-hidden rounded border border-portal-border/70 bg-[#20252e] shadow-xl">
+            <section className="mx-auto max-w-6xl overflow-hidden rounded border border-portal-border/70 bg-portal-surface">
               <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-portal-border/50 sm:px-5 sm:py-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-portal-muted">Offline Map</p>
@@ -921,14 +931,14 @@ export function DriverDashboard({
                     <button
                       type="button"
                       onClick={() => setMapCustomerScope('trek')}
-                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'trek' ? 'bg-portal-accent text-portal-canvas' : 'text-portal-muted hover:text-white'}`}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'trek' ? 'bg-portal-accent text-white' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'}`}
                     >
                       Current trek ({trekCustomers.length})
                     </button>
                     <button
                       type="button"
                       onClick={() => setMapCustomerScope('region')}
-                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'region' ? 'bg-portal-accent text-portal-canvas' : 'text-portal-muted hover:text-white'}`}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${mapCustomerScope === 'region' ? 'bg-portal-accent text-white' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'}`}
                     >
                       All customers ({customers.length})
                     </button>
@@ -963,7 +973,7 @@ export function DriverDashboard({
                 <button
                   type="button"
                   onClick={() => setActiveView('offline')}
-                  className="font-semibold text-portal-accent hover:text-white"
+                  className="font-semibold text-portal-accent hover:text-portal-accent-hover"
                 >
                   Offline Map Storage Settings →
                 </button>
@@ -1000,7 +1010,7 @@ export function DriverDashboard({
       <nav
         role="tablist"
         aria-label="Field navigation"
-        className="relative z-[1200] flex shrink-0 items-stretch border-t border-portal-border/60 bg-portal-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="driver-field-navigation relative z-[1200] flex shrink-0 items-stretch border-t border-white/10 bg-sidebar-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
         <NavRailButton mobile icon={Gauge} label="Overview" active={activeView === 'dashboard' || activeView === 'overview'} onClick={() => { setActiveView('dashboard'); setMoreOpen(false); }} />
         <NavRailButton mobile icon={MapPin} label="Stops" active={activeView === 'assigned'} onClick={() => { setActiveView('assigned'); setMoreOpen(false); }} />
@@ -1018,7 +1028,7 @@ export function DriverDashboard({
         <div
           id="mobile-action-drawer"
           aria-hidden={!moreOpen}
-          className={`absolute bottom-[calc(100%+0.5rem)] right-2 z-[1300] w-[min(17rem,calc(100vw-1rem))] max-h-[min(65dvh,26rem)] origin-bottom-right overflow-y-auto rounded border border-portal-border bg-portal-surface p-3 shadow-2xl transition-all duration-200 ${moreOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-2 pointer-events-none opacity-0'}`}
+          className={`absolute bottom-[calc(100%+0.5rem)] right-2 z-[1300] w-[min(17rem,calc(100vw-1rem))] max-h-[min(65dvh,26rem)] origin-bottom-right overflow-y-auto !rounded-none border border-portal-border bg-portal-surface p-3 shadow-2xl transition-all duration-200 ${moreOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-2 pointer-events-none opacity-0'}`}
         >
           {moreMenuContents(true)}
         </div>

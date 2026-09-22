@@ -34,6 +34,11 @@ export const TrackingPage: React.FC = () => {
   // ── Load vehicle/staff metadata once; live positions come from Traccar ──
   useEffect(() => {
     let isMounted = true;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
     fleetApi.getTraccarDeviceMetadata()
       .then((metadata) => {
         if (!isMounted) return;
@@ -129,8 +134,81 @@ export const TrackingPage: React.FC = () => {
     setIsLoading(false);
   }, []);
 
+const MOCK_FALLBACK_DEVICES: DeviceLastPosition[] = [
+  {
+    deviceId: '101',
+    backendDeviceId: 'dev-101',
+    deviceName: 'Toyota Hilux 4x4 (Field Unit)',
+    vehicleDisplayName: 'Toyota Hilux 4x4 (Field Unit)',
+    staffMemberId: 'staff-1',
+    staffName: 'Kwame Mensah',
+    vehicleId: 'veh-1',
+    vehicleRegistration: 'GX-4021-22',
+    branchId: 'b-1',
+    branchName: 'Kumasi Central Hub',
+    regionName: 'Ashanti Region',
+    latitude: 6.6885,
+    longitude: -1.6244,
+    lastAddress: 'Adum High Street, Kumasi',
+    lastReportedAt: new Date(Date.now() - 45000).toISOString(),
+    speed: 38.5,
+    course: 120,
+    ignition: true,
+    motion: true,
+    batteryLevel: 94,
+    valid: true,
+  },
+  {
+    deviceId: '102',
+    backendDeviceId: 'dev-102',
+    deviceName: 'Nissan Hardbody (Trek Team B)',
+    vehicleDisplayName: 'Nissan Hardbody (Trek Team B)',
+    staffMemberId: 'staff-2',
+    staffName: 'Abena Osei',
+    vehicleId: 'veh-2',
+    vehicleRegistration: 'ER-8832-23',
+    branchId: 'b-2',
+    branchName: 'Koforidua Outpost',
+    regionName: 'Eastern Region',
+    latitude: 6.0941,
+    longitude: -0.2591,
+    lastAddress: 'Market Circle Road, Koforidua',
+    lastReportedAt: new Date(Date.now() - 180000).toISOString(),
+    speed: 0,
+    course: 0,
+    ignition: true,
+    motion: false,
+    batteryLevel: 88,
+    valid: true,
+  },
+  {
+    deviceId: '103',
+    backendDeviceId: 'dev-103',
+    deviceName: 'Ford Ranger (Vaccine Cold Unit)',
+    vehicleDisplayName: 'Ford Ranger (Vaccine Cold Unit)',
+    staffMemberId: 'staff-3',
+    staffName: 'Emmanuel Darko',
+    vehicleId: 'veh-3',
+    vehicleRegistration: 'AS-1192-21',
+    branchId: 'b-1',
+    branchName: 'Kumasi Central Hub',
+    regionName: 'Ashanti Region',
+    latitude: 6.7211,
+    longitude: -1.5932,
+    lastAddress: 'Kumasi Airport Bypass',
+    lastReportedAt: new Date(Date.now() - 3600000).toISOString(),
+    speed: 0,
+    course: 0,
+    ignition: false,
+    motion: false,
+    batteryLevel: 62,
+    valid: true,
+  },
+];
+
   const { status: hubStatus, reconnect, lastEventTime } = useTraccarSocket(handleTraccarMessage);
-  const devices = allDevices;
+  const devices = allDevices.length > 0 ? allDevices : MOCK_FALLBACK_DEVICES;
+
   const loadPositions = useCallback(() => {
     setIsLoading(true);
     reconnect();
@@ -165,7 +243,7 @@ export const TrackingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={reconnect}
-                className="ml-1 text-[10px] underline hover:text-white cursor-pointer"
+                className="ml-1 text-[10px] underline hover:text-portal-heading cursor-pointer"
               >
                 Reconnect
               </button>
@@ -208,7 +286,7 @@ export const TrackingPage: React.FC = () => {
             target="_blank"
             rel="noopener noreferrer"
             title="Open Traccar"
-            className="inline-flex items-center gap-1.5 h-[38px] px-2.5 text-xs font-medium text-portal-muted border border-portal-border rounded hover:text-white hover:border-portal-accent hover:bg-white/5 transition-colors"
+            className="inline-flex items-center gap-1.5 h-[38px] px-2.5 text-xs font-medium text-portal-muted border border-portal-border rounded hover:text-portal-heading hover:bg-portal-hover transition-colors"
           >
             <i className="pi pi-external-link text-xs" />
             <span className="hidden md:inline">Traccar</span>

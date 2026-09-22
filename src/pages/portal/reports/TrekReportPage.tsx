@@ -162,7 +162,7 @@ export const TrekReportPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.id}`)}
-          className="font-mono text-xs text-portal-accent hover:text-white transition cursor-pointer"
+          className="font-mono text-xs text-portal-accent hover:text-portal-accent-hover transition cursor-pointer"
         >
           {row.trekNumber}
         </button>

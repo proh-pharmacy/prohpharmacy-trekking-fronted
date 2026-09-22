@@ -83,7 +83,7 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
               effectiveSize === 'sm' ? 'h-[38px] [&_.p-input-icon]:!text-xs' : ''
             } ${
               isDark
-                ? '[&_.p-password-show-icon]:!text-portal-muted hover:[&_.p-password-show-icon]:!text-white [&_.p-password-hide-icon]:!text-portal-muted hover:[&_.p-password-hide-icon]:!text-white'
+                ? '[&_.p-password-show-icon]:!text-portal-muted hover:[&_.p-password-show-icon]:!text-portal-heading [&_.p-password-hide-icon]:!text-portal-muted hover:[&_.p-password-hide-icon]:!text-portal-heading'
                 : isWhite
                 ? '[&_.p-password-show-icon]:!text-slate-400 [&_.p-password-hide-icon]:!text-slate-400 hover:[&_.p-password-show-icon]:!text-slate-600'
                 : ''
@@ -95,7 +95,7 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
                 isWhite
                   ? '!bg-white !text-slate-900 !border-0 placeholder:!text-slate-400 focus:!ring-2 focus:!ring-[#41cc84] focus:!outline-none'
                   : isDark
-                  ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none'
+                  ? '!bg-portal-canvas !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none'
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed'
               }
               ${errorMessage ? '!border-red-500' : ''}

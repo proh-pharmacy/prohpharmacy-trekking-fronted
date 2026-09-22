@@ -222,7 +222,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
               <Popup>
                 <div className="p-2 text-xs">
                   <div className="font-bold text-portal-accent uppercase tracking-wider text-[11px]">Route Origin</div>
-                  <div className="text-white font-mono mt-1">{trailVehicleName || 'Vehicle'}</div>
+                  <div className="text-portal-heading font-mono mt-1">{trailVehicleName || 'Vehicle'}</div>
                   <div className="text-portal-muted text-[10px] mt-0.5">
                     {trailPoints?.[0]?.fixTime ? new Date(trailPoints[0].fixTime).toLocaleTimeString() : ''}
                   </div>
@@ -244,7 +244,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
               <Popup>
                 <div className="p-2 text-xs">
                   <div className="font-bold text-red-400 uppercase tracking-wider text-[11px]">Latest Point</div>
-                  <div className="text-white font-mono mt-1">{trailVehicleName || 'Vehicle'}</div>
+                  <div className="text-portal-heading font-mono mt-1">{trailVehicleName || 'Vehicle'}</div>
                   <div className="text-portal-muted text-[10px] mt-0.5">
                     {trailPoints?.[trailPoints.length - 1]?.fixTime
                       ? new Date(trailPoints[trailPoints.length - 1].fixTime).toLocaleTimeString()
@@ -293,7 +293,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
                 <div className="p-3 w-64 text-left">
                   {/* Header: Status & Plate */}
                   <div className="flex items-center justify-between border-b border-portal-border/60 pb-2 mb-2">
-                    <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                    <span className="font-mono text-xs font-bold text-portal-heading uppercase tracking-wider">
                       {device.vehicleDisplayName || device.deviceName}
                     </span>
                     <span
@@ -313,7 +313,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center justify-between text-portal-text">
                       <span className="text-portal-muted text-[11px] uppercase font-medium">Region</span>
-                      <span className="font-semibold text-white truncate max-w-[140px]">
+                      <span className="font-semibold text-portal-heading truncate max-w-[140px]">
                         {device.regionName || 'Unavailable'}
                       </span>
                     </div>
@@ -349,7 +349,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
                       e.stopPropagation();
                       onSelectDevice(device);
                     }}
-                    className="mt-3 w-full py-1.5 px-2 bg-portal-surface hover:bg-white/[0.08] text-portal-accent hover:text-white border border-portal-border text-[11px] font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="mt-3 w-full py-1.5 px-2 bg-portal-accent/15 hover:bg-portal-accent text-portal-accent hover:text-white border border-portal-accent/30 text-[11px] font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <i className="pi pi-compass text-xs" />
                     Inspect Telemetry
@@ -368,7 +368,7 @@ export const TrackingMap: React.FC<TrackingMapProps> = ({
             type="button"
             onClick={onToggleTileMode}
             title={tileMode === 'dark' ? 'Switch to Standard OpenStreetMap' : 'Switch to Dark Matter'}
-            className="w-9 h-9 flex items-center justify-center bg-portal-surface/90 hover:bg-portal-surface text-portal-text hover:text-white border border-portal-border rounded shadow-lg backdrop-blur transition cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center bg-portal-surface hover:bg-portal-hover text-portal-text hover:text-portal-heading border border-portal-border rounded shadow-lg backdrop-blur transition cursor-pointer"
           >
             <i className={tileMode === 'dark' ? 'pi pi-sun text-sm text-yellow-400' : 'pi pi-moon text-sm text-portal-accent'} />
           </button>

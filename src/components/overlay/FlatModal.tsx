@@ -39,8 +39,8 @@ export const FlatModal: React.FC<FlatModalProps> = ({
   header,
   footer,
   closable = true,
-  dismissableMask = true,
-  closeOnEscape = true,
+  dismissableMask = false,
+  closeOnEscape = false,
   className = '',
   children,
 }) => {
@@ -75,16 +75,16 @@ export const FlatModal: React.FC<FlatModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 h-dvh z-[2000] flex items-center justify-center p-4 sm:p-6 select-none animate-fadeIn"
     >
-      {/* Dark Obsidian Backdrop with Soft Blur */}
+      {/* Backdrop with Soft Blur */}
       <div
-        className="fixed inset-0 bg-black/75 backdrop-blur-[4px] transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         onClick={dismissableMask ? onHide : undefined}
       />
 
       {/* Modal Surface Box (portal-surface card, 4px subtle rounded flat) */}
       <div
         ref={modalRef}
-        className={`relative w-full ${sizeClasses[size]} bg-portal-surface border border-portal-border/80 rounded shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] overflow-hidden z-10 transition-all transform animate-scaleIn text-white select-text ${className}`}
+        className={`relative w-full ${sizeClasses[size]} bg-portal-surface border border-portal-border/80 rounded shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] overflow-hidden z-10 transition-all transform animate-scaleIn text-portal-text select-text ${className}`}
       >
         {/* Modal Header */}
         {header !== undefined ? (
@@ -99,7 +99,7 @@ export const FlatModal: React.FC<FlatModalProps> = ({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold tracking-tight text-white truncate">
+                  <h3 className="text-base font-bold tracking-tight text-portal-heading truncate">
                     {title}
                   </h3>
                   {badge && <span>{badge}</span>}
@@ -116,7 +116,7 @@ export const FlatModal: React.FC<FlatModalProps> = ({
               <button
                 type="button"
                 onClick={onHide}
-                className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
+                className="p-1.5 text-portal-muted hover:text-portal-heading hover:bg-portal-hover rounded transition cursor-pointer shrink-0"
                 title="Close"
               >
                 <i className="pi pi-times text-xs" />

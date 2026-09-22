@@ -22,7 +22,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #22272e;
+        background-color: #ffffff;
         z-index: 99999;
         opacity: 1;
         transition: opacity 0.4s ease-out;
@@ -42,11 +42,26 @@
         50%       { transform: scale(1.07); opacity: 1;    }
       }
     </style>
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('proh_theme') || 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+          if (theme === 'light') {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <div id="app-splash">
-      <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" />
+      <img src="/images/prohpharmacy_icon.png" alt="ProH Pharmacy" />
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

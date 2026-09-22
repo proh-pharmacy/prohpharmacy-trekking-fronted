@@ -470,7 +470,7 @@ export const TrekDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleGenerateLink}
                   disabled={generatingLink}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                 >
                   <i className="pi pi-link text-portal-accent text-[11px]" />
                   {generatingLink ? 'Generating...' : 'Copy Driver Link'}
@@ -479,7 +479,7 @@ export const TrekDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleOpenDriverLink}
                   disabled={openingDriverLink}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                 >
                   <i className="pi pi-external-link text-portal-accent text-[11px]" />
                   {openingDriverLink ? 'Opening...' : 'Open Driver Link'}
@@ -490,7 +490,7 @@ export const TrekDetailPage: React.FC = () => {
                     type="button"
                     onClick={handleResendEmail}
                     disabled={resendingEmail}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                   >
                     <i className="pi pi-envelope text-portal-accent text-[11px]" />
                     {resendingEmail ? 'Sending...' : 'Resend Sheet & Link'}
@@ -500,7 +500,7 @@ export const TrekDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleDownloadPdf}
                   disabled={downloadingPdf}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-white/[0.06] hover:text-white transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                 >
                   <i className="pi pi-file-pdf text-portal-accent text-[11px]" />
                   {downloadingPdf ? 'Downloading...' : 'Download PDF'}

@@ -199,7 +199,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
           <button
             type="button"
             onClick={onBack}
-            className="w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-white/[0.06] text-portal-muted hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-portal-hover text-portal-muted hover:text-portal-heading flex items-center justify-center transition cursor-pointer"
             title="Back to People and Roles"
           >
             <i className="pi pi-arrow-left text-xs" />
@@ -208,12 +208,12 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
             <button
               type="button"
               onClick={onBack}
-              className="hover:text-white transition cursor-pointer"
+              className="hover:text-portal-heading transition cursor-pointer"
             >
               People and Roles
             </button>
             <span>/</span>
-            <span className="text-white font-medium">{role.name} Permissions</span>
+            <span className="text-portal-heading font-medium">{role.name} Permissions</span>
           </div>
         </div>
 
@@ -225,7 +225,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
               size="sm"
               onClick={handleDiscard}
               disabled={saving}
-              className="!text-portal-muted hover:!text-white text-xs"
+              className="!text-portal-muted hover:!text-portal-heading text-xs"
             >
               Discard Changes
             </FlatButton>
@@ -251,7 +251,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
         <div className="px-6 py-4 border-b border-portal-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-portal-surface">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-wide">
+              <h3 className="text-sm font-bold text-portal-heading tracking-wide">
                 {role.name}
               </h3>
               <span className="text-[11px] font-mono text-portal-accent">
@@ -280,7 +280,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
               <button
                 type="button"
                 onClick={() => setEnabledKeys(new Set())}
-                className="text-[11px] text-portal-muted hover:text-white font-medium cursor-pointer"
+                className="text-[11px] text-portal-muted hover:text-portal-heading font-medium cursor-pointer"
               >
                 Clear All
               </button>

@@ -183,7 +183,7 @@ export const CustomerPinsPage: React.FC = () => {
         <div className="hidden md:flex items-center flex-wrap gap-3">
           <div className="inline-flex h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
             {(['pins', 'heatmap'] as const).map((mode) => (
-              <button key={mode} type="button" onClick={() => setMapMode(mode)} className={`!rounded-none px-3 text-xs font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white border border-transparent'}`}>
+              <button key={mode} type="button" onClick={() => setMapMode(mode)} className={`!rounded-none px-3 text-xs font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover border border-transparent'}`}>
                 {mode === 'pins' ? 'Pins' : 'Heatmap'}
               </button>
             ))}
@@ -211,7 +211,7 @@ export const CustomerPinsPage: React.FC = () => {
                     className={`flex items-center justify-center px-2 text-xs font-medium rounded transition cursor-pointer ${
                       isActive
                         ? 'bg-portal-accent/20 text-portal-accent font-semibold border border-portal-accent/50'
-                        : 'text-portal-muted hover:text-white border border-transparent'
+                        : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover border border-transparent'
                     }`}
                   >
                     <span className="hidden sm:inline">{s.label}</span>
@@ -302,7 +302,7 @@ export const CustomerPinsPage: React.FC = () => {
                     href={`https://www.google.com/maps?q=${pin.latitude},${pin.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2.5 flex items-center justify-center gap-1.5 w-full py-1.5 px-2 text-[11px] font-semibold text-portal-accent hover:text-white bg-portal-accent/15 hover:bg-portal-accent/30 border border-portal-accent/40 rounded transition no-underline cursor-pointer"
+                    className="mt-2.5 flex items-center justify-center gap-1.5 w-full py-1.5 px-2 text-[11px] font-semibold text-portal-accent hover:text-white bg-portal-accent/15 hover:bg-portal-accent border border-portal-accent/40 rounded transition no-underline cursor-pointer"
                   >
                     <i className="pi pi-map-marker text-xs" />
                     <span>Open in Google Maps</span>
@@ -318,25 +318,25 @@ export const CustomerPinsPage: React.FC = () => {
       {/* Desktop customer location picker */}
       <div className={`hidden md:flex absolute left-4 bottom-4 z-[1000] w-80 max-h-[65%] flex-col bg-portal-surface/95 border border-portal-border shadow-2xl backdrop-blur-xl transform-gpu transition-transform duration-300 ease-out ${desktopPanelOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+1rem)] pointer-events-none'}`}>
         <div className="shrink-0 flex items-center justify-between gap-3 border-b border-portal-border px-3 py-2.5">
-          <span className="text-xs font-semibold text-white">Customer locations</span>
+          <span className="text-xs font-semibold text-portal-heading">Customer locations</span>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono text-portal-muted">{pins.length} pins</span>
-            <button type="button" onClick={() => setDesktopPanelOpen(false)} title="Hide customer locations" className="!rounded-none flex h-7 w-7 items-center justify-center text-portal-muted hover:bg-white/[0.08] hover:text-white transition cursor-pointer">
+            <button type="button" onClick={() => setDesktopPanelOpen(false)} title="Hide customer locations" className="!rounded-none flex h-7 w-7 items-center justify-center text-portal-muted hover:bg-portal-hover hover:text-portal-heading transition cursor-pointer">
               <i className="pi pi-times text-xs" />
             </button>
           </div>
         </div>
         <div className="min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-portal-border/40">
           {pins.map((pin) => (
-            <button key={`desktop-${pin.locationId}`} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); }} className="!rounded-none w-full p-3 text-left hover:bg-white/[0.06] transition cursor-pointer">
-              <span className="block text-xs font-semibold text-white truncate">{pin.businessName}</span>
+            <button key={`desktop-${pin.locationId}`} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); }} className="!rounded-none w-full p-3 text-left hover:bg-portal-hover transition cursor-pointer">
+              <span className="block text-xs font-semibold text-portal-heading truncate">{pin.businessName}</span>
               <span className="mt-1 block text-[11px] text-portal-muted truncate">{pin.regionName || 'Region unavailable'}{pin.primaryPhoneNumber ? ` · ${pin.primaryPhoneNumber}` : ''}</span>
             </button>
           ))}
           {!pins.length && <div className="p-6 text-center text-xs text-portal-muted">No customer locations found.</div>}
         </div>
       </div>
-      <button type="button" onClick={() => setDesktopPanelOpen(true)} title="Show customer list" className={`hidden md:flex absolute left-4 bottom-4 z-[1000] h-10 items-center gap-2 rounded border border-portal-border bg-portal-surface/95 px-3 text-xs font-semibold text-portal-text shadow-2xl backdrop-blur-xl hover:bg-portal-card hover:text-white transition ${desktopPanelOpen ? 'pointer-events-none opacity-0' : 'pointer-events-auto opacity-100'}`}>
+      <button type="button" onClick={() => setDesktopPanelOpen(true)} title="Show customer list" className={`hidden md:flex absolute left-4 bottom-4 z-[1000] h-10 items-center gap-2 rounded border border-portal-border bg-portal-surface/95 px-3 text-xs font-semibold text-portal-text shadow-2xl backdrop-blur-xl hover:bg-portal-hover hover:text-portal-heading transition ${desktopPanelOpen ? 'pointer-events-none opacity-0' : 'pointer-events-auto opacity-100'}`}>
         <i className="pi pi-list text-sm text-portal-accent" />
         <span>Show customer list</span>
         <span className="font-mono text-[10px] text-portal-muted">{pins.length}</span>
@@ -347,25 +347,25 @@ export const CustomerPinsPage: React.FC = () => {
         style={{ transform: mobilePanelOpen ? 'translateY(0)' : 'translateY(calc(100% - 58px))' }}>
         <div className="shrink-0 grid grid-cols-[1fr_1fr_1fr_44px] border-b border-portal-border">
           <div className="flex flex-col items-center justify-center py-2 text-[11px] text-portal-text">
-            <span className="font-mono font-bold text-white">{pins.length}</span>
+            <span className="font-mono font-bold text-portal-heading">{pins.length}</span>
             <span className="text-portal-muted">Pins</span>
           </div>
-          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-white/[0.06] hover:text-white transition cursor-pointer">
+          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-portal-hover hover:text-portal-heading transition cursor-pointer">
             <span className="block truncate px-1">{selectedRegion ? regions.find((region) => region.id === selectedRegion)?.name || 'Region' : 'All regions'}</span>
             <span className="text-[10px] text-portal-muted">Region</span>
           </button>
-          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-white/[0.06] hover:text-white transition cursor-pointer">
+          <button type="button" onClick={() => setMobilePanelOpen(true)} className="!rounded-none border-l border-portal-border/60 py-2 text-[11px] text-portal-muted hover:bg-portal-hover hover:text-portal-heading transition cursor-pointer">
             <span className="block text-portal-accent">{PIN_SIZES[pinSize].label}</span>
             <span className="text-[10px] text-portal-muted">Pin size</span>
           </button>
-          <button type="button" onClick={() => setMobilePanelOpen((open) => !open)} title={mobilePanelOpen ? 'Hide locations' : 'Show locations'} className="!rounded-none border-l border-portal-border/60 flex items-center justify-center text-portal-text hover:bg-white/[0.08] hover:text-white transition cursor-pointer">
+          <button type="button" onClick={() => setMobilePanelOpen((open) => !open)} title={mobilePanelOpen ? 'Hide locations' : 'Show locations'} className="!rounded-none border-l border-portal-border/60 flex items-center justify-center text-portal-text hover:bg-portal-hover hover:text-portal-heading transition cursor-pointer">
             <i className={`pi ${mobilePanelOpen ? 'pi-angle-down' : 'pi-list'} text-sm`} />
           </button>
         </div>
         <div className="shrink-0 grid grid-cols-1 gap-3 border-b border-portal-border/60 p-3">
           <div className="grid grid-cols-2 h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
             {(['pins', 'heatmap'] as const).map((mode) => (
-              <button key={mode} type="button" onClick={() => { setMapMode(mode); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white'}`}>
+              <button key={mode} type="button" onClick={() => { setMapMode(mode); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${mapMode === mode ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'}`}>
                 {mode === 'pins' ? 'Pins' : 'Heatmap'}
               </button>
             ))}
@@ -373,7 +373,7 @@ export const CustomerPinsPage: React.FC = () => {
           <FlatDropdown value={selectedRegion} options={regionOptions} onChange={(val: any) => { const v = val?.value !== undefined ? val.value : val; setSelectedRegion(v); setMobilePanelOpen(false); }} placeholder="All Regions" size="sm" />
           <div className="grid grid-cols-3 h-[38px] rounded border border-portal-border bg-portal-canvas p-0.5">
             {(['xs', 'sm', 'normal'] as const).map((size) => (
-              <button key={size} type="button" onClick={() => { setPinSize(size); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${pinSize === size ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-white'}`}>
+              <button key={size} type="button" onClick={() => { setPinSize(size); setMobilePanelOpen(false); }} className={`!rounded-none text-[11px] font-medium transition cursor-pointer ${pinSize === size ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent/50' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'}`}>
                 {PIN_SIZES[size].label}
               </button>
             ))}
@@ -381,8 +381,8 @@ export const CustomerPinsPage: React.FC = () => {
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar divide-y divide-portal-border/40">
           {pins.map((pin) => (
-            <button key={pin.locationId} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); setMobilePanelOpen(false); }} className="!rounded-none w-full p-3 text-left hover:bg-white/[0.06] transition cursor-pointer">
-              <span className="block text-xs font-semibold text-white truncate">{pin.businessName}</span>
+            <button key={pin.locationId} type="button" onClick={() => { setFocusedPin(pin); setMapMode('pins'); setMobilePanelOpen(false); }} className="!rounded-none w-full p-3 text-left hover:bg-portal-hover transition cursor-pointer">
+              <span className="block text-xs font-semibold text-portal-heading truncate">{pin.businessName}</span>
               <span className="mt-1 block text-[11px] text-portal-muted truncate">{pin.regionName || 'Region unavailable'}{pin.primaryPhoneNumber ? ` · ${pin.primaryPhoneNumber}` : ''}</span>
             </button>
           ))}

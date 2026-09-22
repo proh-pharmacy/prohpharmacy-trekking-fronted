@@ -30,8 +30,8 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
   header,
   footer,
   closable = true,
-  dismissableMask = true,
-  closeOnEscape = true,
+  dismissableMask = false,
+  closeOnEscape = false,
   showHandle = true,
   className = '',
   children,
@@ -67,21 +67,21 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-[2000] flex items-end justify-center select-none"
     >
-      {/* Dark Obsidian Backdrop */}
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/75 backdrop-blur-[4px] transition-opacity animate-fadeIn"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn"
         onClick={dismissableMask ? onHide : undefined}
       />
 
       {/* Slide-Up Bottom Sheet Panel */}
       <div
         ref={sheetRef}
-        className={`relative w-full ${maxWidth} ${maxHeight} bg-portal-surface border-t border-x border-portal-border/80 rounded-t-lg shadow-2xl flex flex-col z-10 text-white select-text animate-slideInBottom overflow-hidden ${className}`}
+        className={`relative w-full ${maxWidth} ${maxHeight} bg-portal-surface border-t border-x border-portal-border/80 rounded-t-lg shadow-2xl flex flex-col z-10 text-portal-text select-text animate-slideInBottom overflow-hidden ${className}`}
       >
         {/* Drag Handle Indicator */}
         {showHandle && (
           <div className="w-full flex justify-center pt-3 pb-1 cursor-grab">
-            <div className="w-12 h-1.5 bg-white/20 rounded-full hover:bg-white/40 transition-colors" />
+            <div className="w-12 h-1.5 bg-portal-muted/40 rounded-full hover:bg-portal-muted/60 transition-colors" />
           </div>
         )}
 
@@ -92,7 +92,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
           <div className="shrink-0 px-6 py-3.5 border-b border-portal-border/60 flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold tracking-tight text-white truncate">
+                <h3 className="text-base font-bold tracking-tight text-portal-heading truncate">
                   {title}
                 </h3>
                 {badge && <span>{badge}</span>}
@@ -106,7 +106,7 @@ export const FlatBottomSheet: React.FC<FlatBottomSheetProps> = ({
               <button
                 type="button"
                 onClick={onHide}
-                className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
+                className="p-1.5 text-portal-muted hover:text-portal-heading hover:bg-portal-hover rounded transition cursor-pointer shrink-0"
                 title="Close sheet"
               >
                 <i className="pi pi-times text-xs" />

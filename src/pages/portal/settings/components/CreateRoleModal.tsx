@@ -276,7 +276,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPermissions(new Set())}
-                className="text-[11px] text-portal-muted hover:text-white cursor-pointer"
+                className="text-[11px] text-portal-muted hover:text-portal-heading cursor-pointer"
               >
                 Clear
               </button>

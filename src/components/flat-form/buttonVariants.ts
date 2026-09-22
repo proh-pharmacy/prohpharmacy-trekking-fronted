@@ -12,19 +12,19 @@ export const buttonVariants = cva(
         primary:
           '!bg-portal-accent hover:!bg-portal-accent-hover active:!bg-portal-accent-hover !text-white !border-transparent',
         secondary:
-          '!bg-slate-900 hover:!bg-slate-800 active:!bg-slate-950 !text-white !border-slate-900 hover:!border-slate-800',
+          '!bg-portal-surface hover:!bg-portal-hover active:!bg-portal-active !text-portal-heading !border-portal-border hover:!border-portal-border/80',
         danger:
           '!bg-red-accent hover:!bg-red-accent-hover active:!bg-red-700 !text-white !border-red-accent hover:!border-red-accent-hover',
         warning:
           '!bg-amber-600 hover:!bg-amber-500 active:!bg-amber-700 !text-white !border-amber-600 hover:!border-amber-500',
         'danger-outline':
-          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
+          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-500 dark:text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-600 dark:hover:!text-red-300',
         'outline-danger':
-          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-300',
+          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-500 dark:text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-600 dark:hover:!text-red-300',
         outline:
-          '!bg-transparent hover:!bg-white/[0.08] active:!bg-white/[0.12] !text-white !border-portal-border hover:!border-portal-border/80',
+          '!bg-transparent hover:!bg-portal-hover active:!bg-portal-active !text-portal-heading !border-portal-border hover:!border-portal-border/80',
         ghost:
-          '!bg-transparent hover:!bg-white/[0.08] active:!bg-white/[0.12] !text-portal-text hover:!text-white !border-transparent shadow-none hover:shadow-none active:shadow-none',
+          '!bg-transparent hover:!bg-portal-hover active:!bg-portal-active !text-portal-text hover:!text-portal-heading !border-transparent shadow-none hover:shadow-none active:shadow-none',
         link:
           '!bg-transparent !text-primary-green hover:!text-deep-green underline underline-offset-4 !border-transparent !p-0 !h-auto shadow-none hover:shadow-none active:shadow-none',
       },

@@ -62,13 +62,13 @@ export const FlatAutoComplete: React.FC<FlatAutoCompleteProps> = ({
           ${sizeConfig.input}
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-white placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'
+              ? '!bg-portal-canvas !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'
               : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none'
           }
           ${errorMessage ? '!border-red-500' : ''}
           ${inputClassName}
         `}
-        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-white p-autocomplete-panel-${effectiveSize} ${panelClassName}`}
+        panelClassName={`rounded shadow-2xl !bg-portal-surface !border !border-portal-border !text-portal-heading p-autocomplete-panel-${effectiveSize} ${panelClassName}`}
         {...props}
       />
 

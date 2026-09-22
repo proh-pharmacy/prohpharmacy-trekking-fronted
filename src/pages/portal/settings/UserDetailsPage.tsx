@@ -283,17 +283,17 @@ export const UserDetailsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/portal/settings/users"
-            className="w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-white/[0.06] text-portal-muted hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-portal-hover text-portal-muted hover:text-portal-heading flex items-center justify-center transition"
             title="Back to People and Roles"
           >
             <i className="pi pi-arrow-left text-xs" />
           </Link>
           <div className="flex items-center gap-2 text-xs text-portal-muted">
-            <Link to="/portal/settings/users" className="hover:text-white transition">
+            <Link to="/portal/settings/users" className="hover:text-portal-heading transition">
               People and Roles
             </Link>
             <span>/</span>
-            <span className="text-white font-medium">{user.fullName}</span>
+            <span className="text-portal-heading font-medium">{user.fullName}</span>
           </div>
         </div>
 

@@ -93,27 +93,27 @@ export function SyncNotifications({ queue, photos, trek, customers, products, on
 
   return (
     <div ref={rootRef} className="relative flex shrink-0 items-center gap-2">
-      {busy && <i className="pi pi-spin pi-sync text-sm text-portal-accent" role="status" aria-label="Sync in progress" />}
+      {busy && <i className="pi pi-spin pi-sync text-sm text-sidebar-accent" role="status" aria-label="Sync in progress" />}
       <button
         type="button"
         aria-label={attentionCount ? `Sync notifications, ${attentionCount} item${attentionCount === 1 ? '' : 's'}` : 'Sync notifications'}
         aria-expanded={open}
         aria-controls="driver-sync-notifications"
         onClick={() => setOpen((value) => !value)}
-        className={`relative flex h-10 w-10 items-center justify-center rounded transition-colors ${open ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.08] hover:text-white'}`}
+        className={`relative flex h-10 w-10 items-center justify-center !rounded-none transition-colors ${open ? 'bg-sidebar-accent/10 text-sidebar-accent' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-heading'}`}
       >
         <i className="pi pi-bell text-base" aria-hidden="true" />
         {attentionCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-accent px-0.5 text-[10px] font-semibold leading-none text-white">{attentionCount > 9 ? '9+' : attentionCount}</span>}
       </button>
 
       {open && (
-        <div id="driver-sync-notifications" className="absolute right-0 top-[calc(100%+0.75rem)] z-[1500] w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded border border-portal-border bg-portal-surface shadow-2xl">
+        <div id="driver-sync-notifications" className="absolute right-0 top-[calc(100%+0.75rem)] z-[1500] w-[min(22rem,calc(100vw-1rem))] overflow-hidden !rounded-none border border-portal-border bg-portal-surface shadow-2xl">
           <div className="flex items-center justify-between gap-3 border-b border-portal-border/60 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-portal-text">Sync notifications</p>
               <p className="text-[11px] text-portal-muted">{attentionCount ? `${pendingCount} awaiting sync${attentionCount > pendingCount ? ` · ${attentionCount - pendingCount} need attention` : ''}` : 'Everything is up to date'}</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close sync notifications" className="rounded p-1 text-portal-muted hover:bg-white/[0.08] hover:text-white"><i className="pi pi-times text-xs" /></button>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close sync notifications" className="rounded p-1 text-portal-muted hover:bg-portal-hover hover:text-portal-heading"><i className="pi pi-times text-xs" /></button>
           </div>
 
           {notifications.length > 0 && (
@@ -123,7 +123,7 @@ export function SyncNotifications({ queue, photos, trek, customers, products, on
                   key={item.id}
                   type="button"
                   onClick={() => { setOpen(false); onOpenSyncCenter(); }}
-                  className="flex w-full items-start gap-3 border-b border-portal-border/40 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05]"
+                  className="flex w-full items-start gap-3 border-b border-portal-border/40 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-portal-hover"
                 >
                   <i className={`pi ${item.status === 'conflict' ? 'pi-exclamation-circle text-red-accent' : 'pi-cloud-upload text-portal-accent'} mt-0.5 text-sm`} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
@@ -138,7 +138,7 @@ export function SyncNotifications({ queue, photos, trek, customers, products, on
           )}
 
           <div className="flex items-center justify-between gap-2 border-t border-portal-border/60 px-4 py-3">
-            <button type="button" onClick={() => { setOpen(false); onOpenSyncCenter(); }} className="text-xs font-medium text-portal-text hover:text-white">Open Sync Center</button>
+            <button type="button" onClick={() => { setOpen(false); onOpenSyncCenter(); }} className="text-xs font-medium text-portal-text hover:text-portal-heading">Open Sync Center</button>
             {pendingCount > 0 && <button type="button" onClick={() => void onSync()} disabled={!online || !controlAvailable || busy} className="rounded bg-portal-accent px-3 py-2 text-xs font-semibold text-portal-canvas disabled:cursor-not-allowed disabled:opacity-50">Sync now</button>}
           </div>
         </div>

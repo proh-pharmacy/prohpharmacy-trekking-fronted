@@ -347,8 +347,8 @@ export const ProductsPage: React.FC = () => {
           onClick={() => handleTabChange('products')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'products'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Products Catalog</span>
@@ -359,8 +359,8 @@ export const ProductsPage: React.FC = () => {
           onClick={() => handleTabChange('units')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'units'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Basic Units</span>
@@ -371,8 +371,8 @@ export const ProductsPage: React.FC = () => {
           onClick={() => handleTabChange('packaging')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'packaging'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Packaging Units</span>

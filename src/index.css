@@ -14,29 +14,441 @@
   --color-muted-text: #5F6F64;
   --color-light-border: #DDE9E0;
 
-  /* Portal & Dark Theme Palette */
+  /* Portal Dynamic Theme System */
+  --color-portal-canvas: var(--color-portal-canvas);
+  --color-portal-surface: var(--color-portal-surface);
+  --color-portal-border: var(--color-portal-border);
+  --color-portal-muted: var(--color-portal-muted);
+  --color-portal-text: var(--color-portal-text);
+  --color-portal-heading: var(--color-portal-heading);
+  --color-portal-accent: var(--color-portal-accent);
+  --color-portal-accent-hover: var(--color-portal-accent-hover);
+  --color-portal-orange: var(--color-portal-orange);
+  --color-portal-hover: var(--color-portal-hover);
+  --color-portal-active: var(--color-portal-active);
+
+  /* Card & Modal Surfaces */
+  --color-portal-card: var(--color-portal-card);
+  --color-portal-card-border: var(--color-portal-card-border);
+  --color-card-dark: var(--color-card-dark);
+  --color-card-dark-border: var(--color-card-dark-border);
+
+  /* Semantic Aliases */
+  --color-dark-canvas: var(--color-portal-canvas);
+  --color-dark-surface: var(--color-portal-surface);
+  --color-dark-border: var(--color-portal-border);
+  --color-dark-muted: var(--color-portal-muted);
+  --color-dark-text: var(--color-portal-text);
+
+  /* Sidebar Dynamic Palette */
+  --color-sidebar-surface: var(--color-sidebar-surface);
+  --color-sidebar-border: var(--color-sidebar-border);
+  --color-sidebar-heading: var(--color-sidebar-heading);
+  --color-sidebar-text: var(--color-sidebar-text);
+  --color-sidebar-muted: var(--color-sidebar-muted);
+  --color-sidebar-canvas: var(--color-sidebar-canvas);
+  --color-sidebar-hover: var(--color-sidebar-hover);
+  --color-sidebar-accent: var(--color-sidebar-accent);
+
+  /* Table Header Dynamic Palette */
+  --color-table-header-bg: var(--color-table-header-bg);
+  --color-table-header-text: var(--color-table-header-text);
+
+  /* Portal Top Header Dynamic Palette */
+  --color-header-surface: var(--color-header-surface);
+  --color-header-border: var(--color-header-border);
+  --color-header-heading: var(--color-header-heading);
+  --color-header-text: var(--color-header-text);
+  --color-header-muted: var(--color-header-muted);
+}
+
+/* ==========================================================================
+   Root & Theme Definitions (Dark Mode Default + Light Mode Support)
+   ========================================================================== */
+:root {
+  color-scheme: dark;
   --color-portal-canvas: #22272e;
   --color-portal-surface: #2d333b;
   --color-portal-border: #444c56;
   --color-portal-muted: #768390;
   --color-portal-text: #adbac7;
+  --color-portal-heading: #ffffff;
   --color-portal-accent: #41cc84;
   --color-portal-accent-hover: #38b273;
   --color-portal-orange: #f0883e;
 
-  /* Card & Modal Dark Surface (Matches Login Card & Popups) */
   --color-portal-card: #333e38;
   --color-portal-card-border: #48564e;
   --color-card-dark: #333e38;
   --color-card-dark-border: #48564e;
 
-  /* Semantic Aliases */
-  --color-dark-canvas: #22272e;
-  --color-dark-surface: #2d333b;
-  --color-dark-border: #444c56;
-  --color-dark-muted: #768390;
-  --color-dark-text: #adbac7;
+  --color-portal-hover: rgba(255, 255, 255, 0.06);
+  --color-portal-active: rgba(255, 255, 255, 0.1);
+  --color-portal-scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --color-portal-scrollbar-thumb-hover: rgba(65, 204, 132, 0.4);
+
+  /* Sidebar Palette (matches dark portal surface in dark mode) */
+  --color-sidebar-surface: var(--color-portal-surface);
+  --color-sidebar-border: var(--color-portal-border);
+  --color-sidebar-heading: var(--color-portal-heading);
+  --color-sidebar-text: var(--color-portal-text);
+  --color-sidebar-muted: var(--color-portal-muted);
+  --color-sidebar-canvas: var(--color-portal-canvas);
+  --color-sidebar-hover: var(--color-portal-hover);
+  --color-sidebar-accent: var(--color-portal-accent);
+
+  /* Table Header Dynamic Background (Recessed canvas in dark mode) */
+  --color-table-header-bg: var(--color-portal-canvas);
+  --color-table-header-text: var(--color-portal-muted);
+
+  /* Portal Top Header Dynamic Palette (Dark Surface in dark mode) */
+  --color-header-surface: var(--color-portal-surface);
+  --color-header-border: var(--color-portal-border);
+  --color-header-heading: var(--color-portal-heading);
+  --color-header-text: var(--color-portal-text);
+  --color-header-muted: var(--color-portal-muted);
 }
+
+html.light,
+[data-theme="light"],
+:root.light {
+  color-scheme: light;
+  --color-portal-canvas: #ecf6f0; /* Very light lime-tinted green, almost white, distinct from white cards */
+  --color-portal-surface: #ffffff;
+  --color-portal-border: #dde9e0; /* Clean, subtle structural border in light mode */
+  --color-portal-muted: #5f6f64;
+  --color-portal-text: #2f3e35;
+  --color-portal-heading: #102218;
+  --color-portal-accent: #087a2d;
+  --color-portal-accent-hover: #045e1f;
+  --color-portal-orange: #d97706;
+
+  --color-portal-card: #ffffff;
+  --color-portal-card-border: #dde9e0;
+  --color-card-dark: #ffffff;
+  --color-card-dark-border: #dde9e0;
+
+  --color-portal-hover: rgba(0, 0, 0, 0.04);
+  --color-portal-active: rgba(0, 0, 0, 0.08);
+  --color-portal-scrollbar-thumb: rgba(0, 0, 0, 0.16);
+  --color-portal-scrollbar-thumb-hover: rgba(8, 122, 45, 0.4);
+
+  /* Sidebar Dark Green Tint (#333e38) in Light Mode */
+  --color-sidebar-surface: #333e38;
+  --color-sidebar-border: #48564e;
+  --color-sidebar-heading: #ffffff;
+  --color-sidebar-text: #adbac7;
+  --color-sidebar-muted: #8c9b92;
+  --color-sidebar-canvas: #27322b;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --color-sidebar-accent: #41cc84;
+
+  /* Table Header Dynamic Background (Matches sidebar surface #333e38 in light mode) */
+  --color-table-header-bg: var(--color-sidebar-surface);
+  --color-table-header-text: #ffffff;
+
+  /* Portal Top Header (Option 2: Soft Sage Wash — final tint in light mode) */
+  --color-header-surface: #e2f2e8;
+  --color-header-border: transparent;
+  --color-header-heading: #102218;
+  --color-header-text: #2f3e35;
+  --color-header-muted: #5f6f64;
+}
+
+/* ==========================================================================
+   Light Mode Text & Input Contrast Overrides
+   Ensures headings, labels, cards, table cells, and form inputs are crisp,
+   soft, and well-balanced when switching to light mode without harsh pitch-black text.
+   ========================================================================== */
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white,
+html.light h5.text-white,
+html.light h6.text-white,
+html.light strong.text-white,
+[data-theme="light"] h1.text-white,
+[data-theme="light"] h2.text-white,
+[data-theme="light"] h3.text-white,
+[data-theme="light"] h4.text-white,
+[data-theme="light"] h5.text-white,
+[data-theme="light"] h6.text-white,
+[data-theme="light"] strong.text-white {
+  color: var(--color-portal-heading) !important;
+}
+
+html.light p.text-white,
+[data-theme="light"] p.text-white,
+html.light span.text-white:not([class*="bg-"]):not(button),
+[data-theme="light"] span.text-white:not([class*="bg-"]):not(button) {
+  color: var(--color-portal-text) !important;
+}
+
+html.light label.text-white,
+[data-theme="light"] label.text-white {
+  color: var(--color-portal-muted) !important;
+}
+
+/* Modal and dialog content text contrast in light mode */
+html.light .p-dialog .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]),
+html.light .p-sidebar .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]),
+html.light .p-datatable .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]),
+[data-theme="light"] .p-dialog .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]),
+[data-theme="light"] .p-sidebar .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]),
+[data-theme="light"] .p-datatable .text-white:not(button):not([class*="bg-portal-accent"]):not([class*="bg-primary-green"]):not([class*="bg-red-accent"]) {
+  color: var(--color-portal-heading) !important;
+}
+
+/* Semi-transparent text-white contrast adaptation */
+html.light .p-dialog [class*="text-white/"]:not(button),
+html.light .p-sidebar [class*="text-white/"]:not(button),
+html.light .p-datatable [class*="text-white/"]:not(button),
+html.light main [class*="text-white/"]:not(button):not([class*="bg-"]),
+[data-theme="light"] .p-dialog [class*="text-white/"]:not(button),
+[data-theme="light"] .p-sidebar [class*="text-white/"]:not(button),
+[data-theme="light"] .p-datatable [class*="text-white/"]:not(button),
+[data-theme="light"] main [class*="text-white/"]:not(button):not([class*="bg-"]) {
+  color: var(--color-portal-text) !important;
+}
+
+/* Light Mode Tab Buttons and Action Contrast Adaptation */
+html.light button.text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *),
+[data-theme="light"] button.text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *) {
+  color: var(--color-portal-heading) !important;
+}
+
+html.light button[role="tab"]:not([class*="bg-"]):not([class*="text-portal-accent"]):not([class*="text-portal-muted"]),
+html.light button[class*="border-b"]:not([class*="bg-"]):not([class*="text-portal-accent"]):not([class*="text-portal-muted"]),
+[data-theme="light"] button[role="tab"]:not([class*="bg-"]):not([class*="text-portal-accent"]):not([class*="text-portal-muted"]),
+[data-theme="light"] button[class*="border-b"]:not([class*="bg-"]):not([class*="text-portal-accent"]):not([class*="text-portal-muted"]) {
+  color: var(--color-portal-heading) !important;
+}
+
+html.light button[role="tab"].text-portal-muted:hover,
+html.light button[class*="border-b"].text-portal-muted:hover,
+[data-theme="light"] button[role="tab"].text-portal-muted:hover,
+[data-theme="light"] button[class*="border-b"].text-portal-muted:hover {
+  color: var(--color-portal-heading) !important;
+}
+
+/* Light Mode Universal Button & Hover Contrast Protection:
+   Never allow buttons, links, or controls on light surfaces to turn white on hover */
+html.light button:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+html.light a:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+html.light [role="button"]:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+html.light .hover\:text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+[data-theme="light"] button:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+[data-theme="light"] a:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+[data-theme="light"] [role="button"]:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover,
+[data-theme="light"] .hover\:text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *):hover {
+  color: var(--color-portal-heading) !important;
+}
+
+html.light .group:hover .group-hover\:text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *),
+[data-theme="light"] .group:hover .group-hover\:text-white:not([class*="bg-portal-accent"]):not([class*="bg-primary"]):not([class*="bg-deep"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not(.portal-sidebar-container *):not(.driver-field-navigation *):not(.portal-mobile-header *) {
+  color: var(--color-portal-heading) !important;
+}
+
+/* Light Mode Universal Input Borders - Clean, refined, perfectly balanced framing */
+html.light .p-inputtext:not(.portal-sidebar-container *):not(aside *),
+html.light .p-inputtextarea:not(.portal-sidebar-container *):not(aside *),
+html.light .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *),
+html.light .p-password-input:not(.portal-sidebar-container *):not(aside *),
+html.light .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *),
+html.light .p-dropdown:not(.portal-sidebar-container *):not(aside *),
+html.light .p-multiselect:not(.portal-sidebar-container *):not(aside *),
+html.light .p-datepicker input:not(.portal-sidebar-container *):not(aside *),
+html.light .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *),
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *),
+html.light textarea:not(.portal-sidebar-container *):not(aside *),
+html.light select:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-inputtext:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-inputtextarea:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-password-input:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-dropdown:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-multiselect:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-datepicker input:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] textarea:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] select:not(.portal-sidebar-container *):not(aside *) {
+  background-color: #ffffff !important;
+  border-color: #b8cbbf !important;
+  color: var(--color-portal-heading) !important;
+}
+
+html.light .p-inputtext:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-inputtextarea:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-password-input:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-dropdown:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-multiselect:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-datepicker input:not(.portal-sidebar-container *):not(aside *):hover,
+html.light .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *):hover,
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *):hover,
+html.light textarea:not(.portal-sidebar-container *):not(aside *):hover,
+html.light select:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-inputtext:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-inputtextarea:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-password-input:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-dropdown:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-multiselect:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-datepicker input:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] textarea:not(.portal-sidebar-container *):not(aside *):hover,
+[data-theme="light"] select:not(.portal-sidebar-container *):not(aside *):hover {
+  border-color: #7b9485 !important;
+}
+
+html.light .p-inputtext:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-inputtextarea:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-password-input:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-dropdown:not(.portal-sidebar-container *):not(aside *):focus-within,
+html.light .p-multiselect:not(.portal-sidebar-container *):not(aside *):focus-within,
+html.light .p-dropdown.p-focus:not(.portal-sidebar-container *):not(aside *),
+html.light .p-multiselect.p-focus:not(.portal-sidebar-container *):not(aside *),
+html.light .p-datepicker input:not(.portal-sidebar-container *):not(aside *):focus,
+html.light .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *):focus,
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *):focus,
+html.light textarea:not(.portal-sidebar-container *):not(aside *):focus,
+html.light select:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-inputtext:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-inputtextarea:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-inputnumber-input:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-password-input:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-autocomplete-input:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-dropdown:not(.portal-sidebar-container *):not(aside *):focus-within,
+[data-theme="light"] .p-multiselect:not(.portal-sidebar-container *):not(aside *):focus-within,
+[data-theme="light"] .p-dropdown.p-focus:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-multiselect.p-focus:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] .p-datepicker input:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] .p-chips .p-chips-multiple-container:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.flat-async-select-search):not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] textarea:not(.portal-sidebar-container *):not(aside *):focus,
+[data-theme="light"] select:not(.portal-sidebar-container *):not(aside *):focus {
+  border-color: var(--color-portal-accent) !important;
+  box-shadow: 0 0 0 1px var(--color-portal-accent) !important;
+}
+
+/* Light Mode Unfilled, Secondary, and Outline Buttons Subtle Clean Border */
+html.light button.border-portal-border,
+html.light .p-button.p-button-outlined,
+html.light .p-button.p-button-secondary,
+[data-theme="light"] button.border-portal-border,
+[data-theme="light"] .p-button.p-button-outlined,
+[data-theme="light"] .p-button.p-button-secondary {
+  border-color: #b8cbbf !important;
+}
+
+html.light button.border-portal-border:hover,
+html.light .p-button.p-button-outlined:hover,
+html.light .p-button.p-button-secondary:hover,
+[data-theme="light"] button.border-portal-border:hover,
+[data-theme="light"] .p-button.p-button-outlined:hover,
+[data-theme="light"] .p-button.p-button-secondary:hover {
+  border-color: #7b9485 !important;
+}
+
+/* Universal input typing readability in light mode */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.portal-sidebar-container *):not(aside *),
+html.light textarea:not(.portal-sidebar-container *):not(aside *),
+html.light select:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] textarea:not(.portal-sidebar-container *):not(aside *),
+[data-theme="light"] select:not(.portal-sidebar-container *):not(aside *) {
+  color: var(--color-portal-text);
+}
+
+html.light input:not(.portal-sidebar-container *):not(aside *)::placeholder,
+html.light textarea:not(.portal-sidebar-container *):not(aside *)::placeholder,
+[data-theme="light"] input:not(.portal-sidebar-container *):not(aside *)::placeholder,
+[data-theme="light"] textarea:not(.portal-sidebar-container *):not(aside *)::placeholder {
+  color: var(--color-portal-muted) !important;
+}
+
+/* Portal Sidebar Text & Input Isolation (ensures dark green sidebar text remains crisp in light mode) */
+.portal-layout-shell,
+.portal-sidebar-container {
+  border-radius: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+html.light .portal-sidebar-container input,
+html.light aside input,
+[data-theme="light"] .portal-sidebar-container input,
+[data-theme="light"] aside input {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-sidebar-heading) !important;
+  box-shadow: none !important;
+}
+html.light .portal-sidebar-container input:hover,
+html.light aside input:hover,
+html.light .portal-sidebar-container input:focus,
+html.light aside input:focus,
+[data-theme="light"] .portal-sidebar-container input:hover,
+[data-theme="light"] aside input:hover,
+[data-theme="light"] .portal-sidebar-container input:focus,
+[data-theme="light"] aside input:focus {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html.light .portal-sidebar-container input::placeholder,
+html.light aside input::placeholder,
+[data-theme="light"] .portal-sidebar-container input::placeholder,
+[data-theme="light"] aside input::placeholder {
+  color: var(--color-sidebar-muted) !important;
+}
+
+/* Driver navigation remains high-contrast on its dark rail in light mode. */
+html.light .driver-field-navigation button:hover,
+[data-theme="light"] .driver-field-navigation button:hover {
+  color: var(--color-sidebar-heading) !important;
+}
+
+html.light .driver-field-navigation button[role="tab"][aria-selected="false"]:hover,
+[data-theme="light"] .driver-field-navigation button[role="tab"][aria-selected="false"]:hover {
+  background-color: var(--color-sidebar-hover) !important;
+}
+
+html.light .driver-field-navigation button[role="tab"][aria-selected="true"]:hover,
+[data-theme="light"] .driver-field-navigation button[role="tab"][aria-selected="true"]:hover {
+  background-color: color-mix(in srgb, var(--color-sidebar-accent) 15%, transparent) !important;
+}
+
+/* Light Mode Data Table Header (matches sidebar surface #333e38 with white foreground) */
+html.light .p-datatable thead,
+html.light .p-datatable th,
+html.light .p-datatable .p-datatable-thead > tr > th,
+[data-theme="light"] .p-datatable thead,
+[data-theme="light"] .p-datatable th,
+[data-theme="light"] .p-datatable .p-datatable-thead > tr > th {
+  background-color: var(--color-sidebar-surface) !important;
+  color: #ffffff !important;
+}
+
+html.light .p-datatable .p-datatable-thead > tr > th span,
+[data-theme="light"] .p-datatable .p-datatable-thead > tr > th span {
+  color: #ffffff !important;
+}
+
+html.light .p-datatable .p-datatable-thead > tr > th button,
+[data-theme="light"] .p-datatable .p-datatable-thead > tr > th button {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
 
 /* Fix PrimeReact dropdown clear button vertical alignment */
 .p-dropdown .p-dropdown-clear-icon {
@@ -147,6 +559,26 @@ button[class*="border-b-2"],
   border-radius: 0 !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
+}
+
+/* Driver application chrome must remain edge-to-edge despite the global 4px radius. */
+.driver-page-shell,
+.driver-dashboard-shell,
+.driver-dashboard-header,
+.driver-dashboard-body,
+.driver-field-navigation {
+  border-radius: 0 !important;
+}
+
+.driver-field-navigation button[role="tab"],
+.driver-navigation-indicator {
+  border-radius: 0 !important;
+}
+
+.driver-desktop-nav-edge,
+.driver-desktop-nav-edge > button,
+.driver-field-navigation [role="tablist"] > button:first-child {
+  border-radius: 0 !important;
 }
 
 /* 2. Flat Aesthetic Adjustments */
@@ -524,7 +956,7 @@ div.p-icon-field {
 }
 
 /* ==========================================================================
-   12. Global Dark Theme Inputs & Overlays (Default App Theme)
+   12. Global Form Inputs & Overlays (Dynamic Light & Dark Theme)
    ========================================================================== */
 .p-inputtext,
 .p-inputtextarea,
@@ -533,7 +965,7 @@ div.p-icon-field {
 .p-autocomplete-input {
   background-color: var(--color-portal-canvas) !important;
   border-color: var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-inputtext::placeholder,
@@ -547,7 +979,7 @@ div.p-icon-field {
 .p-inputnumber-input:hover,
 .p-password-input:hover,
 .p-autocomplete-input:hover {
-  border-color: rgba(68, 76, 86, 0.8) !important;
+  border-color: var(--color-portal-muted) !important;
 }
 
 .p-inputtext:focus,
@@ -564,12 +996,12 @@ div.p-icon-field {
 .p-multiselect {
   background-color: var(--color-portal-canvas) !important;
   border-color: var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-dropdown:hover,
 .p-multiselect:hover {
-  border-color: rgba(68, 76, 86, 0.8) !important;
+  border-color: var(--color-portal-muted) !important;
 }
 
 .p-dropdown:focus-within,
@@ -581,7 +1013,7 @@ div.p-icon-field {
 
 .p-dropdown .p-dropdown-label,
 .p-multiselect .p-multiselect-label {
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-dropdown .p-dropdown-label.p-placeholder,
@@ -602,14 +1034,14 @@ div.p-icon-field {
   background: var(--color-portal-surface) !important;
   border: 1px solid var(--color-portal-border) !important;
   border-radius: 4px !important;
-  color: #ffffff !important;
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.7) !important;
+  color: var(--color-portal-text) !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.25) !important;
 }
 
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item,
 .p-multiselect-panel .p-multiselect-items .p-multiselect-item,
 .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
-  color: #adbac7 !important;
+  color: var(--color-portal-text) !important;
   padding: 6px 10px !important;
   font-size: 0.75rem !important;
   border-radius: 2px !important;
@@ -670,13 +1102,13 @@ div.p-icon-field {
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
 .p-multiselect-panel .p-multiselect-items .p-multiselect-item:hover,
 .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: #ffffff !important;
+  background: var(--color-portal-hover) !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight,
 .p-multiselect-panel .p-multiselect-items .p-multiselect-item.p-highlight {
-  background: rgba(65, 204, 132, 0.15) !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 15%, transparent) !important;
   color: var(--color-portal-accent) !important;
   font-weight: 600 !important;
 }
@@ -685,7 +1117,7 @@ div.p-icon-field {
 .p-multiselect-panel .p-multiselect-header {
   background: var(--color-portal-canvas) !important;
   border-bottom: 1px solid var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
   padding: 8px 12px !important;
 }
 
@@ -696,19 +1128,23 @@ div.p-icon-field {
   padding: 2px 8px !important;
   background: var(--color-portal-surface) !important;
   border-color: var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-dropdown-panel .p-dropdown-filter-container .p-dropdown-filter-icon,
 .p-multiselect-panel .p-multiselect-filter-container .p-multiselect-filter-icon {
   color: var(--color-portal-muted) !important;
+  top: 50% !important;
+  margin-top: 0 !important;
+  transform: translateY(-50%) !important;
+  line-height: 1 !important;
 }
 
 /* MultiSelect Token Chips */
 .p-multiselect .p-multiselect-token {
-  background: var(--color-portal-surface) !important;
+  background: var(--color-portal-canvas) !important;
   border: 1px solid var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
   border-radius: 2px !important;
   padding: 2px 6px !important;
 }
@@ -732,10 +1168,10 @@ div.p-icon-field {
 }
 
 .p-multiselect .p-multiselect-token .p-multiselect-token-icon:hover {
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
-/* Checkbox & RadioButton Dark Theme */
+/* Checkbox & RadioButton Dynamic Theme */
 .p-checkbox .p-checkbox-box {
   background: var(--color-portal-canvas) !important;
   border-color: var(--color-portal-border) !important;
@@ -788,27 +1224,76 @@ div.p-icon-field {
 }
 
 .flat-datepicker.p-calendar .p-datepicker-trigger:hover {
-  color: var(--color-portal-text) !important;
-  background: color-mix(in srgb, var(--color-portal-text) 8%, transparent) !important;
+  color: var(--color-portal-heading) !important;
+  background: var(--color-portal-hover) !important;
 }
 
 .p-datepicker .p-datepicker-header {
   background: var(--color-portal-canvas) !important;
   border-bottom: 1px solid var(--color-portal-border) !important;
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
+  padding: 0.375rem 0.5rem !important;
+}
+
+.p-datepicker .p-datepicker-title,
+.p-datepicker .p-datepicker-title .p-datepicker-month,
+.p-datepicker .p-datepicker-title .p-datepicker-year {
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+.p-datepicker .p-datepicker-header .p-datepicker-prev,
+.p-datepicker .p-datepicker-header .p-datepicker-next {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+.p-datepicker .p-datepicker-header .p-datepicker-prev .p-icon,
+.p-datepicker .p-datepicker-header .p-datepicker-next .p-icon {
+  width: 0.7rem !important;
+  height: 0.7rem !important;
+  font-size: 0.7rem !important;
+}
+
+.p-datepicker .p-datepicker-calendar-container {
+  padding-top: 0.5rem !important;
+}
+
+.p-datepicker table {
+  table-layout: fixed !important;
+}
+
+.p-datepicker table th,
+.p-datepicker table th > span {
+  padding: 0.2rem !important;
+  font-size: 0.65rem !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+.p-datepicker table td {
+  padding: 0.1rem !important;
+  width: 14.2857% !important;
+  text-align: center !important;
 }
 
 .p-datepicker table td > span {
-  color: #adbac7 !important;
+  color: var(--color-portal-text) !important;
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  font-size: 0.7rem !important;
+  line-height: 1 !important;
 }
 
 .p-datepicker table td > span:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  background: var(--color-portal-hover) !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .p-datepicker table td > span.p-highlight {
-  background: color-mix(in srgb, var(--color-portal-accent) 16%, transparent) !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 18%, transparent) !important;
   color: var(--color-portal-accent) !important;
 }
 
@@ -821,7 +1306,7 @@ div.p-icon-field {
 
 .p-datepicker table td.p-datepicker-today > span.p-highlight,
 .p-datepicker table td.p-datepicker-today > span.p-highlight:hover {
-  background: color-mix(in srgb, var(--color-portal-accent) 16%, transparent) !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 18%, transparent) !important;
   color: var(--color-portal-accent) !important;
   border-color: var(--color-portal-accent) !important;
 }
@@ -850,19 +1335,27 @@ div.p-icon-field {
 .p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-next .p-icon,
 .p-datepicker-sm .p-datepicker-header .p-datepicker-prev .p-icon,
 .p-datepicker-sm .p-datepicker-header .p-datepicker-next .p-icon {
+  width: 0.65rem !important;
+  height: 0.65rem !important;
   font-size: 0.7rem !important;
 }
 
 .p-datepicker.p-datepicker-sm .p-datepicker-title,
-.p-datepicker-sm .p-datepicker-title {
-  font-size: 0.75rem !important;
+.p-datepicker.p-datepicker-sm .p-datepicker-title .p-datepicker-month,
+.p-datepicker.p-datepicker-sm .p-datepicker-title .p-datepicker-year,
+.p-datepicker-sm .p-datepicker-title,
+.p-datepicker-sm .p-datepicker-title .p-datepicker-month,
+.p-datepicker-sm .p-datepicker-title .p-datepicker-year {
+  font-size: 0.7rem !important;
   line-height: 1.2 !important;
 }
 
 .p-datepicker.p-datepicker-sm table th,
-.p-datepicker-sm table th {
+.p-datepicker.p-datepicker-sm table th > span,
+.p-datepicker-sm table th,
+.p-datepicker-sm table th > span {
   padding: 2px !important;
-  font-size: 0.7rem !important;
+  font-size: 0.625rem !important;
 }
 
 .p-datepicker.p-datepicker-sm table td,
@@ -874,12 +1367,12 @@ div.p-icon-field {
 .p-datepicker-sm table td > span {
   width: 1.6rem !important;
   height: 1.6rem !important;
-  font-size: 0.75rem !important;
+  font-size: 0.675rem !important;
   border-radius: 2px !important;
 }
 
 /* ==========================================================================
-   High-Visibility Dark Flat DataTable (GitHub/Vercel/Linear Style)
+   Flat DataTable (Adaptive Theme)
    ========================================================================== */
 .p-datatable {
   background: var(--color-portal-surface) !important;
@@ -891,8 +1384,8 @@ div.p-icon-field {
 }
 
 .p-datatable .p-datatable-thead > tr > th {
-  background: var(--color-portal-canvas) !important;
-  color: #ffffff !important;
+  background: var(--color-table-header-bg) !important;
+  color: var(--color-table-header-text) !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
@@ -911,12 +1404,12 @@ div.p-icon-field {
 }
 
 .p-datatable .p-datatable-tbody > tr:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: var(--color-portal-hover) !important;
 }
 
 .p-datatable .p-datatable-tbody > tr > td {
   padding: 0.875rem 1rem !important;
-  border-bottom: 1px solid rgba(68, 76, 86, 0.4) !important;
+  border-bottom: 1px solid var(--color-portal-border) !important;
   border-top: none !important;
   border-left: none !important;
   border-right: none !important;
@@ -925,8 +1418,8 @@ div.p-icon-field {
 }
 
 .p-datatable .p-datatable-tbody > tr.p-highlight {
-  background: rgba(65, 204, 132, 0.12) !important;
-  color: #ffffff !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 15%, transparent) !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .flat-data-table-mobile-value .text-xs {
@@ -947,7 +1440,7 @@ div.p-icon-field {
 }
 
 .p-datatable .p-sortable-column .p-sortable-column-icon {
-  color: #ffffff !important;
+  color: var(--color-portal-muted) !important;
 }
 
 .p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon {
@@ -955,10 +1448,10 @@ div.p-icon-field {
 }
 
 /* ==========================================================================
-   13. Leaflet Map Dark Theme Overrides
+   13. Leaflet Map Overrides (Dynamic Dark & Light Modes)
    ========================================================================== */
 .leaflet-container {
-  background-color: #1a1e24 !important;
+  background-color: var(--color-portal-canvas) !important;
   font-family: inherit !important;
 }
 
@@ -971,12 +1464,17 @@ div.p-icon-field {
   filter: brightness(0.7) invert(1) contrast(1.8) hue-rotate(180deg) saturate(0.4);
 }
 
+html.light .dark-tiles,
+[data-theme="light"] .dark-tiles {
+  filter: none !important;
+}
+
 .leaflet-popup-content-wrapper {
-  background-color: #2d333b !important;
-  color: #adbac7 !important;
-  border: 1px solid #444c56 !important;
+  background-color: var(--color-portal-surface) !important;
+  color: var(--color-portal-text) !important;
+  border: 1px solid var(--color-portal-border) !important;
   border-radius: 4px !important;
-  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.3) !important;
   padding: 0 !important;
 }
 
@@ -984,16 +1482,17 @@ div.p-icon-field {
   margin: 0 !important;
   line-height: 1.4 !important;
   font-size: 12px !important;
+  color: var(--color-portal-text) !important;
 }
 
 .leaflet-popup-tip {
-  background-color: #2d333b !important;
-  border: 1px solid #444c56 !important;
+  background-color: var(--color-portal-surface) !important;
+  border: 1px solid var(--color-portal-border) !important;
   box-shadow: none !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button {
-  color: #768390 !important;
+  color: var(--color-portal-muted) !important;
   padding: 6px 8px !important;
   top: 4px !important;
   right: 4px !important;
@@ -1002,26 +1501,26 @@ div.p-icon-field {
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-  color: #ffffff !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .leaflet-bar {
-  border: 1px solid #444c56 !important;
+  border: 1px solid var(--color-portal-border) !important;
   border-radius: 4px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
   overflow: hidden !important;
 }
 
 .leaflet-bar a {
-  background-color: #2d333b !important;
-  color: #adbac7 !important;
-  border-bottom: 1px solid #444c56 !important;
+  background-color: var(--color-portal-surface) !important;
+  color: var(--color-portal-text) !important;
+  border-bottom: 1px solid var(--color-portal-border) !important;
   transition: all 0.15s ease !important;
 }
 
 .leaflet-bar a:hover {
-  background-color: #333e38 !important;
-  color: #ffffff !important;
+  background-color: var(--color-portal-hover) !important;
+  color: var(--color-portal-heading) !important;
 }
 
 .leaflet-bar a:last-child {
@@ -1029,15 +1528,16 @@ div.p-icon-field {
 }
 
 .leaflet-control-attribution {
-  background-color: rgba(34, 39, 46, 0.85) !important;
-  color: #768390 !important;
+  background-color: var(--color-portal-surface) !important;
+  color: var(--color-portal-muted) !important;
   font-size: 10px !important;
   padding: 2px 6px !important;
   backdrop-filter: blur(4px) !important;
+  border: 1px solid var(--color-portal-border) !important;
 }
 
 .leaflet-control-attribution a {
-  color: #41cc84 !important;
+  color: var(--color-portal-accent) !important;
   text-decoration: none !important;
 }
 

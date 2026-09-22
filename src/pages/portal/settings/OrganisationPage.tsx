@@ -422,8 +422,8 @@ export const OrganisationPage: React.FC = () => {
           onClick={() => handleTabChange('branches')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'branches'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Branches</span>
@@ -434,8 +434,8 @@ export const OrganisationPage: React.FC = () => {
           onClick={() => handleTabChange('districts')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'districts'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Districts</span>
@@ -446,8 +446,8 @@ export const OrganisationPage: React.FC = () => {
           onClick={() => handleTabChange('regions')}
           className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
             activeTab === 'regions'
-              ? 'border-portal-accent text-white'
-              : 'border-transparent text-portal-muted hover:text-white'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
           }`}
         >
           <span>Regions</span>

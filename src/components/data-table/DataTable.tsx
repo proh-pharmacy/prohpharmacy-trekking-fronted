@@ -779,7 +779,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onSecondaryAction}
-                  className="h-[44px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
+                  className="h-[44px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-portal-heading text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
                 >
                   {secondaryActionIcon && <i className={`${secondaryActionIcon} text-xs`} />}
                   {secondaryActionNameMobile ? <><span className="hidden sm:inline">{secondaryActionName}</span><span className="sm:hidden">{secondaryActionNameMobile}</span></> : secondaryActionName}
@@ -827,13 +827,13 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(globalSearch)}
                   placeholder={filterablePlaceholder}
-                  className="w-full h-[44px] pl-10 pr-10 bg-portal-canvas border border-portal-border rounded text-sm text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
+                  className="w-full h-[44px] pl-10 pr-10 bg-white dark:bg-portal-canvas border border-portal-border rounded text-sm text-portal-heading placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
                 />
                 {globalSearch && (
                   <button
                     type="button"
                     onClick={handleSearchClear}
-                    className="absolute right-3 text-portal-muted hover:text-white cursor-pointer"
+                    className="absolute right-3 text-portal-muted hover:text-portal-heading cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -851,14 +851,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 className={cn(
                   'h-[44px] w-[44px] sm:w-auto sm:px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0',
                   isFilterVisible
-                    ? 'bg-portal-accent border-portal-accent text-portal-canvas'
-                    : 'bg-portal-canvas border-portal-border text-white hover:border-portal-border/80'
+                    ? 'bg-portal-accent border-portal-accent text-white dark:text-portal-canvas'
+                    : 'bg-white dark:bg-portal-canvas border-portal-border text-portal-heading hover:border-portal-border/80'
                 )}
               >
                 <ListFilter className="w-4 h-4" />
                 <span className="hidden sm:inline">Filters</span>
                 {activeFiltersCount > 0 && (
-                  <span className="hidden sm:flex w-5 h-5 bg-portal-accent text-portal-canvas text-[10px] font-bold items-center justify-center rounded">
+                  <span className="hidden sm:flex w-5 h-5 bg-portal-accent text-white dark:text-portal-canvas text-[10px] font-bold items-center justify-center rounded">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -870,7 +870,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               type="button"
               title="Refresh Records"
               onClick={() => refetch()}
-              className="h-[44px] w-[44px] flex items-center justify-center bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-white hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              className="h-[44px] w-[44px] flex items-center justify-center bg-white dark:bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-portal-heading hover:border-portal-border/80 cursor-pointer transition shrink-0"
             >
               <RotateCcw className={cn('w-4 h-4', isBusy && 'animate-spin text-portal-accent')} />
             </button>
@@ -892,7 +892,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
       {extendedFilter?.enable && isFilterVisible && (
         <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-portal-border/40 pb-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-portal-heading">
               Filter Parameters
             </h4>
             {activeFiltersCount > 0 && (
@@ -928,26 +928,26 @@ export function FlatDataTable<TData extends Record<string, any>>({
             emptyMessage={
               <div className="py-16 flex flex-col items-center justify-center text-portal-muted">
                 <Package className="w-12 h-12 mb-3 stroke-[1.5] text-portal-border" />
-                <p className="font-semibold text-white text-sm">{emptyDataText}</p>
+                <p className="font-semibold text-portal-heading text-sm">{emptyDataText}</p>
                 {dataSourceUrl && (
                   <button
                     type="button"
                     onClick={() => refetch()}
-                    className="mt-3 px-3 py-1.5 border border-portal-border text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider rounded cursor-pointer transition"
+                    className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer transition"
                   >
                     Reload
                   </button>
                 )}
               </div>
             }
-            rowClassName={() => 'hover:bg-white/[0.04] transition-colors'}
+            rowClassName={() => 'hover:bg-portal-hover transition-colors'}
             pt={{
-              thead: { className: 'bg-portal-canvas border-b border-portal-border' },
+              thead: { className: 'bg-table-header border-b border-portal-border' },
               headerRow: { className: 'border-none' },
               column: {
                 headerCell: {
                   className:
-                    'bg-portal-canvas text-portal-muted text-[10px] font-bold uppercase tracking-wider py-2.5 px-2.5 border-b border-portal-border whitespace-nowrap text-left rounded-none',
+                    'bg-table-header text-table-header-text text-[10px] font-bold uppercase tracking-wider py-2.5 px-2.5 border-b border-portal-border whitespace-nowrap text-left rounded-none',
                 },
                 bodyCell: {
                   className:
@@ -962,7 +962,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 field={col.field}
                 header={
                   <div className="flex items-center gap-2">
-                    <span className="text-portal-muted font-medium">{col.header}</span>
+                    <span className="text-table-header-text font-medium">{col.header}</span>
                     {sortableColumns?.find((s) => s.key === col.field) && (
                       <button
                         type="button"
@@ -973,7 +973,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                           const nextVal = currentVal === 'asc' ? 'desc' : 'asc';
                           handleFilterChange(conf.accessor, nextVal);
                         }}
-                        className="text-white/70 hover:text-portal-accent cursor-pointer transition"
+                        className="text-table-header-text/70 hover:text-portal-accent cursor-pointer transition"
                         title="Sort"
                       >
                         <ArrowUpDown className="w-3.5 h-3.5" />
@@ -995,12 +995,12 @@ export function FlatDataTable<TData extends Record<string, any>>({
           {tableDataList.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center text-portal-muted p-4">
               <Package className="w-12 h-12 mb-3 stroke-[1.5] text-portal-border" />
-              <p className="font-semibold text-white text-sm">{emptyDataText}</p>
+              <p className="font-semibold text-portal-heading text-sm">{emptyDataText}</p>
               {dataSourceUrl && (
                 <button
                   type="button"
                   onClick={() => refetch()}
-                  className="mt-3 px-3 py-1.5 border border-portal-border text-white text-xs font-bold uppercase tracking-wider rounded cursor-pointer"
+                  className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer"
                 >
                   Reload
                 </button>
@@ -1032,12 +1032,12 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
         {/* 6. Flat Pagination Bar */}
         {enablePaginator && totalCount > 0 && (
-          <div className="p-3 bg-portal-canvas border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="p-3 bg-[#f8fafc] dark:bg-portal-canvas border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             {/* Info */}
             <div className="font-mono text-portal-muted">
-              Page <span className="font-bold text-white">{currentPage}</span> of{' '}
-              <span className="font-bold text-white">{totalPages}</span> •{' '}
-              <span className="font-bold text-white">{totalCount}</span> records
+              Page <span className="font-bold text-portal-heading">{currentPage}</span> of{' '}
+              <span className="font-bold text-portal-heading">{totalPages}</span> •{' '}
+              <span className="font-bold text-portal-heading">{totalCount}</span> records
             </div>
 
             {/* Controls */}
@@ -1048,7 +1048,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <select
                   value={pagination.pageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="px-2 py-1 bg-portal-surface border border-portal-border rounded text-xs text-white focus:outline-none focus:border-portal-accent cursor-pointer"
+                  className="px-2 py-1 bg-portal-surface border border-portal-border rounded text-xs text-portal-heading focus:outline-none focus:border-portal-accent cursor-pointer"
                 >
                   {[5, 10, 20, 25, 50, 100].map((size) => (
                     <option key={size} value={size}>
@@ -1071,14 +1071,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}
-                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-portal-surface text-white rounded flex items-center gap-1 cursor-pointer font-bold transition"
+                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-portal-hover disabled:opacity-30 disabled:hover:bg-portal-surface text-portal-heading rounded flex items-center gap-1 cursor-pointer font-bold transition"
                   aria-label="Previous Page"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
                 </button>
 
-                <span className="px-2.5 py-1.5 bg-portal-accent text-portal-canvas font-mono font-bold rounded">
+                <span className="px-2.5 py-1.5 bg-portal-accent text-white dark:text-portal-canvas font-mono font-bold rounded">
                   {currentPage}
                 </span>
 
@@ -1090,7 +1090,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}
-                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-portal-surface text-white rounded flex items-center gap-1 cursor-pointer font-bold transition"
+                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-portal-hover disabled:opacity-30 disabled:hover:bg-portal-surface text-portal-heading rounded flex items-center gap-1 cursor-pointer font-bold transition"
                   aria-label="Next Page"
                 >
                   <span>Next</span>

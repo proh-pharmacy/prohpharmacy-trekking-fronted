@@ -119,13 +119,13 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
   };
 
   return (
-    <div className="absolute top-4 left-4 z-[1100] w-[calc(100%-2rem)] sm:w-96 bg-portal-surface/80 border border-portal-border rounded shadow-2xl backdrop-blur-xl overflow-hidden animate-fadeIn">
+    <div className="absolute top-4 left-4 z-[1100] w-[calc(100%-2rem)] sm:w-96 bg-portal-surface/85 backdrop-blur-xl border border-portal-border rounded shadow-2xl overflow-hidden animate-fadeIn">
       {/* Header */}
       <div className="p-3.5 bg-transparent border-b border-portal-border flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-sm text-white tracking-wide">
+              <span className="font-mono font-bold text-sm text-portal-heading tracking-wide">
                 {device.vehicleDisplayName || device.deviceName}
               </span>
             </div>
@@ -137,7 +137,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
             type="button"
             onClick={onClose}
             title="Close panel"
-            className="w-7 h-7 rounded flex items-center justify-center text-portal-text hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+            className="w-7 h-7 rounded flex items-center justify-center text-portal-muted hover:text-portal-heading hover:bg-portal-hover transition cursor-pointer"
           >
             <i className="pi pi-times text-xs" />
           </button>
@@ -149,7 +149,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
         {/* Top 3 KPI blocks: Speed, Engine, Battery */}
         <div className="grid grid-cols-3 gap-2">
           {/* Speed */}
-          <div className="bg-portal-canvas/55 p-2 rounded border border-portal-border/60">
+          <div className="bg-portal-canvas/60 p-2 rounded border border-portal-border/60">
             <span className="text-[10px] font-medium text-portal-muted uppercase block">Speed</span>
             <span className="font-mono font-bold text-sm text-portal-accent block mt-0.5">
               {currentSpeed.toFixed(1)}{' '}
@@ -158,7 +158,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           </div>
 
           {/* Ignition / Engine */}
-          <div className="bg-portal-canvas/55 p-2 rounded border border-portal-border/60">
+          <div className="bg-portal-canvas/60 p-2 rounded border border-portal-border/60">
             <span className="text-[10px] font-medium text-portal-muted uppercase block">Ignition</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <i
@@ -168,7 +168,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
               />
               <span
                 className={`font-semibold text-xs ${
-                  currentIgnition ? 'text-white' : 'text-portal-muted'
+                  currentIgnition ? 'text-portal-heading' : 'text-portal-muted'
                 }`}
               >
                 {currentIgnition ? 'ON' : 'OFF'}
@@ -177,7 +177,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           </div>
 
           {/* Battery */}
-          <div className="bg-portal-canvas/55 p-2 rounded border border-portal-border/60">
+          <div className="bg-portal-canvas/60 p-2 rounded border border-portal-border/60">
             <span className="text-[10px] font-medium text-portal-muted uppercase block">Battery</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <i
@@ -189,7 +189,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
                       : 'pi-exclamation-circle text-red-accent'
                 } text-xs`}
               />
-              <span className="font-mono font-bold text-xs text-white">
+              <span className="font-mono font-bold text-xs text-portal-heading">
                 {currentBattery !== null && currentBattery !== undefined
                   ? `${currentBattery.toFixed(0)}%`
                   : '—'}
@@ -216,7 +216,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           type="button"
           onClick={handleRefreshLive}
           disabled={isRefreshingLive}
-          className="w-full py-2 px-3 bg-white/[0.08] hover:bg-white/[0.14] text-white border border-portal-border text-xs font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          className="w-full py-2 px-3 bg-portal-canvas/80 hover:bg-portal-hover text-portal-heading border border-portal-border hover:border-portal-border/80 text-xs font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           <i className={`pi pi-sync text-xs ${isRefreshingLive ? 'animate-spin' : ''}`} />
           {isRefreshingLive ? 'Pinging Traccar...' : 'Ping Live Position'}
@@ -256,7 +256,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
                 className={`py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
                   trailPreset === p.id
                     ? 'bg-portal-accent/20 text-portal-accent border border-portal-accent'
-                    : 'bg-portal-canvas/40 hover:bg-white/[0.08] text-portal-muted border border-portal-border/60'
+                    : 'bg-portal-canvas/80 hover:bg-portal-hover hover:text-portal-heading text-portal-muted border border-portal-border'
                 }`}
               >
                 {p.label}
@@ -269,7 +269,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
             type="button"
             onClick={() => handleFetchTrail()}
             disabled={isLoadingTrail}
-            className="w-full py-2 px-3 bg-white/[0.08] hover:bg-white/[0.14] text-white border border-portal-border text-xs font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-2 px-3 bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white border border-transparent text-xs font-bold uppercase tracking-wider rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <i className={`pi pi-map text-xs ${isLoadingTrail ? 'animate-spin' : ''}`} />
             {isLoadingTrail ? 'Loading Trail...' : 'Draw Route Trail'}

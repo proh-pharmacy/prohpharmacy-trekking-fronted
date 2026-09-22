@@ -728,8 +728,8 @@ export const UsersAndRolesPage: React.FC = () => {
                 title="Actions"
                 className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
                   isMenuActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-portal-muted hover:text-white hover:bg-white/10'
+                    ? 'bg-portal-hover text-portal-heading'
+                    : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
                 }`}
               >
                 <i className="pi pi-ellipsis-v text-xs" />
@@ -855,8 +855,8 @@ export const UsersAndRolesPage: React.FC = () => {
                 title="Actions"
                 className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
                   isMenuActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-portal-muted hover:text-white hover:bg-white/10'
+                    ? 'bg-portal-hover text-portal-heading'
+                    : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
                 }`}
               >
                 <i className="pi pi-ellipsis-v text-xs" />
@@ -879,8 +879,8 @@ export const UsersAndRolesPage: React.FC = () => {
             onClick={() => handleTabChange('users')}
             className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'users'
-                ? 'border-portal-accent text-white'
-                : 'border-transparent text-portal-muted hover:text-white'
+                ? 'border-portal-accent text-portal-heading font-bold'
+                : 'border-transparent text-portal-muted hover:text-portal-heading'
             }`}
           >
             <span>User Accounts</span>
@@ -890,8 +890,8 @@ export const UsersAndRolesPage: React.FC = () => {
             onClick={() => handleTabChange('staff')}
             className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'staff'
-                ? 'border-portal-accent text-white'
-                : 'border-transparent text-portal-muted hover:text-white'
+                ? 'border-portal-accent text-portal-heading font-bold'
+                : 'border-transparent text-portal-muted hover:text-portal-heading'
             }`}
           >
             <span>Staff Directory</span>
@@ -901,8 +901,8 @@ export const UsersAndRolesPage: React.FC = () => {
             onClick={() => handleTabChange('matrix')}
             className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === 'matrix'
-                ? 'border-portal-accent text-white'
-                : 'border-transparent text-portal-muted hover:text-white'
+                ? 'border-portal-accent text-portal-heading font-bold'
+                : 'border-transparent text-portal-muted hover:text-portal-heading'
             }`}
           >
             <span>Roles & Permission</span>
@@ -984,13 +984,13 @@ export const UsersAndRolesPage: React.FC = () => {
                   value={roleSearch}
                   onChange={(e) => setRoleSearch(e.target.value)}
                   placeholder="Filter roles..."
-                  className="w-full h-[38px] pl-8 pr-7 bg-portal-canvas border border-portal-border rounded text-xs text-white placeholder-portal-muted focus:outline-none focus:border-portal-accent transition"
+                  className="w-full h-[38px] pl-8 pr-7 bg-portal-canvas border border-portal-border rounded text-xs text-portal-text placeholder-portal-muted focus:outline-none focus:border-portal-accent transition"
                 />
                 {roleSearch && (
                   <button
                     type="button"
                     onClick={() => setRoleSearch('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-portal-muted hover:text-white"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-portal-muted hover:text-portal-heading"
                   >
                     <i className="pi pi-times text-[10px]" />
                   </button>
@@ -1005,8 +1005,8 @@ export const UsersAndRolesPage: React.FC = () => {
                   title="Table View"
                   className={`h-full px-2.5 rounded text-xs inline-flex items-center justify-center transition cursor-pointer ${
                     roleViewMode === 'table'
-                      ? 'bg-portal-surface text-white shadow-xs font-semibold'
-                      : 'text-portal-muted hover:text-white'
+                      ? 'bg-portal-surface text-portal-heading shadow-xs font-semibold'
+                      : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
                   }`}
                 >
                   <i className="pi pi-bars text-xs" />
@@ -1017,8 +1017,8 @@ export const UsersAndRolesPage: React.FC = () => {
                   title="Cards View"
                   className={`h-full px-2.5 rounded text-xs inline-flex items-center justify-center transition cursor-pointer ${
                     roleViewMode === 'cards'
-                      ? 'bg-portal-surface text-white shadow-xs font-semibold'
-                      : 'text-portal-muted hover:text-white'
+                      ? 'bg-portal-surface text-portal-heading shadow-xs font-semibold'
+                      : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
                   }`}
                 >
                   <i className="pi pi-th-large text-xs" />

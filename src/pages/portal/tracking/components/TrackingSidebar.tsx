@@ -97,7 +97,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
           type="button"
           onClick={onToggleCollapse}
           title={collapsed ? 'Show devices' : 'Hide devices'}
-          className="!rounded-none flex items-center justify-center border-t-2 border-transparent text-portal-text hover:bg-white/[0.08] hover:text-white transition cursor-pointer"
+          className="!rounded-none flex items-center justify-center border-t-2 border-transparent text-portal-text hover:bg-portal-hover hover:text-portal-heading transition cursor-pointer"
         >
           <i className={`pi ${collapsed ? 'pi-list' : 'pi-angle-down'} text-sm`} />
         </button>
@@ -118,14 +118,17 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
               <div
                 key={device.deviceId}
                 onClick={() => onSelectDevice(device)}
-                className={`p-4 transition cursor-pointer relative ${isSelected ? 'bg-white/[0.08] text-white' : 'hover:bg-white/[0.03] text-portal-text'}`}
+                className={`p-4 transition cursor-pointer relative ${isSelected
+                    ? 'bg-portal-hover dark:bg-white/[0.08] text-portal-heading font-semibold'
+                    : 'hover:bg-portal-hover text-portal-text'
+                  }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 my-auto flex items-center gap-2">
-                    <span className="w-9 h-9 !rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
-                      <i className="pi pi-map-marker text-white text-base" aria-hidden="true" />
+                  <div className="min-w-0 my-auto flex items-center gap-2.5">
+                    <span className="w-8 h-8 !rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center shrink-0">
+                      <i className="pi pi-map-marker text-portal-accent text-sm" aria-hidden="true" />
                     </span>
-                    <span className="font-semibold text-sm text-white truncate leading-tight">
+                    <span className="font-semibold text-xs text-portal-heading truncate leading-tight">
                       {device.regionName ? `${device.regionName} - ` : ''}{device.vehicleDisplayName || device.deviceName}
                     </span>
                   </div>
@@ -136,7 +139,7 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
                     <span className="text-[11px] text-portal-muted whitespace-nowrap">{formatRelativeTime(device.lastReportedAt)}</span>
                   </div>
                 </div>
-                {device.lastAddress && <div className="mt-1 text-[10px] text-portal-muted/80 truncate">{device.lastAddress}</div>}
+                {device.lastAddress && <div className="mt-1 text-[10px] text-portal-muted truncate">{device.lastAddress}</div>}
               </div>
             );
           })
@@ -154,22 +157,22 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
             type="button"
             onClick={onToggleCollapse}
             title="Expand Fleet List"
-            className="w-8 h-8 rounded flex items-center justify-center text-portal-muted hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+            className="w-8 h-8 rounded flex items-center justify-center text-portal-muted hover:text-portal-heading hover:bg-portal-hover transition cursor-pointer"
           >
             <i className="pi pi-angle-double-right text-sm" />
           </button>
           <div className="mt-8 flex flex-col items-center gap-4 text-portal-muted">
             <div className="flex flex-col items-center text-[10px]">
               <span className="w-2 h-2 rounded-full bg-portal-accent mb-1" />
-              <span className="font-mono font-bold text-white">{counts.moving}</span>
+              <span className="font-mono font-bold text-portal-heading">{counts.moving}</span>
             </div>
             <div className="flex flex-col items-center text-[10px]">
               <span className="w-2 h-2 rounded-full bg-portal-orange mb-1" />
-              <span className="font-mono font-bold text-white">{counts.idling}</span>
+              <span className="font-mono font-bold text-portal-heading">{counts.idling}</span>
             </div>
             <div className="flex flex-col items-center text-[10px]">
               <span className="w-2 h-2 rounded-full bg-portal-muted mb-1" />
-              <span className="font-mono font-bold text-white">{counts.stopped}</span>
+              <span className="font-mono font-bold text-portal-heading">{counts.stopped}</span>
             </div>
           </div>
         </div>
@@ -181,121 +184,121 @@ export const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
     <>
       {mobileFleetSheet}
       <div className="hidden md:flex relative md:inset-auto md:w-80 lg:w-96 md:h-full flex-col bg-portal-surface border-r border-portal-border shrink-0 z-10 overflow-visible">
-      {/* Floating panel control */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        title="Collapse Fleet List"
-        className="absolute top-2 right-2 md:-right-8 z-[1100] w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
-      >
-        <i className="pi pi-angle-double-left text-xs" />
-      </button>
+        {/* Floating panel control */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title="Collapse Fleet List"
+          className="absolute top-2 right-2 md:-right-8 z-[1100] w-7 h-7 rounded flex items-center justify-center text-portal-muted bg-portal-surface border border-portal-border hover:text-portal-heading hover:bg-portal-hover transition cursor-pointer"
+        >
+          <i className="pi pi-angle-double-left text-xs" />
+        </button>
 
-      {/* Status Filter Segmented Tabs */}
-      <div className="px-2.5 pb-0 bg-portal-canvas/40">
-        <div className="grid grid-cols-4 gap-0 border-b border-portal-border">
-          {(
-            [
-              { id: 'all', label: 'All', count: counts.all, dot: 'bg-portal-text', color: 'text-portal-text' },
-              { id: 'moving', label: 'Moving', count: counts.moving, dot: 'bg-portal-accent', color: 'text-portal-accent' },
-              { id: 'idling', label: 'Idle', count: counts.idling, dot: 'bg-portal-orange', color: 'text-portal-orange' },
-              { id: 'stopped', label: 'Off', count: counts.stopped, dot: 'bg-portal-muted', color: 'text-portal-muted' },
-            ] as const
-          ).map((tab) => {
-            const isActive = statusFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setStatusFilter(tab.id)}
-                className={`py-4.5 px-1.5 !rounded-none border-b-2 text-xs font-semibold transition flex flex-col items-center justify-center cursor-pointer ${isActive
-                  ? `bg-transparent ${tab.color} border-portal-accent`
-                  : `bg-transparent hover:bg-white/[0.04] ${tab.color} border-transparent`
-                  }`}
-              >
-                <div className="flex items-center gap-1">
-                  <span>{tab.label}</span>
-                  <span className="text-portal-muted/70">·</span>
-                  <span className="font-mono text-[10px] opacity-90">{tab.count}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Vehicle List */}
-      <div className="flex-1  overflow-y-auto custom-scrollbar divide-y divide-portal-border/40">
-        {filteredDevices.length === 0 ? (
-          <div className="p-8 flex flex-col items-center justify-center gap-2 text-portal-muted text-xs">
-            <i className="pi pi-inbox text-2xl opacity-40" />
-            <span>{devices.length === 0 ? 'No reported positions yet.' : 'No vehicles match filter.'}</span>
-          </div>
-        ) : (
-          filteredDevices.map((device) => {
-            const isSelected = selectedDevice?.deviceId === device.deviceId;
-            const status = getVehicleStatus(device.ignition, device.motion, device.speed);
-            const isMoving = status === 'moving';
-            const isIdle = status === 'idling';
-
-            return (
-              <div
-                key={device.deviceId}
-                onClick={() => onSelectDevice(device)}
-                className={`p-4 rounded-none transition cursor-pointer relative ${isSelected
-                  ? 'bg-white/[0.08] border-l-4 border-l-transparent text-white'
-                  : 'hover:bg-white/[0.03] text-portal-text border-l-4 border-l-transparent'
-                  }`}
-              >
-                {/* Vehicle identity and status */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 my-auto flex items-center gap-2">
-                    <span className="w-9 h-9 !rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
-                      <i className="pi pi-map-marker text-white text-base" aria-hidden="true" />
-                    </span>
-                    <span className="font-semibold text-sm text-white truncate leading-tight">
-                      {device.regionName ? `${device.regionName} - ` : ''}
-                      {device.vehicleDisplayName || device.deviceName}
-                    </span>
+        {/* Status Filter Segmented Tabs */}
+        <div className="px-2.5 pb-0 bg-portal-canvas/40">
+          <div className="grid grid-cols-4 gap-0 border-b border-portal-border">
+            {(
+              [
+                { id: 'all', label: 'All', count: counts.all, dot: 'bg-portal-text', color: 'text-portal-text' },
+                { id: 'moving', label: 'Moving', count: counts.moving, dot: 'bg-portal-accent', color: 'text-portal-accent' },
+                { id: 'idling', label: 'Idle', count: counts.idling, dot: 'bg-portal-orange', color: 'text-portal-orange' },
+                { id: 'stopped', label: 'Off', count: counts.stopped, dot: 'bg-portal-muted', color: 'text-portal-muted' },
+              ] as const
+            ).map((tab) => {
+              const isActive = statusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`py-4.5 px-1.5 !rounded-none border-b-2 text-xs font-semibold transition flex flex-col items-center justify-center cursor-pointer ${isActive
+                    ? `bg-transparent ${tab.color} border-portal-accent`
+                    : `bg-transparent hover:bg-portal-hover ${tab.color} border-transparent`
+                    }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>{tab.label}</span>
+                    <span className="text-portal-muted/70">·</span>
+                    <span className="font-mono text-[10px] opacity-90">{tab.count}</span>
                   </div>
-                  <div className="shrink-0 flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full ${isMoving
-                          ? 'bg-portal-accent animate-pulse'
-                          : isIdle
-                            ? 'bg-portal-orange'
-                            : 'bg-portal-muted'
-                          }`}
-                      />
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider ${isMoving
-                          ? 'text-portal-accent'
-                          : isIdle
-                            ? 'text-portal-orange'
-                            : 'text-portal-muted'
-                          }`}
-                      >
-                        {status}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Vehicle List */}
+        <div className="flex-1  overflow-y-auto custom-scrollbar divide-y divide-portal-border/40">
+          {filteredDevices.length === 0 ? (
+            <div className="p-8 flex flex-col items-center justify-center gap-2 text-portal-muted text-xs">
+              <i className="pi pi-inbox text-2xl opacity-40" />
+              <span>{devices.length === 0 ? 'No reported positions yet.' : 'No vehicles match filter.'}</span>
+            </div>
+          ) : (
+            filteredDevices.map((device) => {
+              const isSelected = selectedDevice?.deviceId === device.deviceId;
+              const status = getVehicleStatus(device.ignition, device.motion, device.speed);
+              const isMoving = status === 'moving';
+              const isIdle = status === 'idling';
+
+              return (
+                <div
+                  key={device.deviceId}
+                  onClick={() => onSelectDevice(device)}
+                  className={`p-4 rounded-none transition cursor-pointer relative ${isSelected
+                      ? 'bg-portal-hover dark:bg-white/[0.08] text-portal-heading font-semibold'
+                      : 'hover:bg-portal-hover text-portal-text'
+                    }`}
+                >
+                  {/* Vehicle identity and status */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 my-auto flex items-center gap-2.5">
+                      <span className="w-8 h-8 !rounded-full bg-portal-canvas border border-portal-border flex items-center justify-center shrink-0">
+                        <i className="pi pi-map-marker text-portal-accent text-sm" aria-hidden="true" />
+                      </span>
+                      <span className="font-semibold text-xs text-portal-heading truncate leading-tight">
+                        {device.regionName ? `${device.regionName} - ` : ''}
+                        {device.vehicleDisplayName || device.deviceName}
                       </span>
                     </div>
-                    <span className="text-[11px] text-portal-muted whitespace-nowrap">
-                      {formatRelativeTime(device.lastReportedAt)}
-                    </span>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`w-2 h-2 rounded-full ${isMoving
+                            ? 'bg-portal-accent animate-pulse'
+                            : isIdle
+                              ? 'bg-portal-orange'
+                              : 'bg-portal-muted'
+                            }`}
+                        />
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider ${isMoving
+                            ? 'text-portal-accent'
+                            : isIdle
+                              ? 'text-portal-orange'
+                              : 'text-portal-muted'
+                            }`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-portal-muted whitespace-nowrap">
+                        {formatRelativeTime(device.lastReportedAt)}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Optional Address snippet */}
-                {device.lastAddress && (
-                  <div className="mt-1 text-[10px] text-portal-muted/80 truncate">
-                    {device.lastAddress}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+                  {/* Optional Address snippet */}
+                  {device.lastAddress && (
+                    <div className="mt-1 text-[10px] text-portal-muted/80 truncate">
+                      {device.lastAddress}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </>
   );

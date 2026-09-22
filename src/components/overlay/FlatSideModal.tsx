@@ -43,8 +43,8 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
   header,
   footer,
   closable = true,
-  dismissableMask = true,
-  closeOnEscape = true,
+  dismissableMask = false,
+  closeOnEscape = false,
   className = '',
   children,
 }) => {
@@ -81,9 +81,9 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-[2000] flex overflow-hidden select-none"
     >
-      {/* Dark Obsidian Backdrop */}
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/75 backdrop-blur-[4px] transition-opacity animate-fadeIn"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn"
         onClick={dismissableMask ? onHide : undefined}
       />
 
@@ -97,7 +97,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
           ref={panelRef}
           className={`w-screen ${sizeClasses[size]} bg-portal-surface ${
             isRight ? 'border-l' : 'border-r'
-          } border-portal-border/80 shadow-2xl flex flex-col h-full z-10 text-white select-text ${
+          } border-portal-border/80 shadow-2xl flex flex-col h-full z-10 text-portal-text select-text ${
             isRight ? 'animate-slideInRight' : 'animate-slideInLeft'
           } ${className}`}
         >
@@ -114,7 +114,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
                 )}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold tracking-tight text-white truncate">
+                    <h3 className="text-base font-bold tracking-tight text-portal-heading truncate">
                       {title}
                     </h3>
                     {badge && <span>{badge}</span>}
@@ -131,7 +131,7 @@ export const FlatSideModal: React.FC<FlatSideModalProps> = ({
                 <button
                   type="button"
                   onClick={onHide}
-                  className="p-1.5 text-portal-muted hover:text-white hover:bg-white/[0.08] rounded transition cursor-pointer shrink-0"
+                  className="p-1.5 text-portal-muted hover:text-portal-heading hover:bg-portal-hover rounded transition cursor-pointer shrink-0"
                   title="Close panel"
                 >
                   <i className="pi pi-times text-xs" />

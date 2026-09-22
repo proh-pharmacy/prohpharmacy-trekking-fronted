@@ -359,7 +359,7 @@ export const TraccarPage: React.FC = () => {
                 setTraccarUserMenu({ user: row, top: rect.bottom + 4, left: Math.max(8, rect.right - 192) });
               }}
               className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
-                isActive ? 'bg-white/15 text-white' : 'text-portal-muted hover:text-white hover:bg-white/10'
+                isActive ? 'bg-portal-hover text-portal-heading' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
               }`}
             >
               <i className="pi pi-ellipsis-v text-xs" />
@@ -431,7 +431,7 @@ export const TraccarPage: React.FC = () => {
                 setDriverMenu({ driver: row, top: rect.bottom + 4, left: Math.max(8, rect.right - 192) });
               }}
               className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
-                isActive ? 'bg-white/15 text-white' : 'text-portal-muted hover:text-white hover:bg-white/10'
+                isActive ? 'bg-portal-hover text-portal-heading' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
               }`}
             >
               <i className="pi pi-ellipsis-v text-xs" />
@@ -510,7 +510,7 @@ export const TraccarPage: React.FC = () => {
                 setDeviceMenu({ device: row, top: rect.bottom + 4, left: Math.max(8, rect.right - 192) });
               }}
               className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
-                isActive ? 'bg-white/15 text-white' : 'text-portal-muted hover:text-white hover:bg-white/10'
+                isActive ? 'bg-portal-hover text-portal-heading' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
               }`}
             >
               <i className="pi pi-ellipsis-v text-xs" />
@@ -597,8 +597,8 @@ export const TraccarPage: React.FC = () => {
             onClick={() => handleTabChange(key)}
             className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
               activeTab === key
-                ? 'border-portal-accent text-white'
-                : 'border-transparent text-portal-muted hover:text-white'
+                ? 'border-portal-accent text-portal-heading font-bold'
+                : 'border-transparent text-portal-muted hover:text-portal-heading'
             }`}
           >
             <span>{label}</span>
@@ -690,8 +690,8 @@ export const TraccarPage: React.FC = () => {
         title={syncDevicesResult ? 'Sync Complete' : 'Sync Devices to Traccar'}
         size="sm"
         closable={!syncingDevices}
-        dismissableMask={!syncingDevices}
-        closeOnEscape={!syncingDevices}
+        dismissableMask={false}
+        closeOnEscape={false}
         footer={
           syncDevicesResult ? (
             <div className="flex items-center justify-end w-full">
@@ -731,8 +731,8 @@ export const TraccarPage: React.FC = () => {
         title={syncDriversResult ? 'Sync Complete' : 'Sync Drivers to Traccar'}
         size="sm"
         closable={!syncingDrivers}
-        dismissableMask={!syncingDrivers}
-        closeOnEscape={!syncingDrivers}
+        dismissableMask={false}
+        closeOnEscape={false}
         footer={
           syncDriversResult ? (
             <div className="flex items-center justify-end w-full">

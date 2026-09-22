@@ -507,7 +507,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[23px] text-portal-muted hover:text-white transition-colors cursor-pointer text-xs"
+                  className="absolute right-3 top-[23px] text-portal-muted hover:text-portal-heading transition-colors cursor-pointer text-xs"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <i className={`pi ${showPassword ? 'pi-eye-slash' : 'pi-eye'}`} />

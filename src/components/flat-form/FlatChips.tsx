@@ -1,13 +1,14 @@
 import React from 'react';
 import { Chips, type ChipsChangeEvent, type ChipsProps } from 'primereact/chips';
 
-export interface FlatChipsProps extends Omit<ChipsProps, 'value' | 'onChange'> {
+export interface FlatChipsProps extends Omit<ChipsProps, 'value' | 'onChange' | 'variant'> {
   value?: string[];
   onChange?: (value: string[]) => void;
   label?: string;
   helperText?: string;
   errorMessage?: string;
   fullWidth?: boolean;
+  variant?: 'default' | 'dark' | 'white';
 }
 
 export const FlatChips: React.FC<FlatChipsProps> = ({
@@ -17,6 +18,7 @@ export const FlatChips: React.FC<FlatChipsProps> = ({
   helperText,
   errorMessage,
   fullWidth = true,
+  variant = 'dark',
   className = '',
   id,
   required,
@@ -24,13 +26,16 @@ export const FlatChips: React.FC<FlatChipsProps> = ({
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const isDark = variant === 'dark';
 
   return (
     <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''}`}>
       {label && (
         <label
           htmlFor={inputId}
-          className="text-xs font-semibold tracking-wide uppercase text-slate-700 flex items-center gap-1"
+          className={`font-medium tracking-wider uppercase flex items-center gap-1 text-[11px] ${
+            isDark ? 'text-portal-muted' : 'text-slate-700'
+          }`}
         >
           {label}
           {required && <span className="text-red-500">*</span>}
@@ -46,14 +51,17 @@ export const FlatChips: React.FC<FlatChipsProps> = ({
         pt={{
           container: {
             className: `
-              w-full border rounded text-sm px-2 py-1 transition-colors min-h-[42px]
-              bg-white border-slate-300 text-slate-900
-              hover:border-slate-400 focus-within:border-teal-600
+              w-full border rounded text-xs px-2 py-1 transition-colors min-h-[38px]
+              ${
+                isDark
+                  ? '!bg-portal-canvas !border-portal-border !text-portal-heading hover:!border-portal-border/80 focus-within:!border-portal-accent'
+                  : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400 focus-within:border-portal-accent'
+              }
               ${errorMessage ? '!border-red-500' : ''}
             `,
           },
           token: {
-            className: 'bg-teal-50 border border-teal-200 text-teal-800 rounded px-2 py-0.5 text-xs font-medium mr-1 mb-1',
+            className: '!bg-portal-surface !border !border-portal-border !text-portal-heading rounded px-2 py-0.5 text-xs font-medium mr-1 mb-0.5',
           },
         }}
         {...props}

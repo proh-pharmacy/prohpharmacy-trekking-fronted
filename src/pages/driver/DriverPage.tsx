@@ -295,7 +295,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
         {queuedStop && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
-        {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
+        {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-portal-heading focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
       </div>
 
       <div
@@ -341,7 +341,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
               href={`https://www.google.com/maps?q=${encodeURIComponent(`${stop.latitude},${stop.longitude}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-portal-accent hover:text-white"
+              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-portal-accent hover:text-portal-accent-hover"
             >
               <i className="pi pi-map-marker text-[10px]" aria-hidden="true" />
               Open in Maps
@@ -668,7 +668,7 @@ export const DriverPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-portal-canvas">
+    <div className="driver-page-shell flex h-dvh flex-col overflow-hidden bg-portal-canvas">
       <div className="min-h-0 w-full flex-1">
         <DriverDashboard
           trek={trek}
@@ -724,7 +724,7 @@ export const DriverPage: React.FC = () => {
                       type="button"
                       disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
                       onClick={() => setCompleteDialogOpen(true)}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-white/[0.08] active:bg-white/[0.12] text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Complete trek"
                     >
                       <i className="pi pi-check-circle text-xs" aria-hidden="true" />
@@ -735,7 +735,7 @@ export const DriverPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-white/[0.08] active:bg-white/[0.12] text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
                       title="Download PDF Sheet"
                     >
                       <i className="pi pi-file-pdf text-xs font-bold text-red-400" aria-hidden="true" />
@@ -962,7 +962,7 @@ export const DriverPage: React.FC = () => {
                   { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-semibold text-portal-accent">{item.businessName}</span> },
                   { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
-                  { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-white">{item.primaryPhoneNumber}</a> },
+                  { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-portal-heading">{item.primaryPhoneNumber}</a> },
                   { field: 'primaryContactName', header: 'Contact', body: (item) => item.primaryContactName || '—' },
                   { field: 'location', header: 'Location', body: (item) => {
                     const latitude = item.latitude ?? item.primaryLocation?.latitude;
@@ -992,8 +992,8 @@ export const DriverPage: React.FC = () => {
           renderTreksView={() => (
             <div className="space-y-4">
               <div className="flex items-center gap-1 border-b border-portal-border/60">
-                <button type="button" onClick={() => setTrekListTab('region')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'region' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Regional Treks</button>
-                <button type="button" onClick={() => setTrekListTab('mine')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'mine' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-white'}`}>Assigned treks</button>
+                <button type="button" onClick={() => setTrekListTab('region')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'region' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-heading'}`}>Regional Treks</button>
+                <button type="button" onClick={() => setTrekListTab('mine')} className={`border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${trekListTab === 'mine' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-heading'}`}>Assigned treks</button>
               </div>
               <FlatDataTable<RegionTrek>
                 data={trekListTab === 'mine' ? (assignedTreks.length ? assignedTreks : [visibleTreks.find((item) => item.trekId === trek.trekId) ?? visibleTreks[0]]) : visibleTreks}

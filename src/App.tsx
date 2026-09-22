@@ -4,6 +4,7 @@ import { PrimeReactProvider } from 'primereact/api';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { PermissionGuard } from './components/auth/PermissionGuard';
 import { GuestGuard } from './components/auth/GuestGuard';
@@ -131,8 +132,9 @@ const LazyFallback = () => (
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <PrimeReactProvider>
-        <ProHToaster />
+      <ThemeProvider>
+        <PrimeReactProvider>
+          <ProHToaster />
         <PWAInstallPrompt />
         <PWAUpdatePrompt />
         <BrowserRouter>
@@ -187,20 +189,19 @@ export default function App() {
                 <Route path="/treks/driver/:section" element={<DriverPage />} />
 
                 {/* ── Dev showcases ── */}
-                <Route
-                  path="/table"
-                  element={
-                    <AuthGuard>
-                      <DataTableShowcase />
-                    </AuthGuard>
-                  }
-                />
+                <Route path="/table" element={<DataTableShowcase />} />
+                <Route path="/portal-preview" element={<PortalLayout />}>
+                  <Route index element={<DataTableShowcase />} />
+                </Route>
                 <Route path="/buttons" element={<FlatButtonsShowcase />} />
                 <Route path="/inputs" element={<FlatInputsShowcase />} />
                 <Route path="/toasts" element={<ToastShowcase />} />
                 <Route path="/toast" element={<Navigate to="/toasts" replace />} />
                 <Route path="/overlays" element={<OverlayShowcase />} />
                 <Route path="/modals" element={<Navigate to="/overlays" replace />} />
+                <Route path="/tracking" element={<PortalLayout />}>
+                  <Route index element={<TrackingPage />} />
+                </Route>
 
                 {/* ── Fallback ── */}
                 <Route path="/" element={<Navigate to="/portal/dashboard" replace />} />
@@ -208,8 +209,9 @@ export default function App() {
               </Routes>
             </Suspense>
           </AuthProvider>
-        </BrowserRouter>
-      </PrimeReactProvider>
+          </BrowserRouter>
+        </PrimeReactProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

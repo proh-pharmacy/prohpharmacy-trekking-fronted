@@ -6,7 +6,7 @@
   "start_url": "/portal/dashboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#22272e",
+  "background_color": "#ffffff",
   "theme_color": "#3fb950",
   "orientation": "portrait-primary",
   "icons": [

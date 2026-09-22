@@ -135,19 +135,19 @@ export const DashboardPage: React.FC = () => {
 
       {/* ── Header + controls ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-white tracking-tight">Overview</h1>
+        <h1 className="text-xl font-bold text-portal-heading tracking-tight">Overview</h1>
         <div className="flex items-center gap-3">
           {/* Period toggle */}
-          <div className="flex h-[44px] items-stretch bg-portal-canvas border border-portal-border/60 rounded overflow-hidden">
+          <div className="flex h-[38px] items-stretch bg-portal-canvas border border-portal-border rounded p-0.5 gap-1">
             {(['week', 'month'] as const).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setPeriod(p)}
-                className={`h-full px-3 text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                className={`h-full px-3.5 text-xs font-semibold uppercase tracking-wider rounded transition cursor-pointer flex items-center justify-center ${
                   period === p
-                    ? 'bg-portal-accent text-portal-canvas'
-                    : 'text-portal-muted hover:text-white'
+                    ? 'bg-portal-accent text-white dark:text-portal-canvas shadow-xs font-bold'
+                    : 'bg-white dark:bg-portal-surface/60 border border-portal-border text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
                 }`}
               >
                 {p === 'week' ? 'Week' : 'Month'}
@@ -161,7 +161,7 @@ export const DashboardPage: React.FC = () => {
               options={branchOptions}
               onChange={(val: any) => setBranchId(val?.value !== undefined ? val.value : val)}
               placeholder="All Branches"
-              size="md"
+              size="sm"
             />
           </div>
         </div>
@@ -202,7 +202,7 @@ export const DashboardPage: React.FC = () => {
         >
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1.5">Customers with Debt</p>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-white">{dashboard?.customersWithDebt ?? 0}</p>
+            <p className="text-sm font-bold text-portal-heading">{dashboard?.customersWithDebt ?? 0}</p>
             <i className="pi pi-arrow-right text-[10px] text-portal-muted group-hover:text-portal-accent transition" />
           </div>
         </button>
@@ -214,7 +214,7 @@ export const DashboardPage: React.FC = () => {
         {/* Collections over time — wider */}
         <div className="lg:col-span-2 bg-portal-surface border border-portal-border/60 p-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-white">Collections Over Time</p>
+            <p className="text-sm font-bold text-portal-heading">Collections Over Time</p>
             <p className="text-[11px] text-portal-muted">{periodLabel}</p>
           </div>
           {dashboard?.collectionsOverTime?.length ? (
@@ -254,7 +254,7 @@ export const DashboardPage: React.FC = () => {
         {/* By payment method — narrower */}
         <div className="bg-portal-surface border border-portal-border/60 p-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-white">By Payment Method</p>
+            <p className="text-sm font-bold text-portal-heading">By Payment Method</p>
             <p className="text-[11px] text-portal-muted">{periodLabel}</p>
           </div>
           {dashboard?.byPaymentMethod?.length ? (
@@ -294,7 +294,7 @@ export const DashboardPage: React.FC = () => {
         {/* Top 5 debtors */}
         <div className="bg-portal-surface border border-portal-border/60">
           <div className="px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
-            <span className="text-sm font-bold text-white">Top Debtors</span>
+            <span className="text-sm font-bold text-portal-heading">Top Debtors</span>
             <button
               type="button"
               onClick={() => navigate('/portal/reports/ledger-summary')}
@@ -312,10 +312,10 @@ export const DashboardPage: React.FC = () => {
                   key={d.customerId}
                   type="button"
                   onClick={() => navigate(`/portal/customers/${d.customerId}`)}
-                  className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer group text-left"
+                  className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-portal-hover transition-colors cursor-pointer group text-left"
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-white truncate group-hover:text-portal-accent transition">
+                    <p className="text-xs font-semibold text-portal-heading truncate group-hover:text-portal-accent transition">
                       {d.businessName}
                     </p>
                     <p className="text-[11px] text-portal-muted font-mono">{d.customerCode || '—'}</p>
@@ -335,7 +335,7 @@ export const DashboardPage: React.FC = () => {
         {/* Recent treks */}
         <div className="bg-portal-surface border border-portal-border/60">
           <div className="px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
-            <span className="text-sm font-bold text-white">Recent Treks</span>
+            <span className="text-sm font-bold text-portal-heading">Recent Treks</span>
             <button
               type="button"
               onClick={() => navigate('/portal/trekking')}
@@ -353,11 +353,11 @@ export const DashboardPage: React.FC = () => {
                   key={trek.id}
                   type="button"
                   onClick={() => navigate(`/portal/trekking/${trek.id}`)}
-                  className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer group text-left"
+                  className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-portal-hover transition-colors cursor-pointer group text-left"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-mono text-xs font-bold text-portal-accent group-hover:text-white transition">
+                      <p className="font-mono text-xs font-bold text-portal-accent group-hover:text-portal-accent-hover transition">
                         {trek.trekNumber}
                       </p>
                       <span className={`text-[11px] font-semibold ${STATUS_COLORS[trek.status] ?? 'text-portal-muted'}`}>

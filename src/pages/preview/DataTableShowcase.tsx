@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type FilterParam } from '../../components/data-table';
+import { useTheme } from '../../context';
 
 interface StaffRecord {
   id: string;
@@ -71,10 +72,10 @@ export const DataTableShowcase: React.FC = () => {
       header: 'Staff Name & Permit',
       body: (row) => (
         <div className="flex flex-col">
-          <span className="font-bold text-white text-sm hover:text-portal-accent cursor-pointer transition">
+          <span className="font-bold text-portal-heading text-xs hover:text-portal-accent cursor-pointer transition">
             {row.staffName}
           </span>
-          <span className="text-xs font-mono text-portal-accent font-medium">{row.permitNumber}</span>
+          <span className="text-[11px] font-mono text-portal-accent font-medium">{row.permitNumber}</span>
         </div>
       ),
     },
@@ -82,7 +83,7 @@ export const DataTableShowcase: React.FC = () => {
       field: 'role',
       header: 'Designation',
       body: (row) => (
-        <span className="text-xs text-[#e6edf3] font-medium">
+        <span className="text-xs text-portal-text font-medium">
           {row.role}
         </span>
       ),
@@ -91,7 +92,7 @@ export const DataTableShowcase: React.FC = () => {
       field: 'station',
       header: 'Base Station',
       body: (row) => (
-        <div className="flex items-center gap-1.5 text-xs text-[#e6edf3]">
+        <div className="flex items-center gap-1.5 text-xs text-portal-text">
           <i className="pi pi-map-marker text-portal-accent text-xs" />
           <span>{row.station}</span>
         </div>
@@ -103,8 +104,8 @@ export const DataTableShowcase: React.FC = () => {
       body: (row) => {
         const colors: Record<StaffRecord['status'], string> = {
           Active: 'bg-portal-accent/15 text-portal-accent border-portal-accent/40',
-          'On Trek': 'bg-blue-500/15 text-blue-200 border-blue-500/40',
-          Standby: 'bg-amber-500/15 text-amber-200 border-amber-500/40',
+          'On Trek': 'bg-blue-500/15 text-blue-600 dark:text-blue-200 border-blue-500/40',
+          Standby: 'bg-amber-500/15 text-amber-700 dark:text-amber-200 border-amber-500/40',
           Resting: 'bg-portal-canvas text-portal-muted border-portal-border',
         };
         return (
@@ -127,7 +128,7 @@ export const DataTableShowcase: React.FC = () => {
           {row.assignedRegions.map((region) => (
             <span
               key={region}
-              className="px-2 py-0.5 text-[10px] font-mono bg-portal-canvas border border-portal-border text-light-green rounded"
+              className="px-2 py-0.5 text-[10px] font-mono bg-portal-canvas border border-portal-border text-portal-text rounded"
             >
               {region}
             </span>
@@ -139,7 +140,7 @@ export const DataTableShowcase: React.FC = () => {
       field: 'lastDispatched',
       header: 'Last Dispatched',
       body: (row) => (
-        <span className="font-mono text-xs text-[#e6edf3] font-medium">
+        <span className="font-mono text-xs text-portal-text font-medium">
           {row.lastDispatched}
         </span>
       ),
@@ -153,14 +154,14 @@ export const DataTableShowcase: React.FC = () => {
           <button
             type="button"
             onClick={() => alert(`View trekking record: ${row.staffName} (${row.id})`)}
-            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider border border-portal-border bg-portal-canvas hover:bg-white/10 text-white rounded cursor-pointer transition"
+            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider border border-portal-border bg-portal-canvas hover:bg-portal-hover text-portal-heading rounded cursor-pointer transition"
           >
             View
           </button>
           <button
             type="button"
             onClick={() => alert(`Dispatch assignment for ${row.staffName}`)}
-            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas rounded cursor-pointer transition font-bold"
+            className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-white dark:text-portal-canvas rounded cursor-pointer transition font-bold"
           >
             Dispatch
           </button>
@@ -212,20 +213,22 @@ export const DataTableShowcase: React.FC = () => {
     },
   ];
 
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div className="min-h-screen bg-portal-canvas text-white flex flex-col antialiased">
+    <div className="min-h-screen bg-portal-canvas text-portal-text flex flex-col antialiased">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-portal-surface border-b border-portal-border/60 shadow-xs">
+      <header className="sticky top-0 z-40 bg-portal-surface border-b border-portal-border shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/images/prohpharmacy_icon.png"
+              src={theme === 'dark' ? '/images/prohpharmacy_icon_white.png' : '/images/prohpharmacy_icon.png'}
               alt="ProH Pharmacy Logo"
               className="w-9 h-9 object-contain"
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white tracking-tight">
+                <h1 className="text-lg font-bold text-portal-heading tracking-tight">
                   ProH Pharmacy Trekking Table
                 </h1>
                 <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-portal-accent/15 text-portal-accent border border-portal-accent/30 rounded">
@@ -233,36 +236,45 @@ export const DataTableShowcase: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-portal-muted">
-                Self-contained table architecture inspired by <code className="font-mono text-white/90">inventory/DataTable.tsx</code>
+                Self-contained table architecture inspired by <code className="font-mono text-portal-heading">inventory/DataTable.tsx</code>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-portal-hover text-portal-muted hover:text-portal-heading transition-colors cursor-pointer"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle theme"
+            >
+              <i className={`pi ${theme === 'dark' ? 'pi-sun' : 'pi-moon'} text-xs`} />
+            </button>
             <Link
               to="/buttons"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-portal-hover rounded transition-colors"
             >
               <i className="pi pi-check-square mr-1.5 text-[10px]" />
               Buttons
             </Link>
             <Link
               to="/inputs"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-portal-hover rounded transition-colors"
             >
               <i className="pi pi-sliders-h mr-1.5 text-[10px]" />
               Inputs
             </Link>
             <Link
               to="/toasts"
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-white/10 rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-portal-border text-portal-text hover:bg-portal-hover rounded transition-colors"
             >
               <i className="pi pi-bell mr-1.5 text-[10px]" />
               Toasts
             </Link>
             <Link
               to="/portal/dashboard"
-              className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-portal-accent hover:bg-portal-accent-hover text-white dark:text-portal-canvas rounded transition-colors"
             >
               Portal
             </Link>
@@ -275,7 +287,7 @@ export const DataTableShowcase: React.FC = () => {
         {/* Specification Info Banner */}
         <div className="p-4 bg-portal-surface border border-portal-border/60 border-l-4 border-l-portal-accent rounded flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+            <h2 className="text-sm font-bold text-portal-heading uppercase tracking-wide">
               Target Paginated Data Structure Implemented
             </h2>
             <p className="text-xs text-portal-muted mt-0.5">
@@ -290,7 +302,7 @@ export const DataTableShowcase: React.FC = () => {
             <span className="px-2.5 py-1 text-[11px] font-mono font-bold bg-portal-canvas text-portal-accent border border-portal-border rounded">
               Total Records: 48
             </span>
-            <span className="px-2.5 py-1 text-[11px] font-mono font-bold bg-portal-canvas text-white border border-portal-border rounded">
+            <span className="px-2.5 py-1 text-[11px] font-mono font-bold bg-portal-canvas text-portal-heading border border-portal-border rounded">
               Pages: 5
             </span>
           </div>

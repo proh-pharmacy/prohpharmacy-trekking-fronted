@@ -12,9 +12,11 @@ import { FlatDropdown } from '../../components/flat-form/FlatDropdown';
 import { FlatDatePicker } from '../../components/flat-form/FlatDatePicker';
 import { FlatCheckbox } from '../../components/flat-form/FlatCheckbox';
 import { FlatTextarea } from '../../components/flat-form/FlatTextarea';
+import { useTheme } from '../../context';
 import toast from 'react-hot-toast';
 
 export const OverlayShowcase: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   // Modal states
   const [activeModal, setActiveModal] = useState<'form' | 'small' | 'large' | 'full' | null>(null);
 
@@ -62,29 +64,29 @@ export const OverlayShowcase: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#22272e] text-white font-sans antialiased selection:bg-[#41cc84] selection:text-black flex flex-col">
+    <div className="min-h-screen bg-portal-canvas text-portal-text font-sans antialiased selection:bg-[#41cc84] selection:text-black flex flex-col">
       {/* Top Navbar */}
-      <header className="h-16 bg-[#22272e] border-b border-[#444c56]/60 px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <header className="h-16 bg-portal-surface border-b border-portal-border px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <Link
             to="/portal/dashboard"
             className="flex items-center gap-2.5 group focus:outline-none"
           >
-            <div className="w-8 h-8 rounded bg-[#2d333b] border border-[#444c56]/60 flex items-center justify-center text-[#41cc84] group-hover:border-[#41cc84]/40 transition">
+            <div className="w-8 h-8 rounded bg-portal-canvas border border-portal-border flex items-center justify-center text-[#41cc84] group-hover:border-[#41cc84]/40 transition">
               <img
-                src="/images/prohpharmacy_icon_white.png"
+                src={theme === 'dark' ? '/images/prohpharmacy_icon_white.png' : '/images/prohpharmacy_icon.png'}
                 alt="Logo"
                 className="w-4 h-4 object-contain"
               />
             </div>
             <div>
-              <div className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+              <div className="text-sm font-bold text-portal-heading tracking-wide flex items-center gap-2">
                 <span>Overlay & Modal Suite</span>
                 <span className="px-1.5 py-0.5 text-[10px] font-mono bg-[#41cc84]/15 text-[#41cc84] border border-[#41cc84]/30 rounded">
                   v2.0
                 </span>
               </div>
-              <div className="text-[10px] text-[#e2eee6]/60 font-mono">
+              <div className="text-[10px] text-portal-muted font-mono">
                 ProH Pharmacy Trekking Design System
               </div>
             </div>
@@ -93,6 +95,15 @@ export const OverlayShowcase: React.FC = () => {
 
         {/* Quick Navigation */}
         <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-8 h-8 rounded border border-portal-border bg-portal-surface hover:bg-portal-hover text-portal-muted hover:text-portal-heading transition-colors cursor-pointer mr-1"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            <i className={`pi ${theme === 'dark' ? 'pi-sun' : 'pi-moon'} text-xs`} />
+          </button>
           <Link
             to="/portal/dashboard"
             className="px-3 py-1.5 bg-[#41cc84] hover:bg-[#36ba76] text-white font-bold rounded transition flex items-center gap-1.5 shadow-sm"
@@ -102,14 +113,14 @@ export const OverlayShowcase: React.FC = () => {
           </Link>
           <Link
             to="/toasts"
-            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[#444c56]/60 text-white/80 rounded transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-portal-surface hover:bg-portal-hover border border-portal-border text-portal-text rounded transition flex items-center gap-1.5"
           >
             <i className="pi pi-bell text-xs text-[#41cc84]" />
             <span>Toasts</span>
           </Link>
           <Link
             to="/table"
-            className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[#444c56]/60 text-white/80 rounded transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-portal-surface hover:bg-portal-hover border border-portal-border text-portal-text rounded transition flex items-center gap-1.5"
           >
             <i className="pi pi-table text-xs text-[#41cc84]" />
             <span>Data Table</span>

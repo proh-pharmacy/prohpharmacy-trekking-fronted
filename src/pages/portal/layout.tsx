@@ -7,7 +7,7 @@ export const PortalLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="h-dvh w-screen overflow-hidden flex bg-portal-canvas text-portal-text font-sans antialiased selection:bg-portal-accent selection:text-white">
+    <div className="portal-layout-shell h-dvh w-screen overflow-hidden flex bg-portal-canvas text-portal-text font-sans antialiased selection:bg-portal-accent selection:text-white">
       {/* Modular Collapsible & Responsive Sidebar */}
       <PortalSidebar
         collapsed={collapsed}

@@ -86,8 +86,8 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
       onHide={isBusy ? () => {} : onHide}
       size={size}
       closable={!isBusy}
-      dismissableMask={!isBusy}
-      closeOnEscape={!isBusy}
+      dismissableMask={false}
+      closeOnEscape={false}
       footer={
         <>
           <FlatButton
@@ -95,7 +95,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
             size="sm"
             onClick={onHide}
             disabled={isBusy}
-            className="!border-white/10 !text-white/80 hover:!bg-white/[0.08] text-xs font-semibold"
+            className="!border-portal-border !text-portal-text hover:!bg-portal-hover text-xs font-semibold"
           >
             {cancelLabel}
           </FlatButton>
@@ -106,7 +106,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
               size="sm"
               onClick={onSecondaryAction}
               disabled={isBusy}
-              className="!border-portal-border !text-portal-text hover:!bg-white/[0.08] text-xs font-semibold"
+              className="!border-portal-border !text-portal-text hover:!bg-portal-hover text-xs font-semibold"
             >
               {secondaryActionLabel}
             </FlatButton>
@@ -134,7 +134,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
         )}
 
         <div className="space-y-1.5 flex-1">
-          <h4 className="text-base font-bold text-white tracking-tight">{title}</h4>
+          <h4 className="text-base font-bold text-portal-heading tracking-tight">{title}</h4>
           <div className="text-xs text-portal-text leading-relaxed">{message}</div>
         </div>
       </div>

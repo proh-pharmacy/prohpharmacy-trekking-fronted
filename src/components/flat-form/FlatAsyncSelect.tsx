@@ -361,7 +361,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
           ${effectiveSize === 'sm' ? 'h-[38px] text-xs' : effectiveSize === 'lg' ? 'h-[50px] text-base' : 'h-[44px] text-sm'}
           ${
             isDark
-              ? 'bg-portal-canvas border-portal-border text-white hover:border-portal-border/80'
+              ? 'bg-portal-canvas border-portal-border text-portal-heading hover:border-portal-border/80'
               : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400'
           }
           ${isOpen ? (isDark ? '!border-portal-accent ring-0' : '!border-primary-green') : ''}
@@ -376,7 +376,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             selectedItemTemplate ? (
               selectedItemTemplate(selectedItem)
             ) : (
-              <span className="truncate text-white font-medium">{getItemLabel(selectedItem)}</span>
+              <span className="truncate text-portal-heading font-medium">{getItemLabel(selectedItem)}</span>
             )
           ) : (
             <span className="text-portal-muted truncate">{placeholder}</span>
@@ -389,7 +389,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 text-portal-muted hover:text-white rounded transition cursor-pointer"
+              className="p-1 text-portal-muted hover:text-portal-heading rounded transition cursor-pointer"
               title="Clear selection"
             >
               <i className="pi pi-times text-[10px]" />
@@ -417,20 +417,22 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
           >
             {/* Search Input Filter Container */}
             <div className="px-2 border-b border-portal-border/60 bg-portal-canvas flex items-center gap-2 shrink-0">
-              <i className="pi pi-search text-portal-muted text-xs shrink-0 pl-1" />
+              <span className="inline-flex self-stretch shrink-0 items-center justify-center pl-1 text-portal-muted" aria-hidden="true">
+                <i className="pi pi-search block text-xs leading-none" />
+              </span>
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="h-[44px] min-w-0 flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-portal-muted focus:ring-0"
+                className="flat-async-select-search h-[44px] min-w-0 flex-1 bg-transparent border-none outline-none text-sm text-portal-heading placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="p-1 text-portal-muted hover:text-white cursor-pointer"
+                  className="p-1 text-portal-muted hover:text-portal-heading cursor-pointer"
                 >
                   <i className="pi pi-times text-[10px]" />
                 </button>
@@ -495,8 +497,8 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                         p-2.5 rounded cursor-pointer transition-colors flex items-center justify-between gap-3
                         ${
                           isSelected
-                            ? 'bg-portal-accent/15 text-white font-semibold'
-                            : 'text-portal-text hover:bg-white/[0.06] hover:text-white'
+                            ? 'bg-portal-accent/15 text-portal-heading font-semibold'
+                            : 'text-portal-text hover:bg-portal-hover hover:text-portal-heading'
                         }
                       `}
                     >
