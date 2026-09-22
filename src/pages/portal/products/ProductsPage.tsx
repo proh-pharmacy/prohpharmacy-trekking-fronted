@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse, resetTableData } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
+import { FlatConfirmDialog } from '../../../components/overlay';
 import { productsApi, type Product, type Unit } from '../../../api-client';
 import { ProductModal } from './components/ProductModal';
 import { UnitModal } from './components/UnitModal';
@@ -33,31 +34,30 @@ export const ProductsPage: React.FC = () => {
   const [packagingProduct, setPackagingProduct] = useState<Product | null>(null);
 
   const [importModalVisible, setImportModalVisible] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<
+    { kind: 'product'; item: Product } | { kind: 'unit'; item: Unit } | null
+  >(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  // Status toggles with immediate table refresh
-  const handleToggleProductStatus = async (product: Product) => {
+  const confirmStatusChange = async () => {
+    if (!statusTarget) return;
+    setUpdatingStatus(true);
     try {
-      await productsApi.toggleProductStatus(product.id);
-      toast.success(
-        `Product "${product.name}" ${product.isActive ? 'deactivated' : 'activated'}.`
-      );
+      if (statusTarget.kind === 'product') {
+        await productsApi.toggleProductStatus(statusTarget.item.id);
+      } else {
+        await productsApi.toggleUnitStatus(statusTarget.item.id);
+      }
       resetTableData();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to update product status.';
-      toast.error(msg);
-    }
-  };
-
-  const handleToggleUnitStatus = async (unit: Unit) => {
-    try {
-      await productsApi.toggleUnitStatus(unit.id);
       toast.success(
-        `Unit "${unit.name}" ${unit.isActive ? 'deactivated' : 'activated'}.`
+        `${statusTarget.kind === 'product' ? 'Product' : 'Unit'} "${statusTarget.item.name}" ${statusTarget.item.isActive ? 'deactivated' : 'activated'}.`
       );
-      resetTableData();
+      setStatusTarget(null);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to update unit status.';
+      const msg = err.response?.data?.message || `Failed to update ${statusTarget.kind} status.`;
       toast.error(msg);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -198,7 +198,7 @@ export const ProductsPage: React.FC = () => {
         header: 'Status',
         body: (product) => (
           <span
-            className={`text-xs font-semibold ${
+            className={`text-xs font-medium ${
               product.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -224,18 +224,15 @@ export const ProductsPage: React.FC = () => {
             >
               Edit
             </FlatButton>
-            <button
-              type="button"
-              onClick={() => handleToggleProductStatus(product)}
+            <FlatButton
+              variant={product.isActive ? 'danger-outline' : 'outline'}
+              size="icon-sm"
+              leftIcon={product.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
+              onClick={() => setStatusTarget({ kind: 'product', item: product })}
               title={product.isActive ? 'Deactivate Product' : 'Activate Product'}
-              className={`w-[38px] h-[38px] rounded border text-xs flex items-center justify-center transition cursor-pointer ${
-                product.isActive
-                  ? 'border-portal-border text-portal-muted hover:text-red-accent hover:border-red-accent/40 bg-portal-canvas'
-                  : 'border-portal-accent/40 text-portal-accent hover:bg-portal-accent/10 bg-portal-canvas'
-              }`}
-            >
-              <i className={`pi ${product.isActive ? 'pi-power-off' : 'pi-check'}`} />
-            </button>
+              aria-label={product.isActive ? `Deactivate ${product.name}` : `Activate ${product.name}`}
+              className={product.isActive ? '' : '!text-portal-accent hover:!bg-portal-accent/10'}
+            />
           </div>
         ),
       },
@@ -259,7 +256,7 @@ export const ProductsPage: React.FC = () => {
         header: 'Status',
         body: (unit) => (
           <span
-            className={`text-xs font-semibold ${
+            className={`text-xs font-medium ${
               unit.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -285,18 +282,15 @@ export const ProductsPage: React.FC = () => {
             >
               Rename
             </FlatButton>
-            <button
-              type="button"
-              onClick={() => handleToggleUnitStatus(unit)}
+            <FlatButton
+              variant={unit.isActive ? 'danger-outline' : 'outline'}
+              size="icon-sm"
+              leftIcon={unit.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
+              onClick={() => setStatusTarget({ kind: 'unit', item: unit })}
               title={unit.isActive ? 'Deactivate Unit' : 'Activate Unit'}
-              className={`w-[38px] h-[38px] rounded border text-xs flex items-center justify-center transition cursor-pointer ${
-                unit.isActive
-                  ? 'border-portal-border text-portal-muted hover:text-red-accent hover:border-red-accent/40 bg-portal-canvas'
-                  : 'border-portal-accent/40 text-portal-accent hover:bg-portal-accent/10 bg-portal-canvas'
-              }`}
-            >
-              <i className={`pi ${unit.isActive ? 'pi-power-off' : 'pi-check'}`} />
-            </button>
+              aria-label={unit.isActive ? `Deactivate ${unit.name}` : `Activate ${unit.name}`}
+              className={unit.isActive ? '' : '!text-portal-accent hover:!bg-portal-accent/10'}
+            />
           </div>
         ),
       },
@@ -503,6 +497,20 @@ export const ProductsPage: React.FC = () => {
       <ImportProductsModal
         visible={importModalVisible}
         onHide={() => setImportModalVisible(false)}
+      />
+
+      <FlatConfirmDialog
+        visible={Boolean(statusTarget)}
+        onHide={() => setStatusTarget(null)}
+        onConfirm={confirmStatusChange}
+        loading={updatingStatus}
+        title={`${statusTarget?.item.isActive ? 'Deactivate' : 'Activate'} ${statusTarget?.kind === 'unit' ? 'Unit' : 'Product'}`}
+        message={statusTarget?.item.isActive
+          ? `Deactivate "${statusTarget.item.name}"? It will no longer be available for active operations.`
+          : `Activate "${statusTarget?.item.name}" and make it available for operations?`}
+        confirmLabel={`${statusTarget?.item.isActive ? 'Deactivate' : 'Activate'} ${statusTarget?.kind === 'unit' ? 'Unit' : 'Product'}`}
+        variant={statusTarget?.item.isActive ? 'danger' : 'primary'}
+        icon={statusTarget?.item.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
       />
     </div>
   );

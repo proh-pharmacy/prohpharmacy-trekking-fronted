@@ -961,7 +961,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 },
                 bodyCell: {
                   className:
-                    'py-2.5 px-2.5 text-xs text-portal-text border-b border-portal-border/40 font-semibold rounded-none',
+                    'py-2.5 px-2.5 text-xs text-portal-text border-b border-portal-border/40 font-medium rounded-none',
                 },
               },
             }}
@@ -1029,7 +1029,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       className={cn('grid grid-cols-3 gap-2', col.field === 'actions' ? 'items-center' : 'items-baseline')}
                     >
                       <span className="text-xs font-semibold text-portal-muted uppercase tracking-wide">{col.header}</span>
-                      <div className={cn('flat-data-table-mobile-value col-span-2 text-[13px] text-portal-text break-words font-semibold leading-snug', col.field === 'actions' && 'flat-data-table-mobile-actions')}>
+                      <div className={cn('flat-data-table-mobile-value col-span-2 text-[13px] text-portal-text break-words font-medium leading-snug', col.field === 'actions' && 'flat-data-table-mobile-actions')}>
                         {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
                       </div>
                     </div>

@@ -313,7 +313,7 @@ export const TraccarPage: React.FC = () => {
       header: 'Role',
       style: { width: '100px' },
       body: (row) => (
-        <span className={`text-xs font-semibold ${row.administrator ? 'text-amber-400' : 'text-portal-muted'}`}>
+        <span className={`text-xs font-medium ${row.administrator ? 'text-amber-400' : 'text-portal-muted'}`}>
           {row.administrator ? 'Admin' : 'User'}
         </span>
       ),
@@ -323,7 +323,7 @@ export const TraccarPage: React.FC = () => {
       header: 'Status',
       style: { width: '90px' },
       body: (row) => (
-        <span className={`text-xs font-semibold ${row.disabled ? 'text-red-400' : 'text-portal-accent'}`}>
+        <span className={`text-xs font-medium ${row.disabled ? 'text-red-400' : 'text-portal-accent'}`}>
           {row.disabled ? 'Disabled' : 'Active'}
         </span>
       ),
@@ -398,7 +398,7 @@ export const TraccarPage: React.FC = () => {
       body: (row) => (
         row.isSynced ? (
           <div>
-            <span className="text-xs font-semibold text-portal-accent">Synced</span>
+            <span className="text-xs font-medium text-portal-accent">Synced</span>
             {row.traccarUniqueId && (
               <div className="text-[11px] font-mono text-portal-muted mt-0.5 truncate max-w-[130px]">
                 {row.traccarUniqueId}
@@ -484,7 +484,7 @@ export const TraccarPage: React.FC = () => {
       header: 'Status',
       style: { width: '80px' },
       body: (row) => (
-        <span className={`text-xs font-semibold ${DEVICE_STATUS_STYLES[row.status] || 'text-portal-muted'}`}>
+        <span className={`text-xs font-medium ${DEVICE_STATUS_STYLES[row.status] || 'text-portal-muted'}`}>
           {row.status}
         </span>
       ),

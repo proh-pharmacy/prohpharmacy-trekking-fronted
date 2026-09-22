@@ -254,7 +254,7 @@ export const CustomerDetailPage: React.FC = () => {
         style: { width: '80px' },
         body: (row) => (
           <span
-            className={`text-xs font-semibold ${row.entryType === 'Debit' ? 'text-red-400' : 'text-portal-accent'
+            className={`text-xs font-medium ${row.entryType === 'Debit' ? 'text-red-400' : 'text-portal-accent'
               }`}
           >
             {row.entryType}
@@ -267,7 +267,7 @@ export const CustomerDetailPage: React.FC = () => {
         style: { width: '120px', textAlign: 'right' },
         headerStyle: { textAlign: 'right' },
         body: (row) => (
-          <span className="font-mono text-xs text-white">{fmtGhs(row.amount)}</span>
+          <span className="font-mono text-xs text-portal-text">{fmtGhs(row.amount)}</span>
         ),
       },
       {

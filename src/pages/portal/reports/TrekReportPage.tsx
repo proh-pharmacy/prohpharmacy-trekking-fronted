@@ -172,7 +172,7 @@ export const TrekReportPage: React.FC = () => {
       field: 'scheduledDate',
       header: 'Date',
       style: { width: '110px' },
-      body: (row) => <span className="text-xs text-portal-text font-mono">{row.scheduledDate}</span>,
+      body: (row) => <span className="text-xs text-portal-text">{row.scheduledDate}</span>,
     },
     {
       field: 'driverName',

@@ -361,7 +361,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           enableTableFilter={false}
           emptyDataText="No products recorded for this stop."
           columns={[
-            { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-semibold text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
+            { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
             { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
             { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
             { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : (product.displayRow ?? displayRowFor(product)).paymentMethod))?.label || '—'}</span> },
@@ -959,7 +959,7 @@ export const DriverPage: React.FC = () => {
                 key={`customers-${customerRows.length}`}
                 data={customerRows}
                 columns={[
-                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-semibold text-portal-accent">{item.businessName}</span> },
+                  { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-medium text-portal-accent">{item.businessName}</span> },
                   { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
                   { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-portal-heading">{item.primaryPhoneNumber}</a> },
@@ -1002,7 +1002,7 @@ export const DriverPage: React.FC = () => {
                     field: 'trekNumber',
                     header: 'Trek ID',
                     body: (item) => (
-                      <span className="font-semibold text-portal-text">
+                      <span className="font-medium text-portal-text">
                         {item.trekNumber}
                         {item.trekId === trek.trekId && (
                           <span className="block text-[11px] text-portal-accent">Assigned to you</span>
@@ -1010,24 +1010,24 @@ export const DriverPage: React.FC = () => {
                       </span>
                     ),
                   },
-                  { field: 'regionName', header: 'Trekking Region' },
-                  { field: 'scheduledDate', header: 'Date' },
+                  { field: 'regionName', header: 'Trekking Region', body: (item) => <span className="text-xs font-medium text-portal-text">{item.regionName || '—'}</span> },
+                  { field: 'scheduledDate', header: 'Date', body: (item) => <span className="text-xs font-medium text-portal-text">{item.scheduledDate || '—'}</span> },
                   {
                     field: 'status',
                     header: 'Status',
                     body: (item) => (
-                      <span className={STATUS_STYLES[item.status] ?? 'text-portal-muted'}>
+                      <span className={`text-xs font-medium ${STATUS_STYLES[item.status] ?? 'text-portal-muted'}`}>
                         {STATUS_LABELS[item.status] ?? item.status}
                       </span>
                     ),
                   },
-                  { field: 'driverName', header: 'Driver' },
-                  { field: 'salesStaffName', header: 'Sales Staff', body: (item) => item.salesStaffName || '—' },
-                  { field: 'stopsCount', header: 'Stops' },
+                  { field: 'driverName', header: 'Driver', body: (item) => <span className="text-xs font-medium text-portal-text">{item.driverName || '—'}</span> },
+                  { field: 'salesStaffName', header: 'Sales Staff', body: (item) => <span className="text-xs font-medium text-portal-text">{item.salesStaffName || '—'}</span> },
+                  { field: 'stopsCount', header: 'Stops', body: (item) => <span className="text-xs font-medium text-portal-text">{item.stopsCount}</span> },
                   {
                     field: 'actions',
                     header: 'Actions',
-                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-[11px] text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-white/[0.08] !text-white !border-portal-border hover:!bg-white/[0.12]" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
+                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-[11px] text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-portal-hover !text-portal-heading hover:!bg-portal-active" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
                   },
                 ]}
                 heading={trekListTab === 'mine' ? 'Assigned treks' : `Treks in ${trek.regionName}`}

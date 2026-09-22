@@ -628,7 +628,7 @@ export const UsersAndRolesPage: React.FC = () => {
               onClick={() => navigate(`/portal/settings/users/${userId}`)}
               title="Click to view & edit user details"
             >
-              <div className="text-portal-text text-xs font-semibold truncate group-hover:text-portal-accent transition-colors">
+              <div className="truncate text-xs font-medium text-portal-text transition-colors group-hover:text-portal-accent">
                 {user.fullName}
               </div>
               <div className="text-[11px] text-portal-muted font-mono truncate">{user.email}</div>
@@ -655,7 +655,7 @@ export const UsersAndRolesPage: React.FC = () => {
           const status = getDisplayStatus(user);
           return (
             <span
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+              className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                 status === 'Active'
                   ? 'text-portal-accent'
                   : status === 'Pending'
@@ -682,7 +682,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Last Active',
         sortable: true,
         body: (user) => (
-          <span className="text-portal-text font-mono text-xs">
+          <span className="text-xs text-portal-text">
             {user.lastLoginAt
               ? new Date(user.lastLoginAt).toLocaleDateString(undefined, {
                   month: 'short',
@@ -755,7 +755,7 @@ export const UsersAndRolesPage: React.FC = () => {
             onClick={() => setEditStaffTarget(staff)}
             title="Click to view & edit staff member details"
           >
-            <div className="text-portal-text text-xs font-semibold truncate group-hover:text-portal-accent transition-colors">
+            <div className="truncate text-xs font-medium text-portal-text transition-colors group-hover:text-portal-accent">
               {staff.fullName}
             </div>
             <div className="text-[11px] text-portal-muted font-mono truncate">
@@ -798,7 +798,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Platform Access',
         body: (staff) => (
           <span
-            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+            className={`inline-flex items-center gap-1.5 text-xs font-medium ${
               staff.hasAppAccess ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -819,7 +819,7 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Joined',
         sortable: true,
         body: (staff) => (
-          <span className="text-portal-text font-mono text-xs">
+          <span className="text-xs text-portal-text">
             {staff.joinedOn ? new Date(staff.joinedOn).toLocaleDateString() : '—'}
           </span>
         ),

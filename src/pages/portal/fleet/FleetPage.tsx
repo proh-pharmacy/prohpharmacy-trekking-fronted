@@ -182,7 +182,7 @@ export const FleetPage: React.FC = () => {
       header: 'Status',
       style: { width: '110px' },
       body: (row) => (
-        <span className={`text-xs font-semibold ${VEHICLE_STATUS_STYLES[row.operationalStatus] || 'text-portal-muted'}`}>
+        <span className={`text-xs font-medium ${VEHICLE_STATUS_STYLES[row.operationalStatus] || 'text-portal-muted'}`}>
           {VEHICLE_STATUS_LABELS[row.operationalStatus] || row.operationalStatus}
         </span>
       ),

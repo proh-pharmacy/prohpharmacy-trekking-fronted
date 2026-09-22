@@ -261,7 +261,7 @@ export const ProductPricingRulesPage: React.FC = () => {
       field: scope === 'region' ? 'regionName' : 'customerName',
       header: scope === 'region' ? 'Region' : 'Customer',
       body: (rule) => (
-        <span className="text-xs font-semibold text-portal-heading">
+        <span className="text-xs font-medium text-portal-heading">
           {scope === 'region' ? rule.regionName || '—' : rule.customerName || selectedCustomer?.businessName || '—'}
         </span>
       ),
@@ -270,7 +270,7 @@ export const ProductPricingRulesPage: React.FC = () => {
       field: 'productName',
       header: 'Product',
       body: (rule) => (
-        <span className="text-xs font-semibold text-portal-heading">{rule.productName || 'All Products'}</span>
+        <span className="text-xs font-medium text-portal-heading">{rule.productName || 'All Products'}</span>
       ),
     },
     {
@@ -278,7 +278,7 @@ export const ProductPricingRulesPage: React.FC = () => {
       header: 'Adjustment',
       style: { width: '140px' },
       body: (rule) => (
-        <span className={`font-mono text-xs font-bold ${
+        <span className={`font-mono text-xs font-medium ${
           Number(rule.markupPercentage) < 0 ? 'text-red-accent' : 'text-portal-accent'
         }`}>
           {formatPercentage(Number(rule.markupPercentage))}

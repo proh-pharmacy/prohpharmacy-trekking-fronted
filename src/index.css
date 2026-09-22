@@ -1469,11 +1469,23 @@ div.p-icon-field {
   border-left: none !important;
   border-right: none !important;
   font-size: 0.75rem !important;
+  font-weight: 500 !important;
   color: var(--color-portal-text) !important;
 }
 
 .p-datatable .p-datatable-tbody > tr.p-highlight {
   background: color-mix(in srgb, var(--color-portal-accent) 15%, transparent) !important;
+  color: var(--color-portal-heading) !important;
+}
+
+/* Portaled row-action menus live outside the themed table container. Keep
+   their neutral actions readable when the portal-card token becomes white. */
+[data-actions-menu="true"] button:not([class*="text-red"]):not([class*="text-amber"]) {
+  color: var(--color-portal-text) !important;
+}
+
+[data-actions-menu="true"] button:not([class*="text-red"]):hover {
+  background: var(--color-portal-hover) !important;
   color: var(--color-portal-heading) !important;
 }
 

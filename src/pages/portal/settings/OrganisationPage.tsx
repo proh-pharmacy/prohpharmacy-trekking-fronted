@@ -14,6 +14,7 @@ import {
   resetTableData,
 } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
+import { FlatConfirmDialog } from '../../../components/overlay';
 import { BranchModal } from './components/BranchModal';
 import { DistrictModal } from './components/DistrictModal';
 import toast from 'react-hot-toast';
@@ -51,6 +52,8 @@ export const OrganisationPage: React.FC = () => {
   const [branchModalVisible, setBranchModalVisible] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [branchStatusTarget, setBranchStatusTarget] = useState<Branch | null>(null);
+  const [updatingBranchStatus, setUpdatingBranchStatus] = useState(false);
 
   // Load lookup options in background for modals
   const loadLookups = useCallback(async () => {
@@ -75,15 +78,19 @@ export const OrganisationPage: React.FC = () => {
     loadLookups();
   }, [loadLookups]);
 
-  // Handle branch status toggle
-  const handleToggleBranchStatus = async (branch: Branch) => {
+  const confirmBranchStatusChange = async () => {
+    if (!branchStatusTarget) return;
+    setUpdatingBranchStatus(true);
     try {
-      await organisationApi.toggleBranchStatus(branch.id);
-      toast.success(`Branch "${branch.name}" is now ${!branch.isActive ? 'Active' : 'Inactive'}.`);
-      queryClient.invalidateQueries({ queryKey: ['/organisation/branches'] });
+      await organisationApi.toggleBranchStatus(branchStatusTarget.id);
       resetTableData();
+      toast.success(`Branch "${branchStatusTarget.name}" is now ${branchStatusTarget.isActive ? 'Inactive' : 'Active'}.`);
+      queryClient.invalidateQueries({ queryKey: ['/organisation/branches'] });
+      setBranchStatusTarget(null);
     } catch {
-      toast.error(`Failed to update status for branch "${branch.name}".`);
+      toast.error(`Failed to update status for branch "${branchStatusTarget.name}".`);
+    } finally {
+      setUpdatingBranchStatus(false);
     }
   };
 
@@ -298,7 +305,7 @@ export const OrganisationPage: React.FC = () => {
         header: 'Status',
         body: (branch) => (
           <span
-            className={`text-xs font-semibold ${
+            className={`text-xs font-medium ${
               branch.isActive ? 'text-portal-accent' : 'text-portal-muted'
             }`}
           >
@@ -324,18 +331,15 @@ export const OrganisationPage: React.FC = () => {
             >
               Edit
             </FlatButton>
-            <button
-              type="button"
-              onClick={() => handleToggleBranchStatus(branch)}
+            <FlatButton
+              variant={branch.isActive ? 'danger-outline' : 'outline'}
+              size="icon-sm"
+              leftIcon={branch.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
+              onClick={() => setBranchStatusTarget(branch)}
               title={branch.isActive ? 'Deactivate Branch' : 'Activate Branch'}
-              className={`w-[38px] h-[38px] rounded border text-xs flex items-center justify-center transition cursor-pointer ${
-                branch.isActive
-                  ? 'border-portal-border text-portal-muted hover:text-red-accent hover:border-red-accent/40 bg-portal-canvas'
-                  : 'border-portal-accent/40 text-portal-accent hover:bg-portal-accent/10 bg-portal-canvas'
-              }`}
-            >
-              <i className={`pi ${branch.isActive ? 'pi-power-off' : 'pi-check'}`} />
-            </button>
+              aria-label={branch.isActive ? `Deactivate ${branch.name}` : `Activate ${branch.name}`}
+              className={branch.isActive ? '' : '!text-portal-accent hover:!bg-portal-accent/10'}
+            />
           </div>
         ),
       },
@@ -609,6 +613,20 @@ export const OrganisationPage: React.FC = () => {
           queryClient.invalidateQueries({ queryKey: ['/organisation/districts'] });
           resetTableData();
         }}
+      />
+
+      <FlatConfirmDialog
+        visible={Boolean(branchStatusTarget)}
+        onHide={() => setBranchStatusTarget(null)}
+        onConfirm={confirmBranchStatusChange}
+        loading={updatingBranchStatus}
+        title={branchStatusTarget?.isActive ? 'Deactivate Branch' : 'Activate Branch'}
+        message={branchStatusTarget?.isActive
+          ? `Deactivate "${branchStatusTarget.name}"? It will no longer be available for active operations.`
+          : `Activate "${branchStatusTarget?.name}" and make it available for operations?`}
+        confirmLabel={branchStatusTarget?.isActive ? 'Deactivate Branch' : 'Activate Branch'}
+        variant={branchStatusTarget?.isActive ? 'danger' : 'primary'}
+        icon={branchStatusTarget?.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
       />
     </div>
   );
