@@ -428,6 +428,13 @@ html.light .driver-field-navigation button[role="tab"][aria-selected="true"]:hov
   background-color: color-mix(in srgb, var(--color-sidebar-accent) 15%, transparent) !important;
 }
 
+@media (min-width: 768px) {
+  html.light .portal-mobile-header,
+  [data-theme="light"] .portal-mobile-header {
+    border-bottom: 1px solid var(--color-portal-border) !important;
+  }
+}
+
 /* Light Mode Data Table Header (matches sidebar surface #333e38 with white foreground) */
 html.light .p-datatable thead,
 html.light .p-datatable th,
