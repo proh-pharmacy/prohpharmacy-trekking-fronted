@@ -428,6 +428,14 @@ html.light .driver-field-navigation button[role="tab"][aria-selected="true"]:hov
   background-color: color-mix(in srgb, var(--color-sidebar-accent) 15%, transparent) !important;
 }
 
+html.light #desktop-action-drawer .driver-action-drawer-link:not(.text-red-accent):not(:disabled):hover,
+html.light #mobile-action-drawer .driver-action-drawer-link:not(.text-red-accent):not(:disabled):hover,
+[data-theme="light"] #desktop-action-drawer .driver-action-drawer-link:not(.text-red-accent):not(:disabled):hover,
+[data-theme="light"] #mobile-action-drawer .driver-action-drawer-link:not(.text-red-accent):not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--color-portal-accent) 10%, transparent) !important;
+  color: var(--color-portal-accent) !important;
+}
+
 @media (min-width: 768px) {
   html.light .portal-mobile-header,
   [data-theme="light"] .portal-mobile-header {
