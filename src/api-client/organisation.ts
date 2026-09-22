@@ -1,4 +1,10 @@
 import apiClient from './api';
+import type {
+  PaginatedPricingMarkupRules,
+  PricingMarkupListParams,
+  PricingMarkupRule,
+  UpsertPricingMarkupPayload,
+} from './pricingMarkups';
 
 export interface Region {
   id: string;
@@ -116,4 +122,31 @@ export const organisationApi = {
     const res = await apiClient.patch<{ success: boolean; isActive: boolean }>(`/organisation/branches/${id}/toggle-status`);
     return res.data;
   },
+
+  getRegionMarkups: async (
+    regionId: string,
+    params?: PricingMarkupListParams,
+  ): Promise<PaginatedPricingMarkupRules> => {
+    const res = await apiClient.get<PaginatedPricingMarkupRules>(
+      `/organisation/regions/${regionId}/markups`,
+      { params },
+    );
+    return res.data;
+  },
+
+  upsertRegionMarkup: async (
+    regionId: string,
+    payload: UpsertPricingMarkupPayload,
+  ): Promise<PricingMarkupRule> => {
+    const res = await apiClient.put<PricingMarkupRule>(
+      `/organisation/regions/${regionId}/markups`,
+      payload,
+    );
+    return res.data;
+  },
+
+  deleteRegionMarkup: async (regionId: string, markupId: string): Promise<void> => {
+    await apiClient.delete(`/organisation/regions/${regionId}/markups/${markupId}`);
+  },
+
 };

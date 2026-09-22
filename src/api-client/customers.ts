@@ -1,5 +1,11 @@
 import apiClient, { baseURL } from './api';
 import { getAccessToken } from './tokenStorage';
+import type {
+  PaginatedPricingMarkupRules,
+  PricingMarkupListParams,
+  PricingMarkupRule,
+  UpsertPricingMarkupPayload,
+} from './pricingMarkups';
 
 // ── Enums ──────────────────────────────────────────────────────────────
 export type CustomerType =
@@ -101,6 +107,7 @@ export interface CreateCustomerPayload {
   primaryPhoneNumber: string;
   whatsAppNumber?: string;
   registeredDuringTrekId?: string | null;
+  openingBalance?: number;
   representative: {
     firstName: string;
     middleName?: string | null;
@@ -255,11 +262,13 @@ export interface CustomerImportMapping {
   districtNameColumn?: string;
   streetAddressColumn?: string;
   landmarkColumn?: string;
+  openingBalanceColumn?: string;
 }
 
 export interface CustomerImportResult {
   imported: number;
   skipped: number;
+  openingBalancesCreated: number;
   skippedRows: string[];
 }
 
@@ -342,6 +351,39 @@ export const customersApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data;
+  },
+
+  getCustomerMarkups: async (
+    customerId: string,
+    params?: PricingMarkupListParams,
+  ): Promise<PaginatedPricingMarkupRules> => {
+    const res = await apiClient.get<PaginatedPricingMarkupRules>(
+      `/customers/${customerId}/markups`,
+      { params },
+    );
+    return res.data;
+  },
+
+  getAllCustomerMarkups: async (
+    params?: PricingMarkupListParams,
+  ): Promise<PaginatedPricingMarkupRules> => {
+    const res = await apiClient.get<PaginatedPricingMarkupRules>('/customers/markups', { params });
+    return res.data;
+  },
+
+  upsertCustomerMarkup: async (
+    customerId: string,
+    payload: UpsertPricingMarkupPayload,
+  ): Promise<PricingMarkupRule> => {
+    const res = await apiClient.put<PricingMarkupRule>(
+      `/customers/${customerId}/markups`,
+      payload,
+    );
+    return res.data;
+  },
+
+  deleteCustomerMarkup: async (customerId: string, markupId: string): Promise<void> => {
+    await apiClient.delete(`/customers/${customerId}/markups/${markupId}`);
   },
 
   getLedger: async (customerId: string, params?: { entryType?: string; pageNumber?: number; pageSize?: number }): Promise<LedgerResponse> => {

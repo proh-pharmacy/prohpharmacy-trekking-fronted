@@ -59,6 +59,9 @@ const CustomerPinsPage = lazy(() =>
 const ProductsPage = lazy(() =>
   import('./pages/portal/products').then((m) => ({ default: m.ProductsPage }))
 );
+const ProductPricingRulesPage = lazy(() =>
+  import('./pages/portal/pricing-rules').then((m) => ({ default: m.ProductPricingRulesPage }))
+);
 const TrekkingPage = lazy(() =>
   import('./pages/portal/trekking').then((m) => ({ default: m.TrekkingPage }))
 );
@@ -171,6 +174,7 @@ export default function App() {
                   <Route path="customers" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomersPage /></PermissionGuard>} />
                   <Route path="customers/:customerId" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'Customers.Edit', 'CustomerKyc.View']}><CustomerDetailPage /></PermissionGuard>} />
                   <Route path="products" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductsPage /></PermissionGuard>} />
+                  <Route path="product-pricing-rules" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductPricingRulesPage /></PermissionGuard>} />
                   <Route path="product" element={<Navigate to="/portal/products" replace />} />
                   <Route path="fleet" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><FleetPage /></PermissionGuard>} />
                   <Route path="reports/ledger-summary" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><LedgerSummaryPage /></PermissionGuard>} />

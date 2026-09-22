@@ -294,11 +294,20 @@ export const CustomersPage: React.FC = () => {
     { key: 'businessNameColumn', label: 'Business name', required: true }, { key: 'customerTypeColumn', label: 'Customer type', required: true }, { key: 'regionNameColumn', label: 'Region', required: true }, { key: 'primaryPhoneColumn', label: 'Primary phone', required: true },
     { key: 'repFirstNameColumn', label: 'Rep first name', required: true }, { key: 'repLastNameColumn', label: 'Rep last name', required: true }, { key: 'repPhoneColumn', label: 'Rep phone', required: true }, { key: 'repRelationshipColumn', label: 'Rep relationship', required: true },
     { key: 'tradingNameColumn', label: 'Trading name' }, { key: 'whatsAppColumn', label: 'WhatsApp' }, { key: 'districtNameColumn', label: 'District' }, { key: 'streetAddressColumn', label: 'Street address' }, { key: 'landmarkColumn', label: 'Landmark' },
+    { key: 'openingBalanceColumn', label: 'Opening balance' },
   ];
   const runImport = async () => {
     if (!importFile) { toast.error('Choose an Excel file first.'); return; }
     setImporting(true);
-    try { const result = await customersApi.importCustomers(importFile, importMapping); resetTableData(); toast.success(`${result.imported} customers imported; ${result.skipped} skipped.`); setImportVisible(false); setImportFile(null); }
+    try {
+      const result = await customersApi.importCustomers(importFile, importMapping);
+      resetTableData();
+      toast.success(
+        `${result.imported} customers imported; ${result.skipped} skipped; ${result.openingBalancesCreated ?? 0} opening balances created.`,
+      );
+      setImportVisible(false);
+      setImportFile(null);
+    }
     catch (error: any) { toast.error(error.response?.data?.message || 'Customer import failed.'); }
     finally { setImporting(false); }
   };
@@ -310,6 +319,7 @@ export const CustomersPage: React.FC = () => {
       businessNameColumn: ['businessname', 'customername', 'name'], customerTypeColumn: ['customertype', 'type'], regionNameColumn: ['region', 'regionname'], primaryPhoneColumn: ['primaryphone', 'phone', 'phonenumber'],
       repFirstNameColumn: ['repfirstname', 'representativefirstname', 'firstname'], repLastNameColumn: ['replastname', 'representativelastname', 'lastname'], repPhoneColumn: ['repphone', 'representativephone'], repRelationshipColumn: ['reprelationship', 'relationship', 'relationshiptype'],
       tradingNameColumn: ['tradingname', 'dba'], whatsAppColumn: ['whatsapp', 'whatsappnumber'], repMiddleNameColumn: ['repmiddlename', 'middlename'], ghanaCardColumn: ['ghanacard', 'ghanacardnumber'], districtNameColumn: ['district', 'districtname'], streetAddressColumn: ['street', 'streetaddress', 'address'], landmarkColumn: ['landmark', 'landmarkanddirections'],
+      openingBalanceColumn: ['openingbalance', 'openingbalanceamount', 'initialbalance'],
     };
     setImportMapping((current) => Object.fromEntries(Object.entries(aliases).map(([field, names]) => [field, normalized.find((item) => names.some((name) => item.key === name || item.key.includes(name)))?.header || current[field as keyof CustomerImportMapping] || ''])) as unknown as CustomerImportMapping);
   };
@@ -451,8 +461,11 @@ export const CustomersPage: React.FC = () => {
           {importFile && <div className="border-t border-portal-border/50 pt-4">
             <p className="mb-3 text-[11px] text-portal-muted">{importHeaders.length ? `Detected ${importHeaders.length} headers and matched the available fields. You can adjust any mapping below.` : 'Map each field to the exact spreadsheet header.'}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {importFields.map((field) => <FlatDropdown key={field.key} label={`${field.label}${field.required ? ' *' : ''}`} options={[{ label: 'Not mapped', value: '' }, ...importHeaders.map((header) => ({ label: header, value: header }))]} value={importMapping[field.key] ?? ''} onChange={(value) => setImportMapping((current) => ({ ...current, [field.key]: value ?? '' }))} placeholder="Select spreadsheet column" size="md" />)}
+            {importFields.map((field) => <FlatDropdown key={field.key} label={`${field.label}${field.required ? ' *' : ''}`} options={[{ label: 'Not mapped', value: '' }, ...importHeaders.map((header) => ({ label: header, value: header }))]} value={importMapping[field.key] ?? ''} onChange={(value) => setImportMapping((current) => ({ ...current, [field.key]: value ?? '' }))} placeholder="Select spreadsheet column" size="sm" />)}
             </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-portal-muted">
+              Opening balances are optional amounts owed by the customer. Positive amounts create debit entries; zero, negative, or invalid values are ignored.
+            </p>
           </div>}
         </div>
       </FlatModal>

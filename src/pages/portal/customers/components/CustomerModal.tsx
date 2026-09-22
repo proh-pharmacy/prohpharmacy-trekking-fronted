@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatInputText, FlatDropdown, FlatTextarea, FlatCheckbox } from '../../../../components/flat-form';
+import { FlatButton, FlatInputText, FlatInputNumber, FlatDropdown, FlatTextarea, FlatCheckbox } from '../../../../components/flat-form';
 import {
   customersApi,
   organisationApi,
@@ -101,6 +101,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [customerType, setCustomerType] = useState<CustomerType | ''>('');
   const [primaryPhone, setPrimaryPhone] = useState('');
   const [whatsAppNumber, setWhatsAppNumber] = useState('');
+  const [openingBalance, setOpeningBalance] = useState<number | null>(null);
   const [regionId, setRegionId] = useState('');
   const [locationRegionId, setLocationRegionId] = useState('');
 
@@ -276,6 +277,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setCustomerType(customer.customerType || '');
       setPrimaryPhone(formatGhanaPhoneNumber(customer.primaryPhoneNumber));
       setWhatsAppNumber(formatGhanaPhoneNumber(customer.whatsAppNumber));
+      setOpeningBalance(null);
       setRegionId(driverMode?.region?.id || customer.regionId || '');
       setLocationRegionId(driverMode?.region?.id || customer.primaryLocation?.regionId || customer.regionId || '');
       // Rep — split fullName into parts
@@ -299,6 +301,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setCustomerType('');
       setPrimaryPhone('');
       setWhatsAppNumber('');
+      setOpeningBalance(null);
       setRegionId(driverMode?.region?.id || '');
       setLocationRegionId(driverMode?.region?.id || '');
       setRepFirstName('');
@@ -352,6 +355,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     if (!customerType) { toast.error('Customer type is required.'); return; }
     if (!driverMode && !regionId) { toast.error('Region is required.'); return; }
     if (!primaryPhone.trim()) { toast.error('Primary phone number is required.'); return; }
+    if (!isEditing && !driverMode && openingBalance !== null && openingBalance <= 0) {
+      toast.error('Opening balance must be greater than zero.');
+      return;
+    }
     if (!repFirstName.trim() || !repLastName.trim()) {
       toast.error('Representative first and last name are required.');
       return;
@@ -428,6 +435,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           regionId,
           primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone),
           whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) || undefined,
+          ...(openingBalance !== null ? { openingBalance } : {}),
           representative: {
             firstName: repFirstName.trim(),
             middleName: repMiddleName.trim() || null,
@@ -547,6 +555,20 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             filterPlaceholder="Search..."
             size="md"
           />
+          {!isEditing && !driverMode && (
+            <FlatInputNumber
+              label="Opening Balance (GHS)"
+              value={openingBalance}
+              onChange={setOpeningBalance}
+              placeholder="0.00"
+              min={0.01}
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              useGrouping
+              size="sm"
+              helperText="Optional amount currently owed by the customer."
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

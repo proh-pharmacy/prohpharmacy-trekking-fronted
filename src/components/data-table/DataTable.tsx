@@ -104,6 +104,7 @@ export interface FlatDataTableProps<TData> {
   dataMapper?: (response: any) => PaginatedDataResponse<TData>;
   parsePayload?: (payload: any) => any;
   getQueryParamValue?: (key: string) => string | null;
+  onFiltersChange?: (filters: Record<string, any>) => void;
   className?: string;
   stretchHeight?: boolean;
   initialPageSize?: number;
@@ -184,6 +185,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
   persistFiltersInUrl = false,
   dataMapper,
   parsePayload,
+  onFiltersChange,
   className,
   stretchHeight = false,
   initialPageSize = 10,
@@ -539,12 +541,13 @@ export function FlatDataTable<TData extends Record<string, any>>({
       }
 
       setFilters(nextFilters);
+      onFiltersChange?.(nextFilters);
       setPagination((prev) => ({ ...prev, pageNumber: 1 }));
       if (persistFiltersInUrl) {
         updateUrl({ filterUpdates: updatesForUrl, pageNumber: 1 });
       }
     },
-    [filters, persistFiltersInUrl, updateUrl]
+    [filters, onFiltersChange, persistFiltersInUrl, updateUrl]
   );
 
   // Pagination Handlers
@@ -571,11 +574,12 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
   const handleResetFilters = useCallback(() => {
     setFilters({});
+    onFiltersChange?.({});
     setPagination((prev) => ({ ...prev, pageNumber: 1 }));
     if (persistFiltersInUrl) {
       updateUrl({ clearAllFilters: true, pageNumber: 1 });
     }
-  }, [persistFiltersInUrl, updateUrl]);
+  }, [onFiltersChange, persistFiltersInUrl, updateUrl]);
 
   // Global table events
   useEffect(() => {
@@ -715,10 +719,16 @@ export function FlatDataTable<TData extends Record<string, any>>({
             fetchFn={filter.args?.fetchFn}
             optionValue={filter.args?.optionValue || 'id'}
             optionLabel={filter.args?.optionLabel || 'name'}
+            itemTemplate={filter.args?.itemTemplate}
+            selectedItemTemplate={filter.args?.selectedItemTemplate}
+            initialSelectedItem={filter.args?.initialSelectedItem}
             pageSize={filter.args?.pageSize || 20}
             clearable
-            size="md"
-            onChange={(val) => handleFilterChange(filter.accessor, val ?? '')}
+            size={filter.args?.size || 'md'}
+            onChange={(val, item) => {
+              handleFilterChange(filter.accessor, val ?? '');
+              filter.args?.onSelectedItemChange?.(item);
+            }}
           />
         );
 
@@ -744,9 +754,9 @@ export function FlatDataTable<TData extends Record<string, any>>({
     >
       {/* 1. Error Banner */}
       {isError && showErrorAsBanner && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded p-4 flex items-center justify-between text-red-200">
+        <div className="bg-red-accent/10 rounded p-4 flex items-center justify-between text-red-accent">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-red-accent shrink-0" />
             <span className="text-sm font-semibold">
               Failed to load table data: {(error as any)?.message || 'Network error'}
             </span>

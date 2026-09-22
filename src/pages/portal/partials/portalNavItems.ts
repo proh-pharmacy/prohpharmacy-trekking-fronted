@@ -5,6 +5,7 @@ import {
   MapPin,
   MapTrifold,
   Package,
+  Percent,
   Receipt,
   SquaresFour,
   TreeStructure,
@@ -48,6 +49,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
     title: 'Logistics',
     items: [
       { label: 'Products & Packaging', to: '/portal/products', icon: Package, permissions: ['Products.View', 'Products.Manage', 'Units.View'] },
+      { label: 'Product Pricing Rules', to: '/portal/product-pricing-rules', icon: Percent, permissions: ['Products.View', 'Products.Manage', 'Units.View'] },
       { label: 'Vehicle Fleet', to: '/portal/fleet', icon: Truck, permissions: ['Vehicles.View', 'Vehicles.Manage'] },
     ],
   },

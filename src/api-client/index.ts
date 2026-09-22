@@ -6,10 +6,10 @@ export * from './organisation';
 export * from './users';
 export * from './staff';
 export * from './products';
+export * from './pricingMarkups';
 export * from './customers';
 export * from './fleet';
 export * from './treks';
 export * from './reports';
 export * from './dashboard';
 export { default } from './api';
-

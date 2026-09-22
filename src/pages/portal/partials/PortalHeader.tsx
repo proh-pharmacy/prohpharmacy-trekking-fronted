@@ -15,6 +15,7 @@ const SECTION_LABELS: Record<string, string> = {
   'customer-pins': 'Customer pins',
   customers: 'Customers',
   products: 'Products',
+  'product-pricing-rules': 'Product Pricing Rules',
   fleet: 'Fleet',
   reports: 'Reports',
   settings: 'Settings',
