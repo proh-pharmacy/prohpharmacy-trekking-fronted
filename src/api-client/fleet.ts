@@ -73,9 +73,6 @@ export interface TraccarDeviceMetadata {
   vehicleId: string | null;
   vehicleRegistration: string | null;
   staffName: string | null;
-  branchId?: string | null;
-  branchName?: string | null;
-  regionName?: string | null;
 }
 
 export interface CreateDevicePayload {
