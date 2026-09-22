@@ -352,13 +352,16 @@ export const ProductPricingRulesPage: React.FC = () => {
           <i className="pi pi-spin pi-spinner" /> Loading pricing rules...
         </div>
       ) : isAllRegionsView && rulesError ? (
-        <section className="border border-portal-border/60 bg-portal-surface">
-            <div className="flex min-h-44 flex-col items-center justify-center px-5 text-center">
-              <p className="text-xs text-red-accent">{rulesError}</p>
-              <FlatButton variant="outline" size="sm" className="mt-3" onClick={() => void loadRules()}>
-                Try again
-              </FlatButton>
+        <section className="bg-portal-surface p-4">
+          <div className="flex min-h-36 flex-col items-center justify-center rounded bg-red-accent/10 px-5 text-center text-red-accent">
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <i className="pi pi-exclamation-triangle shrink-0 text-sm" />
+              <span>{rulesError}</span>
             </div>
+            <FlatButton variant="outline" size="sm" className="mt-3" onClick={() => void loadRules()}>
+              Try again
+            </FlatButton>
+          </div>
         </section>
       ) : (
         <FlatDataTable<PricingMarkupRule>

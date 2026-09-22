@@ -89,7 +89,7 @@ function NavRailButton({
   icon: Icon;
   label: string;
   active: boolean;
-  onClick: () => void;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
   mobile?: boolean;
   expanded?: boolean;
   controls?: string;
@@ -135,7 +135,7 @@ function ActionDrawerLink({
   label: string;
   badge?: string | number | null;
   badgeBorderless?: boolean;
-  onClick: () => void;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
   danger?: boolean;
 }) {
@@ -292,7 +292,7 @@ export function DriverDashboard({
         <ActionDrawerLink
           icon={isDark ? Sun : Moon}
           label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          onClick={() => { toggleTheme(); setMoreOpen(false); }}
+          onClick={(event) => { toggleTheme(event); setMoreOpen(false); }}
         />
         <ActionDrawerLink
           icon={Warning}

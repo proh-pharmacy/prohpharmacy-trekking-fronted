@@ -198,14 +198,9 @@ export const LoginPage: React.FC = () => {
         {authError && (
           <div
             role="alert"
-            className="mb-5 p-3.5 text-xs flex items-start gap-2.5 rounded shadow-sm animate-fadeIn"
-            style={{
-              backgroundColor: 'rgba(222, 37, 18, 0.2)',
-              border: '1px solid #DE2512',
-              color: '#ffffff',
-            }}
+            className="mb-5 flex items-start gap-2.5 rounded bg-red-accent/10 p-3.5 text-xs text-red-accent shadow-sm animate-fadeIn"
           >
-            <i className="pi pi-exclamation-triangle text-sm shrink-0 mt-0.5" style={{ color: '#ff6b5b' }} />
+            <i className="pi pi-exclamation-triangle mt-0.5 shrink-0 text-sm text-red-accent" />
             <div className="flex-1 font-medium leading-relaxed">{authError}</div>
           </div>
         )}
@@ -241,7 +236,12 @@ export const LoginPage: React.FC = () => {
         ) : loginTab === 'trekking' ? (
           <form onSubmit={onTrekkingSubmit} noValidate className="space-y-4">
             <FlatInputText id="trek-number" label="Trek number" size="md" variant="dark" value={trekNumber} onChange={(event) => onTrekNumberChange(event.target.value)} placeholder="TRK-00001" maxLength={12} />
-            {trekError && <p role="alert" className="text-xs text-red-500">{trekError}</p>}
+            {trekError && (
+              <div role="alert" className="flex items-start gap-2.5 rounded bg-red-accent/10 p-3.5 text-xs text-red-accent animate-fadeIn">
+                <i className="pi pi-exclamation-triangle mt-0.5 shrink-0 text-sm" />
+                <span className="font-medium leading-relaxed">{trekError}</span>
+              </div>
+            )}
             <FlatButton type="submit" fullWidth loading={trekLoading} disabled={trekLoading}>{trekLoading ? 'Checking trek...' : 'Continue'}</FlatButton>
           </form>
         ) : <form

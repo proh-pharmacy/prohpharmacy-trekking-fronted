@@ -538,7 +538,7 @@ export const TraccarPage: React.FC = () => {
         ))}
       </div>
       {result.errors?.length > 0 && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded text-[11px] text-red-400 space-y-1">
+        <div className="space-y-1 rounded bg-red-accent/10 p-3 text-[11px] text-red-accent">
           <span className="font-semibold block">Errors</span>
           {result.errors.map((e, i) => (
             <div key={i} className="flex items-start gap-1.5">
