@@ -205,6 +205,16 @@ export const CustomersPage: React.FC = () => {
         ),
       },
       {
+        field: 'regionName',
+        header: 'Region',
+        style: { width: '160px' },
+        body: (row) => (
+          <span className="text-xs text-portal-text">
+            {row.regionName || '—'}
+          </span>
+        ),
+      },
+      {
         field: 'customerCode',
         header: 'Code',
         style: { width: '120px' },
@@ -231,16 +241,6 @@ export const CustomersPage: React.FC = () => {
         body: (row) => (
           <span className="text-[11px] text-portal-text font-mono">
             {row.primaryPhoneNumber || '—'}
-          </span>
-        ),
-      },
-      {
-        field: 'regionName',
-        header: 'Region',
-        style: { width: '160px' },
-        body: (row) => (
-          <span className="text-xs text-portal-text">
-            {row.regionName || '—'}
           </span>
         ),
       },
