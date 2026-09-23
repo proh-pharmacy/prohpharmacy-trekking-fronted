@@ -950,7 +950,6 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 )}
               </div>
             }
-            rowClassName={() => 'hover:bg-portal-hover transition-colors'}
             pt={{
               thead: { className: 'bg-table-header border-b border-portal-border' },
               headerRow: { className: 'border-none' },
@@ -1017,11 +1016,11 @@ export function FlatDataTable<TData extends Record<string, any>>({
               )}
             </div>
           ) : (
-            <div className="divide-y divide-portal-border/40">
+            <div className="flat-data-table-mobile-list divide-y divide-portal-border/40">
               {tableDataList.map((item, rowIdx) => (
                 <div
                   key={rowIdx}
-                  className="p-3 space-y-3 hover:bg-white/[0.02] transition-colors bg-portal-surface"
+                  className="flat-data-table-mobile-row p-3 space-y-3"
                 >
                   {columns.map((col) => (
                     <div
@@ -1042,7 +1041,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
         {/* 6. Flat Pagination Bar */}
         {enablePaginator && totalCount > 0 && (
-          <div className="p-3 bg-[#f8fafc] dark:bg-portal-canvas border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flat-data-table-pagination p-3 border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             {/* Info */}
             <div className="font-mono text-portal-muted">
               Page <span className="font-bold text-portal-heading">{currentPage}</span> of{' '}
@@ -1058,7 +1057,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <select
                   value={pagination.pageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="px-2 py-1 bg-portal-surface border border-portal-border rounded text-xs text-portal-heading focus:outline-none focus:border-portal-accent cursor-pointer"
+                  className="flat-data-table-pagination-control px-2 py-1 rounded text-xs focus:outline-none cursor-pointer"
                 >
                   {[5, 10, 20, 25, 50, 100].map((size) => (
                     <option key={size} value={size}>
@@ -1081,14 +1080,14 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}
-                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-portal-hover disabled:opacity-30 disabled:hover:bg-portal-surface text-portal-heading rounded flex items-center gap-1 cursor-pointer font-bold transition"
+                  className="flat-data-table-pagination-control px-2.5 py-1.5 disabled:opacity-30 rounded flex items-center gap-1 cursor-pointer font-bold transition"
                   aria-label="Previous Page"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
                 </button>
 
-                <span className="px-2.5 py-1.5 bg-portal-accent text-white dark:text-portal-canvas font-mono font-bold rounded">
+                <span className="flat-data-table-pagination-active px-2.5 py-1.5 font-mono font-bold rounded">
                   {currentPage}
                 </span>
 
@@ -1100,7 +1099,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     scrollDataTableToTop();
                     scrollRootIntoViewIfNeeded();
                   }}
-                  className="px-2.5 py-1.5 border border-portal-border bg-portal-surface hover:bg-portal-hover disabled:opacity-30 disabled:hover:bg-portal-surface text-portal-heading rounded flex items-center gap-1 cursor-pointer font-bold transition"
+                  className="flat-data-table-pagination-control px-2.5 py-1.5 disabled:opacity-30 rounded flex items-center gap-1 cursor-pointer font-bold transition"
                   aria-label="Next Page"
                 >
                   <span>Next</span>

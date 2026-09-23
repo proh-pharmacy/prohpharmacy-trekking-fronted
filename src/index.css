@@ -1458,8 +1458,9 @@ div.p-icon-field {
   transition: background-color 0.15s ease !important;
 }
 
-.p-datatable .p-datatable-tbody > tr:hover {
-  background: var(--color-portal-hover) !important;
+.flat-data-table .p-datatable .p-datatable-tbody > tr:nth-child(odd),
+.flat-data-table-mobile-list > .flat-data-table-mobile-row:nth-child(odd) {
+  background: color-mix(in srgb, var(--color-portal-hover) 50%, var(--color-portal-surface)) !important;
 }
 
 .p-datatable .p-datatable-tbody > tr > td {
@@ -1476,6 +1477,26 @@ div.p-icon-field {
 .p-datatable .p-datatable-tbody > tr.p-highlight {
   background: color-mix(in srgb, var(--color-portal-accent) 15%, transparent) !important;
   color: var(--color-portal-heading) !important;
+}
+
+.flat-data-table-pagination {
+  background-color: var(--color-portal-surface) !important;
+  border-top-color: var(--color-portal-border) !important;
+}
+
+.flat-data-table-pagination-control {
+  background-color: var(--color-portal-surface) !important;
+  border: 1px solid var(--color-portal-border) !important;
+  color: var(--color-portal-heading) !important;
+}
+
+.flat-data-table-pagination-control:hover:not(:disabled) {
+  background-color: var(--color-portal-hover) !important;
+}
+
+.flat-data-table-pagination-active {
+  background-color: var(--color-portal-accent) !important;
+  color: var(--color-sidebar-heading) !important;
 }
 
 /* Keep tables compact on smaller screens, but improve readability wherever
