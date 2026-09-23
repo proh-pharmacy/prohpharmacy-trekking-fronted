@@ -101,6 +101,9 @@ const CollectionsReportPage = lazy(() =>
 const ProductsReportPage = lazy(() =>
   import('./pages/portal/reports/ProductsReportPage').then((m) => ({ default: m.ProductsReportPage }))
 );
+const DataExportPage = lazy(() =>
+  import('./pages/portal/reports/DataExportPage').then((m) => ({ default: m.DataExportPage }))
+);
 
 // ── chunk-driver ───────────────────────────────────────────────────────
 const DriverPage = lazy(() =>
@@ -185,6 +188,7 @@ export default function App() {
                   <Route path="reports/treks" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewTreks', 'Reports.Export']}><TrekReportPage /></PermissionGuard>} />
                   <Route path="reports/collections" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewCollections', 'Reports.Export']}><CollectionsReportPage /></PermissionGuard>} />
                   <Route path="reports/products" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewProducts', 'Reports.Export']}><ProductsReportPage /></PermissionGuard>} />
+                  <Route path="reports/export-data" element={<PermissionGuard permissions={['Reports.Export']}><DataExportPage /></PermissionGuard>} />
                   <Route path="settings" element={<Navigate to="/portal/settings/users" replace />} />
                   <Route path="settings/users" element={<PermissionGuard permissions={['Users.View', 'Staff.View', 'Roles.Manage']}><UsersAndRolesPage /></PermissionGuard>} />
                   <Route path="settings/users/:userId" element={<PermissionGuard permissions={['Users.View', 'Staff.View', 'Roles.Manage']}><UserDetailsPage /></PermissionGuard>} />
