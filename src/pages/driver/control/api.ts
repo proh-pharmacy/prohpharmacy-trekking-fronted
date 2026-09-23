@@ -100,6 +100,8 @@ export interface DriverLocation {
   recordedAt: string;
 }
 
+export type StopPriceOverrides = Record<string, Record<string, { basicUnitPrice: number; packagingUnitPrice: number | null }>>;
+
 export type ActionType =
   | 'RegisterCustomer'
   | 'UpdateCustomer'
@@ -255,9 +257,14 @@ export const fieldApi = {
     const response = await publicApi.post<{ token: string; url: string }>(path(token, `/treks/${encodeURIComponent(trekId)}/generate-token`));
     return response.data;
   },
-  getProducts: async (token: string, since?: string): Promise<Product[]> => {
+  getProducts: async (token: string, since?: string): Promise<{ products: Product[]; stopPriceOverrides: StopPriceOverrides }> => {
     const response = await publicApi.get(path(token, '/offline/products'), { params: since ? { since } : undefined });
-    return unwrapList<Product>(response.data);
+    const data = response.data;
+    if (Array.isArray(data)) return { products: data as Product[], stopPriceOverrides: {} };
+    return {
+      products: unwrapList<Product>((data as { products?: unknown }).products ?? data),
+      stopPriceOverrides: (data as { stopPriceOverrides?: StopPriceOverrides }).stopPriceOverrides ?? {},
+    };
   },
   getCustomers: async (token: string, since?: string): Promise<FieldCustomer[]> => {
     const response = await publicApi.get(path(token, '/offline/customers'), { params: since ? { since } : undefined });

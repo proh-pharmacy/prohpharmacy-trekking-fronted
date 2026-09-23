@@ -1,6 +1,6 @@
 import type { QueuedAction, QueuedPhoto } from './api';
 
-type Key = 'trek' | 'products' | 'customers' | 'customerSeedVersion' | 'districts' | 'regionTreks' | 'assignedTreks' | 'lastSyncedAt' | 'device' | 'lastFix' | 'phoneAddress' | 'weather';
+type Key = 'trek' | 'products' | 'stopPriceOverrides' | 'customers' | 'customerSeedVersion' | 'districts' | 'regionTreks' | 'assignedTreks' | 'lastSyncedAt' | 'device' | 'lastFix' | 'phoneAddress' | 'weather';
 const DB_NAME = 'proh-field-control';
 const STORE = 'records';
 

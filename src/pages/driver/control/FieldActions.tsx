@@ -4,7 +4,7 @@ import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatModal } from '../../../components/overlay/FlatModal';
-import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction } from './api';
+import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type StopPriceOverrides } from './api';
 import { fmtGhs, formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber, parseNumericInput } from '../../../lib/utils';
 import { CustomerModal } from '../../portal/customers/components/CustomerModal';
 
@@ -19,6 +19,7 @@ const options = (values: string[]) => values.map((value) => ({ label: value.repl
 interface Props {
   trek: DriverTrek;
   products: Product[];
+  stopPriceOverrides: StopPriceOverrides;
   customers: FieldCustomer[];
   districts: FieldDistrict[];
   queue: QueuedAction[];
@@ -52,7 +53,7 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, customers, districts, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
@@ -107,13 +108,21 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
     ...pendingStops.filter((action) => !fixedTrekId || action.payload.trekId === fixedTrekId).map((action) => ({ label: `Additional stop ${action.payload.sequence} · saved on device`, value: `client:${action.clientId}` })),
   ];
   const selectedProduct = products.find((product) => product.id === values.productId);
+  // Resolve the stop-specific price if the customer has a custom markup rule; fall back to region price
+  const rawStopId = values.stopId ?? '';
+  const resolvedStopId = rawStopId.startsWith('id:') ? rawStopId.slice(3) : null;
+  const stopOverride = resolvedStopId && selectedProduct
+    ? stopPriceOverrides[resolvedStopId]?.[selectedProduct.id]
+    : null;
+  const resolvedBasicUnitPrice = stopOverride?.basicUnitPrice ?? Number(selectedProduct?.basicUnitPrice || 0);
+  const resolvedPackagingUnitPrice = stopOverride?.packagingUnitPrice ?? Number(selectedProduct?.packagingUnitPrice || 0);
   const calculatedSaleAmount = selectedProduct && kind === 'sale'
-    ? (parseNumericInput(values.basicQty) * Number(selectedProduct.basicUnitPrice || 0))
-      + (parseNumericInput(values.packagingQty) * Number(selectedProduct.packagingUnitPrice || 0))
+    ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
+      + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
     : 0;
   const calculatedReturnAmount = selectedProduct && kind === 'return'
-    ? (parseNumericInput(values.basicQty) * Number(selectedProduct.basicUnitPrice || 0))
-      + (parseNumericInput(values.packagingQty) * Number(selectedProduct.packagingUnitPrice || 0))
+    ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
+      + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
     : 0;
   const saleAmountPaid = values.amount?.trim() ? parseNumericInput(values.amount) : null;
   const saleBalance = saleAmountPaid == null || !Number.isFinite(saleAmountPaid)
@@ -168,14 +177,20 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
         if (kind === 'return' && calculatedReturnAmount <= 0) throw new Error('The calculated refund must be greater than zero.');
         const stopReference = selectedStop.startsWith('client:') ? { stopClientId: selectedStop.slice(7) } : { stopId: selectedStop.slice(3) };
         if (kind === 'sale') {
-          await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId, basicQtyDelivered: parseNumericInput(values.basicQty),
+          await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId,
+            basicUnitPrice: resolvedBasicUnitPrice,
+            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
+            basicQtyDelivered: parseNumericInput(values.basicQty),
             ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
             ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
             ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
             ...(values.notes && { notes: values.notes.trim() }) });
         } else {
           const gps = await captureGps();
-          await enqueue('RecordReturn', { ...stopReference, productId: values.productId, basicQtyReturned: parseNumericInput(values.basicQty),
+          await enqueue('RecordReturn', { ...stopReference, productId: values.productId,
+            basicUnitPrice: resolvedBasicUnitPrice,
+            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
+            basicQtyReturned: parseNumericInput(values.basicQty),
             ...(values.packagingQty && { packagingQtyReturned: parseNumericInput(values.packagingQty) }),
             refundAmount: calculatedReturnAmount,
             ...(values.paymentMethod && { refundMethod: values.paymentMethod }),

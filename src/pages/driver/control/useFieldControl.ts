@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetTableData } from '../../../components/data-table';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
-import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek } from './api';
+import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek, type StopPriceOverrides } from './api';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
 import { applyOfflineSyncResults, successfulServerIds } from './offlineLifecycle';
@@ -16,6 +16,7 @@ function mergeById<T extends { id: string }>(oldItems: T[], updates: T[]): T[] {
 export function useFieldControl(token: string) {
   const [trek, setTrek] = useState<DriverTrek | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stopPriceOverrides, setStopPriceOverrides] = useState<StopPriceOverrides>({});
   const [customers, setCustomers] = useState<FieldCustomer[]>([]);
   const [districts, setDistricts] = useState<FieldDistrict[]>([]);
   const [regionTreks, setRegionTreks] = useState<RegionTrek[]>([]);
@@ -67,9 +68,11 @@ export function useFieldControl(token: string) {
       } catch { /* The page will show the unavailable state if there is no cached trek. */ }
     }
     if (results[1].status === 'fulfilled') {
+      const { products: fetched, stopPriceOverrides: newOverrides } = results[1].value;
       const prior = (await fieldStore.get<Product[]>(token, 'products')) ?? [];
-      const data = productSince ? mergeById(prior, results[1].value) : results[1].value;
+      const data = productSince ? mergeById(prior, fetched) : fetched;
       setProducts(data); await fieldStore.set(token, 'products', data);
+      setStopPriceOverrides(newOverrides); await fieldStore.set(token, 'stopPriceOverrides', newOverrides);
     }
     if (results[2].status === 'fulfilled') {
       const prior = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
@@ -136,9 +139,11 @@ export function useFieldControl(token: string) {
   const syncProducts = useCallback(async () => {
     setRefreshing(true);
     try {
-      const data = await fieldApi.getProducts(token);
+      const { products: data, stopPriceOverrides: newOverrides } = await fieldApi.getProducts(token);
       await fieldStore.set(token, 'products', data);
+      await fieldStore.set(token, 'stopPriceOverrides', newOverrides);
       setProducts(data);
+      setStopPriceOverrides(newOverrides);
       return data.length;
     } finally { setRefreshing(false); }
   }, [token]);
@@ -427,14 +432,15 @@ export function useFieldControl(token: string) {
     if (!token) { setError('Invalid field link.'); setLoading(false); return; }
     (async () => {
       try {
-        const [savedTrek, savedProducts, savedCustomers, savedDistricts, savedRegionTreks, savedAssignedTreks, savedQueue, savedPhotos, savedSyncTime] = await Promise.all([
+        const [savedTrek, savedProducts, savedStopPriceOverrides, savedCustomers, savedDistricts, savedRegionTreks, savedAssignedTreks, savedQueue, savedPhotos, savedSyncTime] = await Promise.all([
           fieldStore.get<DriverTrek>(token, 'trek'), fieldStore.get<Product[]>(token, 'products'),
+          fieldStore.get<StopPriceOverrides>(token, 'stopPriceOverrides'),
           fieldStore.get<FieldCustomer[]>(token, 'customers'), fieldStore.get<FieldDistrict[]>(token, 'districts'), fieldStore.get<RegionTrek[]>(token, 'regionTreks'), fieldStore.get<RegionTrek[]>(token, 'assignedTreks'),
           fieldStore.queue(token), fieldStore.photoQueue(token), fieldStore.get<string>(token, 'lastSyncedAt'),
         ]);
         if (!alive) return;
         if (savedTrek) setTrek(savedTrek);
-        setProducts(savedProducts ?? []); setCustomers(savedCustomers ?? []);
+        setProducts(savedProducts ?? []); setStopPriceOverrides(savedStopPriceOverrides ?? {}); setCustomers(savedCustomers ?? []);
         setDistricts(savedDistricts ?? []); setRegionTreks(savedRegionTreks ?? []); setAssignedTreks(savedAssignedTreks ?? []); setQueue(savedQueue); setPhotoQueue(savedPhotos ?? []);
         setLastSyncedAt(savedSyncTime ?? null);
         if (savedTrek) setLoading(false);
@@ -597,5 +603,5 @@ export function useFieldControl(token: string) {
     if (navigator.onLine) await processPhotoQueue();
   }, [token, processPhotoQueue]);
 
-  return { trek, products, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
+  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
 }
