@@ -2,6 +2,7 @@ import {
   ChartBar,
   Compass,
   CreditCard,
+  DownloadSimple,
   MapPin,
   MapTrifold,
   Package,
@@ -60,6 +61,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
       { label: 'Trek Performance', to: '/portal/reports/treks', icon: ChartBar, permissions: ['Reports.View', 'Reports.ViewTreks', 'Reports.Export'] },
       { label: 'Collections', to: '/portal/reports/collections', icon: CreditCard, permissions: ['Reports.View', 'Reports.ViewCollections', 'Reports.Export'] },
       { label: 'Product Delivery', to: '/portal/reports/products', icon: Package, permissions: ['Reports.View', 'Reports.ViewProducts', 'Reports.Export'] },
+      { label: 'Export Data', to: '/portal/reports/export-data', icon: DownloadSimple, permissions: ['Reports.Export'] },
     ],
   },
   {

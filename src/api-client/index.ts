@@ -11,5 +11,6 @@ export * from './customers';
 export * from './fleet';
 export * from './treks';
 export * from './reports';
+export * from './dataExports';
 export * from './dashboard';
 export { default } from './api';
