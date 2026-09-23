@@ -313,7 +313,7 @@ export function DriverDashboard({
           <img src="/images/prohpharmacy_icon_white.png" alt="ProH Pharmacy" className="h-8 w-8 object-contain" />
           {/* Desktop header title & metadata */}
           <p className="hidden truncate text-xs font-bold tracking-wide text-sidebar-heading sm:block">
-            Driver Control Panel
+            Trek Control Panel
           </p>
           <span className="hidden truncate text-[11px] font-semibold text-sidebar-text sm:inline">
             · {trek.trekNumber}
