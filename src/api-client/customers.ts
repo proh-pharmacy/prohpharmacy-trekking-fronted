@@ -248,13 +248,12 @@ export interface CustomerMapPin {
 
 export interface CustomerImportMapping {
   businessNameColumn: string;
-  customerTypeColumn: string;
-  regionNameColumn: string;
-  primaryPhoneColumn: string;
-  repFirstNameColumn: string;
-  repLastNameColumn: string;
-  repPhoneColumn: string;
-  repRelationshipColumn: string;
+  customerTypeColumn?: string;
+  primaryPhoneColumn?: string;
+  repFirstNameColumn?: string;
+  repLastNameColumn?: string;
+  repPhoneColumn?: string;
+  repRelationshipColumn?: string;
   tradingNameColumn?: string;
   whatsAppColumn?: string;
   repMiddleNameColumn?: string;
@@ -267,8 +266,10 @@ export interface CustomerImportMapping {
 
 export interface CustomerImportResult {
   imported: number;
+  updated: number;
   skipped: number;
   openingBalancesCreated: number;
+  skippedSheets: string[];
   skippedRows: string[];
 }
 
