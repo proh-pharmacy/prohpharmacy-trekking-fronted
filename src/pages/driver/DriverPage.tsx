@@ -17,6 +17,7 @@ import { FlatDataTable, resetTableData } from '../../components/data-table';
 import { baseURL } from '../../api-client/api';
 import { useFieldControl } from './control/useFieldControl';
 import { FieldActions, type FieldActionKind, type FieldActionRequest } from './control/FieldActions';
+import { visibleActionsForStop, visibleWalkInStopActions } from './control/offlineLifecycle';
 import { DriverDashboard } from './control/DriverDashboard';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
@@ -278,7 +279,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
             {stop.sequence}.
           </span>
           <span className="min-w-0 truncate text-[13px] font-medium text-portal-text sm:text-sm">{stop.customerName}</span>
-          {queuedStop && <span className={`shrink-0 text-[11px] ${queuedStop.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={queuedStop.reason}>{queuedStop.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span>}
+          {queuedStop && <span className={`shrink-0 text-[11px] ${queuedStop.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={queuedStop.reason}>{queuedStop.status === 'conflict' ? 'Needs review' : queuedStop.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>}
           {pendingActionCount > 0 && <span className="shrink-0 text-[11px] text-portal-muted">{pendingActionCount} pending</span>}
           <span className="w-px h-3.5 bg-portal-border shrink-0" />
           <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
@@ -294,7 +295,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
           {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
           <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
-        {queuedStop && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
+        {queuedStop && queuedStop.status !== 'synced' && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-portal-heading focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
       </div>
 
@@ -367,7 +368,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
             { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : (product.displayRow ?? displayRowFor(product)).paymentMethod))?.label || '—'}</span> },
             { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product)))}</span> },
             { field: 'actions', header: 'Record', body: (product) => {
-              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button></div>;
+              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : product.queuedSale.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>{product.queuedSale.status !== 'synced' && <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button>}</div>;
               const pending = pendingDeliveryFor(product);
               return pending.length ? (
                 <div className="flex flex-col items-start gap-1">
@@ -400,7 +401,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
             { field: 'actions', header: 'Action', body: (item) => {
               if (item.queuedReturn || item.queuedVoid) {
                 const action = item.queuedReturn || item.queuedVoid!;
-                return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${action.status === 'conflict' ? 'text-red-accent' : 'text-portal-orange'}`}>{action.status === 'conflict' ? 'Needs review' : item.queuedVoid ? 'Removal pending' : 'Awaiting sync'}</span><button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(action.clientId)}>Cancel</button></div>;
+                return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${action.status === 'conflict' ? 'text-red-accent' : 'text-portal-orange'}`}>{action.status === 'conflict' ? 'Needs review' : action.status === 'synced' ? 'Confirming sync' : item.queuedVoid ? 'Removal pending' : 'Awaiting sync'}</span>{action.status !== 'synced' && <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(action.clientId)}>Cancel</button>}</div>;
               }
               return !locked ? <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-accent/10 hover:text-red-accent" title="Remove return" aria-label={`Remove return for ${item.productName}`} onClick={() => setReturnToRemove({ stopId: stop.stopId, returnId: item.returnId, productName: item.productName })}><i className="pi pi-trash text-xs" /></button> : null;
             } },
@@ -601,7 +602,7 @@ export const DriverPage: React.FC = () => {
   }
 
   const sortedStops = [...trek.stops].sort((a, b) => a.sequence - b.sequence);
-  const queuedStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status !== 'synced' && action.payload.trekId === trek.trekId);
+  const queuedStops = visibleWalkInStopActions(queue, trek.trekId, trek.stops);
   const registeredCustomerActions = queue
     .filter((action) => action.type === 'RegisterCustomer')
     .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
@@ -792,17 +793,22 @@ export const DriverPage: React.FC = () => {
                         onVoid={handleVoid}
                         onFieldAction={(kind, stopId) => { if (!trek.isLocked) setAssignedStopRequest({ kind, stopId, nonce: Date.now() }); }}
                         products={products}
-                        queuedReturns={queue.filter(
-                          (action) =>
-                            action.type === 'RecordReturn' &&
-                            action.status !== 'synced' &&
-                            action.payload.stopId === stop.stopId
+                        queuedReturns={visibleActionsForStop(
+                          queue,
+                          'RecordReturn',
+                          { stopId: stop.stopId },
+                          (stop.returns ?? []).map((item) => item.returnId),
                         )}
                         queuedVoids={queue.filter((action) => action.type === 'VoidReturn' && action.status !== 'synced'
                           && ((stop.returns ?? []).some((item) => item.returnId === action.payload.returnId)
                             || queue.some((item) => item.type === 'RecordReturn' && item.payload.stopId === stop.stopId
                               && item.clientId === action.payload.returnClientId)))}
-                        queuedSales={queue.filter((action) => action.type === 'RecordUnplannedSale' && action.status !== 'synced' && action.payload.stopId === stop.stopId)}
+                        queuedSales={visibleActionsForStop(
+                          queue,
+                          'RecordUnplannedSale',
+                          { stopId: stop.stopId },
+                          stop.products.map((product) => product.stopProductId),
+                        )}
                         queuedDeliveries={queue.filter((action) => action.type === 'RecordDelivery' && action.status !== 'synced' && stop.products.some((product) => product.stopProductId === action.payload.stopProductId))}
                         onRemoveQueued={remove}
                         onCancelQueuedDelivery={cancelQueuedDelivery}
@@ -812,12 +818,16 @@ export const DriverPage: React.FC = () => {
                     {queuedStops.map((action) => {
                       const customer = customers.find((item) => item.id === action.payload.customerId);
                       const queuedCustomer = queue.find((item) => item.type === 'RegisterCustomer' && item.clientId === action.payload.customerClientId);
-                      const queuedSales = queue.filter((queuedAction) => queuedAction.type === 'RecordUnplannedSale'
-                        && queuedAction.status !== 'synced'
-                        && queuedAction.payload.stopClientId === action.clientId);
-                      const queuedReturnsForStop = queue.filter((queuedAction) => queuedAction.type === 'RecordReturn'
-                        && queuedAction.status !== 'synced'
-                        && queuedAction.payload.stopClientId === action.clientId);
+                      const queuedSales = visibleActionsForStop(
+                        queue,
+                        'RecordUnplannedSale',
+                        { stopId: action.serverId, stopClientId: action.clientId },
+                      );
+                      const queuedReturnsForStop = visibleActionsForStop(
+                        queue,
+                        'RecordReturn',
+                        { stopId: action.serverId, stopClientId: action.clientId },
+                      );
                       const stop: DriverStop = {
                         stopId: action.clientId,
                         sequence: Number(action.payload.sequence) || 0,

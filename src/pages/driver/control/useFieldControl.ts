@@ -5,6 +5,7 @@ import type { Product } from '../../../api-client/products';
 import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek } from './api';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
+import { applyOfflineSyncResults, successfulServerIds } from './offlineLifecycle';
 
 function mergeById<T extends { id: string }>(oldItems: T[], updates: T[]): T[] {
   const items = new Map(oldItems.map((item) => [item.id, item]));
@@ -289,11 +290,19 @@ export function useFieldControl(token: string) {
         });
         if (invalidLocationUpdates.length) {
           const invalidIds = new Set(invalidLocationUpdates.map((action) => action.clientId));
-          const next = allActions.map((action) => invalidIds.has(action.clientId)
-            ? { ...action, status: 'conflict' as const, reason: 'The location was not created. Remove or retry its add action first.' }
-            : action);
-          await fieldStore.setQueue(token, next); setQueue(next);
-          pending = next.filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+          let remaining: QueuedAction[] = [];
+          mutationRef.current = mutationRef.current.then(async () => {
+            const current = await fieldStore.queue(token);
+            const next = current.map((action) => invalidIds.has(action.clientId)
+              ? { ...action, status: 'conflict' as const, reason: 'The location was not created. Remove or retry its add action first.' }
+              : action);
+            await fieldStore.setQueue(token, next);
+            setQueue(next);
+            remaining = next.filter((action) => action.status === 'pending')
+              .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+          });
+          await mutationRef.current;
+          pending = remaining;
           continue;
         }
         const prepared = batch.map((action) => {
@@ -307,28 +316,10 @@ export function useFieldControl(token: string) {
         });
         const results = await fieldApi.sync(token, prepared);
         if (results.length !== batch.length) throw new Error('Incomplete sync response');
-        const byId = new Map(results.map((result) => [result.clientId, result]));
         mutationRef.current = mutationRef.current.then(async () => {
           const current = await fieldStore.queue(token);
-          const locationIds = new Map(current.filter((action) => action.type === 'AddCustomerLocation')
-            .map((action) => [action.clientId, byId.get(action.clientId)?.status === 'Conflict' ? null : byId.get(action.clientId)?.serverId])
-            .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0));
-          const next = current.map((action) => {
-            const result = byId.get(action.clientId);
-            if (!result) {
-              if (action.type === 'UpdateCustomerLocation' && action.payload.locationClientId
-                && locationIds.has(String(action.payload.locationClientId))) {
-                const { locationClientId: _locationClientId, ...rest } = action.payload;
-                void _locationClientId;
-                return { ...action, payload: { ...rest, locationId: locationIds.get(String(action.payload.locationClientId)) } };
-              }
-              return action;
-            }
-            return { ...action, status: result.status === 'Conflict' ? 'conflict' as const : 'synced' as const,
-              serverId: result.serverId,
-              ...(action.type === 'RegisterCustomer' && result.personId !== undefined ? { personId: result.personId } : {}),
-              reason: result.reason };
-          });
+          const locationIds = successfulServerIds(current, results, 'AddCustomerLocation');
+          const next = applyOfflineSyncResults(current, results);
           await fieldStore.setQueue(token, next); setQueue(next);
           const registrations = next.filter((action) => action.type === 'RegisterCustomer' && action.status === 'synced' && action.serverId);
           if (locationIds.size || registrations.length) {
@@ -372,10 +363,13 @@ export function useFieldControl(token: string) {
       const responseDetail = (error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
       const reason = responseDetail?.detail || responseDetail?.message || (error instanceof Error ? error.message : 'The server could not process the queued actions.');
       const syncReason = `Sync failed: ${reason}`;
-      const current = await fieldStore.queue(token);
-      const next = current.map((action) => action.status === 'pending' ? { ...action, reason: syncReason } : action);
-      await fieldStore.setQueue(token, next);
-      setQueue(next);
+      mutationRef.current = mutationRef.current.then(async () => {
+        const current = await fieldStore.queue(token);
+        const next = current.map((action) => action.status === 'pending' ? { ...action, reason: syncReason } : action);
+        await fieldStore.setQueue(token, next);
+        setQueue(next);
+      });
+      await mutationRef.current;
       setError(syncReason);
     } finally {
       syncingRef.current = false; setSyncing(false);
@@ -520,57 +514,67 @@ export function useFieldControl(token: string) {
   }, [token, sync]);
 
   const retry = useCallback(async (clientId: string) => {
-    const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId ? { ...action, status: 'pending' as const, reason: undefined } : action);
-    await fieldStore.setQueue(token, next); setQueue(next); void sync();
+    mutationRef.current = mutationRef.current.then(async () => {
+      const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId
+        ? { ...action, status: 'pending' as const, reason: undefined }
+        : action);
+      await fieldStore.setQueue(token, next);
+      setQueue(next);
+    });
+    await mutationRef.current;
+    void sync();
   }, [token, sync]);
 
   const remove = useCallback(async (clientId: string) => {
-    const current = await fieldStore.queue(token);
-    const target = current.find((action) => action.clientId === clientId);
-    const removedIds = new Set([clientId]);
-    let foundDependent = true;
-    while (foundDependent) {
-      foundDependent = false;
-      for (const action of current) {
-        if (removedIds.has(action.clientId)) continue;
-        const references = ['customerClientId', 'stopClientId', 'locationClientId', 'returnClientId'];
-        if (references.some((field) => removedIds.has(String(action.payload[field] || '')))) {
-          removedIds.add(action.clientId);
-          foundDependent = true;
+    mutationRef.current = mutationRef.current.then(async () => {
+      const current = await fieldStore.queue(token);
+      const target = current.find((action) => action.clientId === clientId);
+      const removedIds = new Set([clientId]);
+      let foundDependent = true;
+      while (foundDependent) {
+        foundDependent = false;
+        for (const action of current) {
+          if (removedIds.has(action.clientId)) continue;
+          const references = ['customerClientId', 'stopClientId', 'locationClientId', 'returnClientId'];
+          if (references.some((field) => removedIds.has(String(action.payload[field] || '')))) {
+            removedIds.add(action.clientId);
+            foundDependent = true;
+          }
         }
       }
-    }
-    const next = current.filter((action) => !removedIds.has(action.clientId));
-    await fieldStore.setQueue(token, next); setQueue(next);
-    if (target?.type === 'AddCustomerLocation') {
-      const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
-      const updated = saved.map((customer) => customer.id === target.payload.customerId
-        ? removeCachedLocation(customer, clientId) : customer);
-      await fieldStore.set(token, 'customers', updated);
-      setCustomers(updated);
-    }
-    if (target?.type === 'UpdateCustomerLocation' && target.localBeforeLocation) {
-      const locationId = String(target.payload.locationId || target.payload.locationClientId || '');
-      const [saved, savedDistricts] = await Promise.all([
-        fieldStore.get<FieldCustomer[]>(token, 'customers'),
-        fieldStore.get<FieldDistrict[]>(token, 'districts'),
-      ]);
-      const laterUpdates = next.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending'
-        && action.occurredAt > target.occurredAt
-        && (action.payload.locationId === locationId || action.payload.locationClientId === locationId));
-      const updated = (saved ?? []).map((customer) => {
-        if (customer.primaryLocation?.id !== locationId && !customer.additionalLocations?.some((location) => location.id === locationId)) return customer;
-        return laterUpdates.reduce((current, action) => updateCachedLocation(current, locationId, action.payload, savedDistricts ?? []),
-          restoreCachedLocation(customer, locationId, target.localBeforeLocation!));
-      });
-      await fieldStore.set(token, 'customers', updated);
-      setCustomers(updated);
-    }
-    if (target?.type === 'RegisterCustomer') {
-      const photos = (await fieldStore.photoQueue(token)).filter((photo) => photo.customerClientId !== clientId);
-      await fieldStore.setPhotoQueue(token, photos);
-      setPhotoQueue(photos);
-    }
+      const next = current.filter((action) => !removedIds.has(action.clientId));
+      await fieldStore.setQueue(token, next); setQueue(next);
+      if (target?.type === 'AddCustomerLocation') {
+        const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
+        const updated = saved.map((customer) => customer.id === target.payload.customerId
+          ? removeCachedLocation(customer, clientId) : customer);
+        await fieldStore.set(token, 'customers', updated);
+        setCustomers(updated);
+      }
+      if (target?.type === 'UpdateCustomerLocation' && target.localBeforeLocation) {
+        const locationId = String(target.payload.locationId || target.payload.locationClientId || '');
+        const [saved, savedDistricts] = await Promise.all([
+          fieldStore.get<FieldCustomer[]>(token, 'customers'),
+          fieldStore.get<FieldDistrict[]>(token, 'districts'),
+        ]);
+        const laterUpdates = next.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending'
+          && action.occurredAt > target.occurredAt
+          && (action.payload.locationId === locationId || action.payload.locationClientId === locationId));
+        const updated = (saved ?? []).map((customer) => {
+          if (customer.primaryLocation?.id !== locationId && !customer.additionalLocations?.some((location) => location.id === locationId)) return customer;
+          return laterUpdates.reduce((current, action) => updateCachedLocation(current, locationId, action.payload, savedDistricts ?? []),
+            restoreCachedLocation(customer, locationId, target.localBeforeLocation!));
+        });
+        await fieldStore.set(token, 'customers', updated);
+        setCustomers(updated);
+      }
+      if (target?.type === 'RegisterCustomer') {
+        const photos = (await fieldStore.photoQueue(token)).filter((photo) => photo.customerClientId !== clientId);
+        await fieldStore.setPhotoQueue(token, photos);
+        setPhotoQueue(photos);
+      }
+    });
+    await mutationRef.current;
   }, [token]);
 
   const removePhoto = useCallback(async (photoId: string) => {
