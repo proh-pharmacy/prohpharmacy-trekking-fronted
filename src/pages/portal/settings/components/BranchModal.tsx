@@ -271,7 +271,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="e.g. Ashaiman Regional Hub"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            size="md"
+            size="sm"
             required
           />
 
@@ -281,7 +281,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             options={BRANCH_TYPE_OPTIONS}
             onChange={(val: any) => setBranchType(val?.value !== undefined ? val.value : val)}
             placeholder="Select Type"
-            size="md"
+            size="sm"
             required
           />
         </div>
@@ -296,7 +296,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="Select Region"
             filter
             filterPlaceholder="Search region..."
-            size="md"
+            size="sm"
             required
           />
 
@@ -317,7 +317,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             filter
             filterPlaceholder="Search district..."
             disabled={!selectedRegionId || loadingDistricts || districtOptions.length === 0}
-            size="md"
+            size="sm"
             required
           />
         </div>
@@ -329,7 +329,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="e.g. Plot 5, Harbour Road, Tema"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            size="md"
+            size="sm"
             required
           />
 
@@ -338,7 +338,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="+233 20 123 4567"
             value={contactNumber}
             onChange={(e) => setContactNumber(formatGhanaPhoneNumber(e.target.value))}
-            size="md"
+            size="sm"
             required
           />
         </div>
@@ -350,7 +350,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="e.g. 5.6698"
             value={latitude}
             onChange={(e) => setLatitude(e.target.value)}
-            size="md"
+            size="sm"
           />
 
           <FlatInputText
@@ -358,7 +358,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             placeholder="e.g. -0.0166"
             value={longitude}
             onChange={(e) => setLongitude(e.target.value)}
-            size="md"
+            size="sm"
           />
         </div>
       </form>

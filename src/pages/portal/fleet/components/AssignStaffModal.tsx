@@ -115,7 +115,7 @@ export const AssignStaffModal: React.FC<AssignStaffModalProps> = ({ visible, onH
               )}
             </div>
           )}
-          size="md"
+          size="sm"
         />
 
         {/* Selected staff details card */}

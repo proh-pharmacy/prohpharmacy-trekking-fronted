@@ -235,7 +235,7 @@ export const LoginPage: React.FC = () => {
           </div>
         ) : loginTab === 'trekking' ? (
           <form onSubmit={onTrekkingSubmit} noValidate className="space-y-4">
-            <FlatInputText id="trek-number" label="Trek number" size="md" variant="dark" value={trekNumber} onChange={(event) => onTrekNumberChange(event.target.value)} placeholder="TRK-00001" maxLength={12} />
+            <FlatInputText id="trek-number" label="Trek number" size="sm" variant="dark" value={trekNumber} onChange={(event) => onTrekNumberChange(event.target.value)} placeholder="TRK-00001" maxLength={12} />
             {trekError && (
               <div role="alert" className="flex items-start gap-2.5 rounded bg-red-accent/10 p-3.5 text-xs text-red-accent animate-fadeIn">
                 <i className="pi pi-exclamation-triangle mt-0.5 shrink-0 text-sm" />

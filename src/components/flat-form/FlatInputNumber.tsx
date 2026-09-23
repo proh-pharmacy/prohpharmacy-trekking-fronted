@@ -39,7 +39,7 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
 
   useEffect(() => {

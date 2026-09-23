@@ -1478,6 +1478,31 @@ div.p-icon-field {
   color: var(--color-portal-heading) !important;
 }
 
+/* Keep tables compact on smaller screens, but improve readability wherever
+   the desktop table layout has room. This also scales cell templates supplied
+   by portal pages and the driver's workspace tables. */
+@media (min-width: 1024px) {
+  .flat-data-table .p-datatable .p-datatable-thead > tr > th {
+    font-size: 0.75rem !important;
+  }
+
+  .flat-data-table .p-datatable .p-datatable-tbody > tr > td,
+  .flat-data-table .text-xs {
+    font-size: 0.8125rem !important;
+    line-height: 1.125rem !important;
+  }
+
+  .flat-data-table [class~="text-[11px]"] {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+  }
+
+  .flat-data-table [class~="text-[10px]"] {
+    font-size: 0.6875rem !important;
+    line-height: 1rem !important;
+  }
+}
+
 /* Portaled row-action menus live outside the themed table container. Keep
    their neutral actions readable when the portal-card token becomes white. */
 [data-actions-menu="true"] button:not([class*="text-red"]):not([class*="text-amber"]) {

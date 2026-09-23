@@ -159,7 +159,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
               setBranchId('');
               clearError('regionId');
             }}
-            size="md"
+            size="sm"
             errorMessage={errors.regionId}
           />
           <FlatDatePicker
@@ -169,7 +169,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
             onChange={(date) => { setScheduledDate(formatTrekDate(date)); clearError('scheduledDate'); }}
             dateFormat="yy-mm-dd"
             baseZIndex={2100}
-            size="md"
+            size="sm"
             errorMessage={errors.scheduledDate}
           />
         </div>
@@ -182,7 +182,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
           placeholder={regionId ? 'Select branch' : 'Select region first'}
           disabled={!regionId}
           showClear
-          size="md"
+          size="sm"
         />
 
         <FlatAsyncSelect<Vehicle>
@@ -215,7 +215,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
               </span>
             </div>
           )}
-          size="md"
+          size="sm"
           errorMessage={errors.vehicleId}
         />
 
@@ -248,7 +248,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
           optionLabel="fullName"
           placeholder="Search sales staff..."
           clearable
-          size="md"
+          size="sm"
         />
 
         <FlatTextarea
@@ -257,7 +257,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Optional notes for this trek..."
           rows={2}
-          size="md"
+          size="sm"
         />
       </div>
     </FlatModal>

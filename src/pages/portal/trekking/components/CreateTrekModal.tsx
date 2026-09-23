@@ -127,7 +127,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
               setBranchId('');
               clearError('regionId');
             }}
-            size="md"
+            size="sm"
             errorMessage={errors.regionId}
           />
           <FlatDatePicker
@@ -137,7 +137,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
             onChange={(date) => { setScheduledDate(formatTrekDate(date)); clearError('scheduledDate'); }}
             dateFormat="yy-mm-dd"
             baseZIndex={2100}
-            size="md"
+            size="sm"
             errorMessage={errors.scheduledDate}
           />
         </div>
@@ -150,7 +150,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
           placeholder={regionId ? 'Select branch' : 'Select region first'}
           disabled={!regionId}
           showClear
-          size="md"
+          size="sm"
         />
 
         {/* Vehicle — auto-infers driver */}
@@ -187,7 +187,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
               </span>
             </div>
           )}
-          size="md"
+          size="sm"
           errorMessage={errors.vehicleId}
         />
 
@@ -220,7 +220,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
           optionLabel="fullName"
           placeholder="Search sales staff..."
           clearable
-          size="md"
+          size="sm"
         />
 
         <FlatTextarea
@@ -229,7 +229,7 @@ export const CreateTrekModal: React.FC<Props> = ({ visible, onHide, onSuccess })
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Optional notes for this trek..."
           rows={2}
-          size="md"
+          size="sm"
         />
       </div>
     </FlatModal>

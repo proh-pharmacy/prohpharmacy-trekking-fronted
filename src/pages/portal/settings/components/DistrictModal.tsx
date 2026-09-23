@@ -95,7 +95,7 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
           placeholder="Select Region"
           filter
           filterPlaceholder="Search region..."
-          size="md"
+          size="sm"
           required
         />
 
@@ -104,7 +104,7 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
           placeholder="e.g. Tema Metropolitan"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          size="md"
+          size="sm"
           required
         />
       </form>

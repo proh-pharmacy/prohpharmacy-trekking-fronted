@@ -134,7 +134,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               placeholder="e.g. Kwame Asante - GR-1234-24"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              size="md"
+              size="sm"
               maxLength={100}
               required
             />
@@ -143,7 +143,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               placeholder="+233 24 123 4567"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
-              size="md"
+              size="sm"
               maxLength={30}
             />
             <FlatInputText
@@ -151,7 +151,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               placeholder="Numeric Traccar ID"
               value={traccarDeviceId}
               onChange={(e) => setTraccarDeviceId(e.target.value.replace(/\D/g, ''))}
-              size="md"
+              size="sm"
             />
           </>
         ) : (
@@ -184,7 +184,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
                   </span>
                 </div>
               )}
-              size="md"
+              size="sm"
             />
 
             <div
@@ -219,7 +219,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               placeholder="Leave blank for smartphones (auto-generated)"
               value={uniqueId}
               onChange={(e) => setUniqueId(e.target.value)}
-              size="md"
+              size="sm"
               maxLength={50}
             />
             <FlatInputText
@@ -227,7 +227,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               placeholder="+233 24 123 4567"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
-              size="md"
+              size="sm"
               maxLength={30}
             />
             <p className="text-[11px] text-portal-muted">

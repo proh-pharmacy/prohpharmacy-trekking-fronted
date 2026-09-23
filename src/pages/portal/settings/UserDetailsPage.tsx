@@ -505,7 +505,7 @@ export const UserDetailsPage: React.FC = () => {
                   onChange={(val) => setSelectedRoles(val || [])}
                   options={roleOptions}
                   placeholder="Select roles..."
-                  size="md"
+                  size="sm"
                   display="chip"
                   errorMessage={
                     selectedRoles.length === 0 ? 'At least one role is required.' : undefined

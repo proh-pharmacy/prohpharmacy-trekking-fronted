@@ -22,7 +22,7 @@ export const FlatMultiSelect: React.FC<FlatMultiSelectProps> = ({
   errorMessage,
   fullWidth = true,
   variant = 'dark',
-  size = 'md',
+  size = 'sm',
   inputSize,
   className = '',
   id,
@@ -34,7 +34,7 @@ export const FlatMultiSelect: React.FC<FlatMultiSelectProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (

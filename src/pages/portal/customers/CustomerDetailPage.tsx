@@ -160,7 +160,7 @@ export const CustomerDetailPage: React.FC = () => {
   useEffect(() => {
     loadCustomer();
   }, [loadCustomer]);
-  useEffect(() => { organisationApi.getDistricts().then(setDistricts).catch(() => {}); }, []);
+  useEffect(() => { organisationApi.getDistricts().then(setDistricts).catch(() => { }); }, []);
 
   // ── FlatDataTable wiring ───────────────────────────────────────────
   const dataMapper = useCallback(
@@ -357,27 +357,22 @@ export const CustomerDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
       {/* ── Breadcrumb + header ── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-[11px] text-portal-muted hover:text-portal-accent transition-colors w-fit"
-          >
-            <i className="pi pi-arrow-left text-[10px]" /> Back
-          </button>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-white tracking-tight">{customer.businessName}</h1>
-            <span className="w-px h-4 bg-portal-border shrink-0" />
-            <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
+          <div className="flex lg:items-center gap-2 lg:flex-row flex-col">
+            <div className="flex items-center gap-2.5 ">
+              <h1 className="text-xl font-bold text-white tracking-tight">{customer.businessName}</h1>
+              <span className="w-px h-4 bg-portal-border shrink-0" />
+              <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
+            </div>
+
+            <p className="text-xs text-portal-muted">
+              {typeLabel}
+              {customer.regionName ? ` · ${customer.regionName}` : ''}
+              {customer.owningBranchName ? ` · ${customer.owningBranchName}` : ''}
+            </p>
           </div>
-          <p className="text-xs text-portal-muted">
-            {typeLabel}
-            {customer.regionName ? ` · ${customer.regionName}` : ''}
-            {customer.owningBranchName ? ` · ${customer.owningBranchName}` : ''}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -392,21 +387,21 @@ export const CustomerDetailPage: React.FC = () => {
             </FlatButton>
           )}
           {canExportReports && <FlatButton
-              variant="outline"
-              size="sm"
-              leftIcon="pi pi-download"
-              onClick={() => setExportVisible(true)}
-            >
-              Export
-            </FlatButton>}
+            variant="outline"
+            size="sm"
+            leftIcon="pi pi-download"
+            onClick={() => setExportVisible(true)}
+          >
+            Export
+          </FlatButton>}
           {canEditCustomer && <FlatButton
-              variant="outline"
-              size="sm"
-              leftIcon="pi pi-pencil"
-              onClick={() => setEditVisible(true)}
-            >
-              Edit
-            </FlatButton>}
+            variant="outline"
+            size="sm"
+            leftIcon="pi pi-pencil"
+            onClick={() => setEditVisible(true)}
+          >
+            Edit
+          </FlatButton>}
         </div>
       </div>
 
@@ -420,15 +415,6 @@ export const CustomerDetailPage: React.FC = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {customer.premisesPhotoUrl && (
-        <section className="bg-portal-surface border border-portal-border/60 p-3 sm:p-4">
-          <h2 className="text-xs font-semibold text-white">Business premises</h2>
-          <a href={customer.premisesPhotoUrl} target="_blank" rel="noreferrer" className="mt-3 block w-fit">
-            <img src={customer.premisesPhotoUrl} alt={`${customer.businessName} premises`} className="h-40 max-w-full rounded object-cover" />
-          </a>
-        </section>
       )}
 
       {/* ── Balance summary tiles ── */}
@@ -604,7 +590,7 @@ export const CustomerDetailPage: React.FC = () => {
               options={ENTRY_TYPE_OPTIONS}
               onChange={(val: any) => setAddType(val?.value !== undefined ? val.value : val)}
               placeholder="Select type"
-              size="md"
+              size="sm"
             />
           </div>
 
@@ -618,7 +604,7 @@ export const CustomerDetailPage: React.FC = () => {
                 options={PAYMENT_METHOD_OPTIONS}
                 onChange={(val: any) => setAddPaymentMethod(val?.value !== undefined ? val.value : val)}
                 placeholder="Select method"
-                size="md"
+                size="sm"
               />
             </div>
           )}
@@ -634,7 +620,7 @@ export const CustomerDetailPage: React.FC = () => {
               value={addAmount}
               onChange={(e) => setAddAmount(e.target.value)}
               placeholder="0.00"
-              className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
+              className="bg-portal-canvas border border-portal-border text-white text-xs h-[38px] px-3 w-full focus:outline-none focus:border-portal-accent"
             />
           </div>
 
@@ -647,7 +633,7 @@ export const CustomerDetailPage: React.FC = () => {
               value={addDescription}
               onChange={(e) => setAddDescription(e.target.value)}
               placeholder="e.g. Payment received for order #1234"
-              className="bg-portal-canvas border border-portal-border text-white text-sm h-9 px-3 w-full focus:outline-none focus:border-portal-accent"
+              className="bg-portal-canvas border border-portal-border text-white text-xs h-[38px] px-3 w-full focus:outline-none focus:border-portal-accent"
               maxLength={500}
             />
           </div>

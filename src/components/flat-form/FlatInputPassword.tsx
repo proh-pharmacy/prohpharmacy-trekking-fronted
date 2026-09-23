@@ -42,7 +42,7 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     const isDark = variant === 'dark';
     const isWhite = variant === 'white';
-    const effectiveSize: FlatInputSize = size || inputSize || 'md';
+    const effectiveSize: FlatInputSize = size || inputSize || 'sm';
     const sizeConfig = getInputSizeClasses(effectiveSize, !!leftIcon, true);
 
     return (

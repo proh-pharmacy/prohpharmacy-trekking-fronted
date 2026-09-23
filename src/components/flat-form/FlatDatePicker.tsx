@@ -36,7 +36,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (

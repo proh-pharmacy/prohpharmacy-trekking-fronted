@@ -71,7 +71,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const {
     data: user,
     isLoading: isUserLoading,
-    isFetching: isUserFetching,
     refetch: refetchUser,
   } = useCurrentUserQuery({
     enabled: !isInitializing && hasTokens,
@@ -191,7 +190,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   const isAuthenticated = Boolean(user && hasTokens);
-  const isLoading = isInitializing || Boolean(hasTokens && (isUserLoading || isUserFetching));
+  // A background profile refresh (for example when the window regains focus)
+  // must not unmount the protected portal and discard local UI state such as
+  // open modals. Only the initial profile load blocks route rendering.
+  const isLoading = isInitializing || Boolean(hasTokens && isUserLoading);
 
   const value = useMemo<AuthContextType>(
     () => ({

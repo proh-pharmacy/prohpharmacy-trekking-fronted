@@ -68,7 +68,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   clearable = true,
   className = '',
   fullWidth = true,
-  size = 'md',
+  size = 'sm',
   variant = 'dark',
   filter,
 }: FlatAsyncSelectProps<T>) {
@@ -94,7 +94,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const requestIdRef = useRef(0);
   const isDark = variant === 'dark';
-  const effectiveSize: FlatInputSize = size || 'md';
+  const effectiveSize: FlatInputSize = size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
@@ -426,7 +426,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="flat-async-select-search h-[44px] min-w-0 flex-1 bg-transparent border-none outline-none text-sm text-portal-heading placeholder-portal-muted focus:ring-0"
+                className="flat-async-select-search h-[38px] min-w-0 flex-1 bg-transparent border-none outline-none text-xs text-portal-heading placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button

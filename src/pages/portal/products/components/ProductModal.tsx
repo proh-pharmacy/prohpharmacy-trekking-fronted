@@ -169,7 +169,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           placeholder="e.g. Paracetamol 500mg Tablets"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          size="md"
+          size="sm"
           maxLength={200}
           required
         />
@@ -182,7 +182,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           placeholder={loadingUnits ? 'Loading units...' : 'Select basic unit'}
           filter
           filterPlaceholder="Search unit..."
-          size="md"
+          size="sm"
           required
         />
 
@@ -193,7 +193,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           min={0}
           minFractionDigits={2}
           maxFractionDigits={2}
-          size="md"
+          size="sm"
           required
         />
 
@@ -209,7 +209,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           filter
           filterPlaceholder="Search unit..."
           showClear
-          size="md"
+          size="sm"
         />
 
         {packagingUnitId && (
@@ -220,7 +220,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             min={0}
             minFractionDigits={2}
             maxFractionDigits={2}
-            size="md"
+            size="sm"
             required
           />
         )}

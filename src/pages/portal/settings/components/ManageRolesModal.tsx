@@ -138,7 +138,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
           onChange={(val) => setSelectedRoles(val || [])}
           options={roleOptions}
           placeholder="Select system roles..."
-          size="md"
+          size="sm"
           display="chip"
           errorMessage={selectedRoles.length === 0 ? 'At least one role is required.' : undefined}
         />

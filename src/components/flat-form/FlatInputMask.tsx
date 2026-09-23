@@ -30,7 +30,7 @@ export const FlatInputMask: React.FC<FlatInputMaskProps> = ({
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
-  const effectiveSize: FlatInputSize = inputSize || size || 'md';
+  const effectiveSize: FlatInputSize = inputSize || size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
 
   return (

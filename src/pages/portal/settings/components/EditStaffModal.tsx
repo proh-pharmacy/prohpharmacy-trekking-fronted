@@ -247,7 +247,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             required
             value={firstName}
             onChange={(e) => { setFirstName(e.target.value); clearError('firstName'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.firstName}
           />
           <FlatInputText
@@ -255,7 +255,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             required
             value={lastName}
             onChange={(e) => { setLastName(e.target.value); clearError('lastName'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.lastName}
           />
         </div>
@@ -267,7 +267,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             required
             value={phoneNumber}
             onChange={(e) => { setPhoneNumber(formatGhanaPhoneNumber(e.target.value)); clearError('phoneNumber'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.phoneNumber}
           />
           <FlatInputText
@@ -275,7 +275,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             type="email"
             value={emailAddress}
             onChange={(e) => { setEmailAddress(e.target.value); clearError('emailAddress'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.emailAddress}
           />
         </div>
@@ -288,7 +288,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             options={branchOptions}
             value={branchId}
             onChange={(val: any) => { setBranchId(val?.value !== undefined ? val.value : val); clearError('branchId'); }}
-            size="md"
+            size="sm"
             errorMessage={errors.branchId}
           />
           <FlatDropdown
@@ -296,7 +296,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             options={roleOptions}
             value={role}
             onChange={(val: any) => setRole(val?.value !== undefined ? val.value : val)}
-            size="md"
+            size="sm"
           />
         </div>
       </form>

@@ -50,7 +50,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
           <i className="pi pi-bars text-lg" />
         </button>
 
-        <span className="text-base sm:text-lg text-sidebar-heading md:text-header-heading font-semibold capitalize truncate">
+        <span className="text-sm sm:text-base text-sidebar-heading md:text-header-heading font-semibold capitalize truncate">
           {currentSection}
         </span>
       </div>
@@ -65,7 +65,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           className="p-1.5 text-sidebar-heading hover:text-sidebar-heading md:text-header-muted md:hover:text-header-heading rounded transition-colors cursor-pointer"
         >
-          <i className={`pi ${isDark ? 'pi-moon' : 'pi-sun'} text-xs`} aria-hidden="true" />
+          <i className={`pi ${isDark ? 'pi-moon' : 'pi-sun'} text-base`} aria-hidden="true" />
         </button>
 
         {/* Notifications placeholder until the notifications service is available */}
@@ -80,7 +80,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onToggleMobile }) =>
         </button>
 
         {/* Current branch/workspace */}
-        <div className="hidden md:flex h-10 max-w-48 items-center px-3 bg-black/15 dark:bg-portal-canvas border border-header-border text-sm font-medium text-header-text rounded">
+        <div className="hidden md:flex h-10 max-w-48 items-center px-3 text-sm font-medium text-header-text">
           <span className="truncate">{workspaceName}</span>
         </div>
       </div>

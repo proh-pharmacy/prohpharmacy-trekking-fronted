@@ -626,7 +626,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatInputText
             label={filter.label}
-            size="md"
+            size="sm"
             value={value || ''}
             onChange={(e) => handleFilterChange(filter.accessor, e.target.value)}
             placeholder={`Filter ${filter.label}`}
@@ -638,7 +638,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDropdown
             label={filter.label}
-            size="md"
+            size="sm"
             value={value !== undefined ? value : ''}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
@@ -654,7 +654,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatMultiSelect
             label={filter.label}
-            size="md"
+            size="sm"
             value={Array.isArray(value) ? value : value ? [value] : []}
             options={filter.args?.options || []}
             optionLabel={filter.args?.optionLabel || 'label'}
@@ -671,7 +671,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
-            size="md"
+            size="sm"
             value={value ? new Date(value) : null}
             onChange={(val) => handleFilterChange(filter.accessor, val ? new Date(val).toISOString() : null)}
             placeholder={`Pick ${filter.label}`}
@@ -684,7 +684,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
-            size="md"
+            size="sm"
             value={value}
             selectionMode="range"
             onChange={(val) => handleFilterChange(filter.accessor, val)}
@@ -698,7 +698,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
         return (
           <FlatDatePicker
             label={filter.label}
-            size="md"
+            size="sm"
             value={value ? new Date(value) : null}
             view="month"
             dateFormat="mm/yy"
@@ -747,7 +747,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
     <div
       ref={tableRootRef}
       className={cn(
-        'w-full font-sans text-portal-text',
+        'flat-data-table w-full font-sans text-portal-text',
         stretchHeight ? 'flex flex-col h-full gap-4' : 'space-y-4',
         className
       )}
@@ -789,7 +789,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onSecondaryAction}
-                  className="h-[44px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-portal-heading text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
+                  className="h-[38px] px-4 bg-portal-canvas hover:bg-portal-surface border border-portal-border text-portal-heading text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer transition"
                 >
                   {secondaryActionIcon && <i className={`${secondaryActionIcon} text-xs`} />}
                   {secondaryActionNameMobile ? <><span className="hidden sm:inline">{secondaryActionName}</span><span className="sm:hidden">{secondaryActionNameMobile}</span></> : secondaryActionName}
@@ -801,7 +801,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     <button
                       type="button"
                       onClick={() => navigate(actionOptions.link)}
-                      className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                      className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
@@ -810,7 +810,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                     <button
                       type="button"
                       onClick={onAction}
-                      className="h-[44px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
+                      className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
                       <Plus className="w-4 h-4" />
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
@@ -837,7 +837,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(globalSearch)}
                   placeholder={filterablePlaceholder}
-                  className="w-full h-[44px] pl-10 pr-10 bg-white dark:bg-portal-canvas border border-portal-border rounded text-sm text-portal-heading placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
+                  className="w-full h-[38px] pl-10 pr-10 bg-white dark:bg-portal-canvas border border-portal-border rounded text-xs text-portal-heading placeholder-portal-muted focus:outline-none focus:border-portal-accent transition box-border"
                 />
                 {globalSearch && (
                   <button
@@ -859,7 +859,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 aria-label="Filters"
                 aria-expanded={isFilterVisible}
                 className={cn(
-                  'h-[44px] w-[44px] sm:w-auto sm:px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0',
+                  'h-[38px] w-[38px] sm:w-auto sm:px-3 border text-xs font-bold uppercase tracking-wider rounded flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0',
                   isFilterVisible
                     ? 'bg-portal-accent border-portal-accent text-white dark:text-portal-canvas'
                     : 'bg-white dark:bg-portal-canvas border-portal-border text-portal-heading hover:border-portal-border/80'
@@ -880,7 +880,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
               type="button"
               title="Refresh Records"
               onClick={() => refetch()}
-              className="h-[44px] w-[44px] flex items-center justify-center bg-white dark:bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-portal-heading hover:border-portal-border/80 cursor-pointer transition shrink-0"
+              className="h-[38px] w-[38px] flex items-center justify-center bg-white dark:bg-portal-canvas border border-portal-border rounded text-portal-muted hover:text-portal-heading hover:border-portal-border/80 cursor-pointer transition shrink-0"
             >
               <RotateCcw className={cn('w-4 h-4', isBusy && 'animate-spin text-portal-accent')} />
             </button>

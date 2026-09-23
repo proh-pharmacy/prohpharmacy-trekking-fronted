@@ -133,7 +133,7 @@ export const TraccarUserModal: React.FC<TraccarUserModalProps> = ({ visible, onH
           placeholder="e.g. Kwame Asante"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          size="md"
+          size="sm"
           maxLength={100}
           required
         />
@@ -143,7 +143,7 @@ export const TraccarUserModal: React.FC<TraccarUserModalProps> = ({ visible, onH
           placeholder="e.g. kwame@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          size="md"
+          size="sm"
           maxLength={200}
           required
         />
@@ -153,7 +153,7 @@ export const TraccarUserModal: React.FC<TraccarUserModalProps> = ({ visible, onH
           placeholder={isEditing ? 'Leave blank to keep current' : 'Min. 6 characters'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          size="md"
+          size="sm"
           required={!isEditing}
         />
 

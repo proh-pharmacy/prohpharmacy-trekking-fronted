@@ -63,7 +63,7 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [customerGps, setCustomerGps] = useState<Awaited<ReturnType<typeof captureGps>>>(null);
   const set = (field: string, value: string) => setValues((prev) => ({ ...prev, [field]: value }));
-  const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="md" />;
+  const text = (field: string, label: string, required = false) => <FlatInputText label={label} value={values[field] ?? ''} onChange={(e) => set(field, e.target.value)} required={required} size="sm" />;
   const number = (field: string, label: string, required = false, min = 0) => (
     <FlatInputNumber
       id={`${kind ?? 'action'}-${field}`}
@@ -76,10 +76,10 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
       maxFractionDigits={2}
       useGrouping
       required={required}
-      size="md"
+      size="sm"
     />
   );
-  const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="md" />;
+  const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="sm" />;
   const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setKind(next); };
   const requestedKind = request?.kind;
   const requestedTrekId = request?.trekId;
@@ -215,16 +215,16 @@ export function FieldActions({ trek, products, customers, districts, queue, enqu
           <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {text('businessName', 'Business name', true)} <FlatInputText label="Customer phone" placeholder="+233 24 123 4567" value={values.primaryPhoneNumber ?? ''} onChange={(event) => set('primaryPhoneNumber', formatGhanaPhoneNumber(event.target.value))} required size="md" />
+            {text('businessName', 'Business name', true)} <FlatInputText label="Customer phone" placeholder="+233 24 123 4567" value={values.primaryPhoneNumber ?? ''} onChange={(event) => set('primaryPhoneNumber', formatGhanaPhoneNumber(event.target.value))} required size="sm" />
             {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}
-            <FlatInputText label="WhatsApp number" placeholder="+233 24 123 4567" value={values.whatsAppNumber ?? ''} onChange={(event) => set('whatsAppNumber', formatGhanaPhoneNumber(event.target.value))} size="md" />
+            <FlatInputText label="WhatsApp number" placeholder="+233 24 123 4567" value={values.whatsAppNumber ?? ''} onChange={(event) => set('whatsAppNumber', formatGhanaPhoneNumber(event.target.value))} size="sm" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Representative</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {text('firstName', 'First name', true)} {text('middleName', 'Middle name')} {text('lastName', 'Last name', true)}
-            <FlatInputText label="Ghana Card number" value={values.ghanaCardNumber ?? ''} onChange={(event) => set('ghanaCardNumber', formatGhanaCardNumber(event.target.value))} size="md" placeholder="GHA-..." maxLength={30} />
-            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} <FlatInputText label="Representative phone" placeholder="+233 24 123 4567" value={values.representativePhone ?? ''} onChange={(event) => set('representativePhone', formatGhanaPhoneNumber(event.target.value))} required size="md" />
+            <FlatInputText label="Ghana Card number" value={values.ghanaCardNumber ?? ''} onChange={(event) => set('ghanaCardNumber', formatGhanaCardNumber(event.target.value))} size="sm" placeholder="GHA-..." maxLength={30} />
+            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} <FlatInputText label="Representative phone" placeholder="+233 24 123 4567" value={values.representativePhone ?? ''} onChange={(event) => set('representativePhone', formatGhanaPhoneNumber(event.target.value))} required size="sm" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Location</p>
           <div className="h-px bg-portal-border" />
