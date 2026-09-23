@@ -39,6 +39,9 @@ function PwaSessionRedirect() {
 const LoginPage = lazy(() =>
   import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
 );
+const ResetPasswordPage = lazy(() =>
+  import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage }))
+);
 
 // ── chunk-portal (all sidebar pages bundled together) ──────────────────
 const PortalLayout = lazy(() =>
@@ -154,6 +157,7 @@ export default function App() {
                     </GuestGuard>
                   }
                 />
+                <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
                 {/* ── Portal (all sidebar pages) ── */}
                 <Route

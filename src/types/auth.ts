@@ -58,9 +58,15 @@ export interface RefreshTokenPayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+  confirmNewPassword: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
 }
 
 export interface ResetPasswordPayload {
-  userId: string;
-  temporaryPassword?: string;
+  token: string;
+  newPassword: string;
+  confirmNewPassword: string;
 }

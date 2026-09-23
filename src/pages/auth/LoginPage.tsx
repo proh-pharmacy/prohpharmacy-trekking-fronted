@@ -72,6 +72,7 @@ export const LoginPage: React.FC = () => {
   const {
     control,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     defaultValues: {
@@ -323,10 +324,13 @@ export const LoginPage: React.FC = () => {
           <div className="mt-8 pt-5 border-t border-portal-border text-center text-xs text-portal-muted">
             <span>Need assistance? </span>
             <a
-              href="#forgot-password"
+              href="/auth/reset-password"
               onClick={(e) => {
                 e.preventDefault();
-                alert('Please contact your System Administrator to reset your credentials.');
+                const email = getValues('email').trim();
+                navigate(email
+                  ? `/auth/reset-password?email=${encodeURIComponent(email)}`
+                  : '/auth/reset-password');
               }}
               className="text-portal-accent font-semibold hover:underline cursor-pointer ml-1"
             >

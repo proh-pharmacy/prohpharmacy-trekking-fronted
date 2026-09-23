@@ -5,7 +5,7 @@ import {
   type UseMutationOptions,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import { api, refreshTokensApi } from './api';
+import { api, publicApi, refreshTokensApi } from './api';
 import {
   getAccessToken,
   getRefreshToken,
@@ -17,6 +17,7 @@ import type {
   AuthTokens,
   AuthUser,
   ChangePasswordPayload,
+  ForgotPasswordPayload,
   LoginCredentials,
   ResetPasswordPayload,
 } from '../types/auth';
@@ -85,7 +86,10 @@ export const getCurrentUserApi = async (): Promise<AuthUser> => {
  */
 export const logoutApi = async (): Promise<void> => {
   try {
-    await api.post('/auth/logout');
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      await api.post('/auth/logout', { refreshToken });
+    }
   } catch {
     // Ignore server error on logout; local state will be wiped regardless
   } finally {
@@ -101,10 +105,18 @@ export const changePasswordApi = async (payload: ChangePasswordPayload): Promise
 };
 
 /**
- * Admin reset user password.
+ * Request a password-reset email. This endpoint is anonymous.
+ */
+export const forgotPasswordApi = async (payload: ForgotPasswordPayload): Promise<void> => {
+  await publicApi.post('/auth/forgot-password', payload);
+};
+
+/**
+ * Complete a password reset using the token from the reset email. This
+ * endpoint is anonymous and deliberately bypasses authenticated interceptors.
  */
 export const resetPasswordApi = async (payload: ResetPasswordPayload): Promise<void> => {
-  await api.post('/auth/reset-password', payload);
+  await publicApi.post('/auth/reset-password', payload);
 };
 
 /* ==========================================================================
@@ -195,7 +207,19 @@ export const useChangePasswordMutation = (
 };
 
 /**
- * Hook for admin user password reset.
+ * Hook for requesting a password-reset email.
+ */
+export const useForgotPasswordMutation = (
+  options?: UseMutationOptions<void, Error, ForgotPasswordPayload>
+) => {
+  return useMutation({
+    mutationFn: forgotPasswordApi,
+    ...options,
+  });
+};
+
+/**
+ * Hook for completing the anonymous token-based password reset.
  */
 export const useResetPasswordMutation = (
   options?: UseMutationOptions<void, Error, ResetPasswordPayload>
