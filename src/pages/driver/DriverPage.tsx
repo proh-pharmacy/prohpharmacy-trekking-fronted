@@ -574,9 +574,11 @@ export const DriverPage: React.FC = () => {
   }, [deliveryRows, enqueue, controlAvailable, online, token, refresh]);
 
   const handleVoid = useCallback(async (_stopId: string, returnId: string) => {
-    try { await enqueue('VoidReturn', { returnId }); toast.success('Return void saved on this device.'); }
+    const isQueuedReturn = queue.some((action) => action.type === 'RecordReturn' && action.clientId === returnId);
+    const payload = isQueuedReturn ? { returnClientId: returnId } : { returnId };
+    try { await enqueue('VoidReturn', payload); toast.success('Return void saved on this device.'); }
     catch { toast.error('Could not save return void.'); }
-  }, [enqueue]);
+  }, [enqueue, queue]);
 
   // ── Render states ─────────────────────────────────────────────────────
 

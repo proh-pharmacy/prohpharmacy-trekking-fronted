@@ -386,8 +386,13 @@ export function useFieldControl(token: string) {
       fieldStore.queue(token),
       fieldStore.photoQueue(token),
     ]);
-    if (pendingActions.some((action) => action.status !== 'synced') || pendingPhotos.some((photo) => photo.status !== 'uploaded')) {
-      throw new Error('Some offline work is still awaiting sync or needs attention. Sync all queued work before completing the trek.');
+    const stillPending = pendingActions.some((action) => action.status === 'pending') || pendingPhotos.some((photo) => photo.status === 'pending');
+    const hasConflicts = pendingActions.some((action) => action.status === 'conflict') || pendingPhotos.some((photo) => photo.status === 'conflict');
+    if (stillPending) {
+      throw new Error('Some offline actions are still waiting to sync. Connect and try again.');
+    }
+    if (hasConflicts) {
+      throw new Error('Some offline actions could not be synced and must be removed before the trek can be completed. Open the Sync Centre to review and remove them.');
     }
 
     const completed = await fieldApi.completeTrek(token);
