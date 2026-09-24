@@ -532,25 +532,28 @@ export function DriverDashboard({
 
                     {/* Link to the assigned trek's stops */}
                     <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-                      {trek.status === 'Scheduled' && (
-                        <FlatButton
-                          size="sm"
-                          variant="primary"
-                          leftIcon="pi pi-play"
-                          loading={startingTrek}
-                          disabled={!online || startingTrek}
-                          onClick={onStartTrek}
-                          className="text-[11px] sm:text-xs"
+                      <div className="grid w-fit grid-cols-1 gap-2 sm:flex sm:items-center">
+                        {trek.status === 'Scheduled' && (
+                          <FlatButton
+                            size="sm"
+                            variant="primary"
+                            leftIcon="pi pi-play"
+                            loading={startingTrek}
+                            disabled={!online || startingTrek}
+                            onClick={onStartTrek}
+                            className="w-full text-[11px] sm:w-auto sm:text-xs"
+                          >
+                            Start Trek
+                          </FlatButton>
+                        )}
+                        <CockpitButton
+                          icon="pi-arrow-right"
+                          onClick={() => setActiveView('assigned')}
+                          className="w-full justify-center sm:w-auto"
                         >
-                          Start Trek
-                        </FlatButton>
-                      )}
-                      <CockpitButton
-                        icon="pi-arrow-right"
-                        onClick={() => setActiveView('assigned')}
-                      >
-                        View Trek Stops
-                      </CockpitButton>
+                          View Trek Stops
+                        </CockpitButton>
+                      </div>
                       {nextStop?.latitude != null && nextStop.longitude != null && (
                         <div className="flex min-w-0 flex-col justify-center px-1 sm:min-h-9">
                           <span className="max-w-[15rem] truncate text-[11px] font-medium text-portal-text" title={`Next: ${nextStop.customerName}`}>
