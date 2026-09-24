@@ -496,7 +496,6 @@ export const DriverPage: React.FC = () => {
   const [trekListTab, setTrekListTab] = useState<'mine' | 'region'>('region');
   const [trekToSwitch, setTrekToSwitch] = useState<RegionTrek | null>(null);
   const [switchingTrek, setSwitchingTrek] = useState(false);
-  const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [startingTrek, setStartingTrek] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completingTrek, setCompletingTrek] = useState(false);
@@ -548,8 +547,8 @@ export const DriverPage: React.FC = () => {
     try {
       await treksApi.startByDriverToken(token);
       await refresh(true);
-      setStartDialogOpen(false);
       toast.success('Trek started.');
+      navigate(driverHref('assigned'));
     } catch (startError: any) {
       toast.error(startError.response?.data?.detail || startError.response?.data?.message || 'The trek could not be started.');
     } finally {
@@ -705,7 +704,7 @@ export const DriverPage: React.FC = () => {
           syncBusy={syncing || refreshing || uploadingPhotos || completingTrek}
           startingTrek={startingTrek}
           onSync={sync}
-          onStartTrek={() => setStartDialogOpen(true)}
+          onStartTrek={() => void handleStartTrek()}
           online={online}
           device={device}
           phoneAddress={phoneAddress?.label ?? null}
@@ -735,7 +734,7 @@ export const DriverPage: React.FC = () => {
                     {/* 1. Add Stop (First item, highlighted green background) */}
                     <button
                       type="button"
-                      disabled={trek.isLocked || trek.status !== 'InProgress'}
+                      disabled={trek.isLocked || (trek.status !== 'Scheduled' && trek.status !== 'InProgress')}
                       onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
                       className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Add additional stop"
@@ -1282,28 +1281,6 @@ export const DriverPage: React.FC = () => {
           <p className="text-sm text-portal-text">Switch to <span className="font-semibold text-portal-accent">{trekToSwitch?.trekNumber}</span>?</p>
           <p className="mt-2 text-[11px] text-portal-muted">This trek will become your primary workspace. New activity will be recorded there.</p>
         </> : <p className="text-sm text-portal-text">Connect to the internet to switch workspace.</p>}
-      </FlatModal>
-
-      <FlatModal
-        visible={startDialogOpen}
-        onHide={() => { if (!startingTrek) setStartDialogOpen(false); }}
-        title="Start trek"
-        size="sm"
-        footer={
-          <>
-            <FlatButton size="sm" variant="ghost" disabled={startingTrek} onClick={() => setStartDialogOpen(false)}>
-              Cancel
-            </FlatButton>
-            <FlatButton size="sm" variant="primary" loading={startingTrek} disabled={!online} onClick={() => void handleStartTrek()}>
-              Start trek
-            </FlatButton>
-          </>
-        }
-      >
-        <p className="text-sm text-portal-text">
-          Start this trek now? Delivery, stop, sale, and return actions will become available.
-        </p>
-        {!online && <p className="mt-3 text-xs text-yellow-400">Connect to the internet before starting this trek.</p>}
       </FlatModal>
 
       <FlatModal
