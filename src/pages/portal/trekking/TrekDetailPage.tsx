@@ -606,7 +606,7 @@ export const TrekDetailPage: React.FC = () => {
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
-        onSuccess={loadTrek}
+        onSuccess={() => loadTrek(true)}
       />
 
       {editingStop && !isStructureLocked && <AddStopModal
