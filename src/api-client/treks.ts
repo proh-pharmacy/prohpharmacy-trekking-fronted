@@ -362,6 +362,10 @@ export const treksApi = {
     return normalizeTrekProducts(res.data);
   },
 
+  startByDriverToken: async (token: string): Promise<void> => {
+    await publicApi.post(`/treks/driver/${token}/start`);
+  },
+
   recordByDriverToken: async (
     token: string,
     payload: RecordDeliveryPayload

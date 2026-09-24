@@ -25,6 +25,7 @@ export interface FlatAsyncSelectProps<T = any> {
   searchMode?: 'remote' | 'local';
   optionValue?: keyof T | string;
   optionLabel?: keyof T | string | ((item: T) => string);
+  optionDisabled?: (item: T) => boolean;
   itemTemplate?: (item: T, isSelected: boolean) => React.ReactNode;
   selectedItemTemplate?: (item: T) => React.ReactNode;
   initialSelectedItem?: T;
@@ -60,6 +61,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   searchMode = 'remote',
   optionValue = 'id',
   optionLabel = 'name',
+  optionDisabled,
   itemTemplate,
   selectedItemTemplate,
   initialSelectedItem,
@@ -488,17 +490,23 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 displayedItems.map((item, index) => {
                   const itemVal = getItemValue(item);
                   const isSelected = selectedItem ? getItemValue(selectedItem) === itemVal : false;
+                  const isItemDisabled = optionDisabled?.(item) ?? false;
 
                   return (
                     <div
                       key={itemVal || index}
-                      onClick={() => handleSelectItem(item)}
+                      role="option"
+                      aria-selected={isSelected}
+                      aria-disabled={isItemDisabled}
+                      onClick={() => { if (!isItemDisabled) handleSelectItem(item); }}
                       className={`
-                        p-2.5 rounded cursor-pointer transition-colors flex items-center justify-between gap-3
+                        p-2.5 rounded transition-colors flex items-center justify-between gap-3
                         ${
-                          isSelected
+                          isItemDisabled
+                            ? 'cursor-not-allowed opacity-45 text-portal-muted'
+                            : isSelected
                             ? 'bg-portal-accent/15 text-portal-heading font-semibold'
-                            : 'text-portal-text hover:bg-portal-hover hover:text-portal-heading'
+                            : 'cursor-pointer text-portal-text hover:bg-portal-hover hover:text-portal-heading'
                         }
                       `}
                     >
@@ -506,7 +514,9 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                         {itemTemplate ? itemTemplate(item, isSelected) : <span>{getItemLabel(item)}</span>}
                       </div>
 
-                      {isSelected && (
+                      {isItemDisabled ? (
+                        <span className="shrink-0 text-[10px] font-medium text-portal-muted">Already added</span>
+                      ) : isSelected && (
                         <i className="pi pi-check text-portal-accent text-xs shrink-0" />
                       )}
                     </div>

@@ -458,7 +458,7 @@ export const UserDetailsPage: React.FC = () => {
                   icon="pi pi-send"
                   size="sm"
                   onClick={handleResendInvitation}
-                  className="!bg-portal-accent/15 !border-portal-accent/50 !text-portal-accent hover:!bg-portal-accent/25 hover:!border-portal-accent hover:!text-white text-xs font-semibold"
+                  className="!bg-portal-accent/15 !border-portal-accent/50 !text-portal-accent hover:!bg-portal-accent/25 hover:!border-portal-accent hover:!text-portal-accent-hover text-xs font-semibold"
                 />
               ) : (
                 <FlatButton
@@ -470,8 +470,8 @@ export const UserDetailsPage: React.FC = () => {
                   onClick={handleToggleStatus}
                   className={
                     isUserActive
-                      ? '!bg-red-accent/15 !border-red-accent/50 !text-red-300 hover:!bg-red-accent/25 hover:!border-red-accent hover:!text-white text-xs font-semibold'
-                      : '!bg-portal-accent/15 !border-portal-accent/50 !text-portal-accent hover:!bg-portal-accent/25 hover:!border-portal-accent hover:!text-white text-xs font-semibold'
+                      ? '!bg-red-accent/15 !border-red-accent/50 !text-red-accent hover:!bg-red-accent/25 hover:!border-red-accent hover:!text-red-accent-hover text-xs font-semibold'
+                      : '!bg-portal-accent/15 !border-portal-accent/50 !text-portal-accent hover:!bg-portal-accent/25 hover:!border-portal-accent hover:!text-portal-accent-hover text-xs font-semibold'
                   }
                 />
               )}
@@ -482,7 +482,7 @@ export const UserDetailsPage: React.FC = () => {
                 icon="pi pi-sign-out"
                 size="sm"
                 onClick={handleRevokeSessions}
-                className="!bg-red-accent/15 !border-red-accent/50 !text-red-300 hover:!bg-red-accent/25 hover:!border-red-accent hover:!text-white text-xs font-semibold"
+                className="!bg-red-accent/15 !border-red-accent/50 !text-red-accent hover:!bg-red-accent/25 hover:!border-red-accent hover:!text-red-accent-hover text-xs font-semibold"
               />
               <FlatButton
                 fullWidth
@@ -491,7 +491,7 @@ export const UserDetailsPage: React.FC = () => {
                 icon="pi pi-key"
                 size="sm"
                 onClick={handleResetPassword}
-                className="!bg-amber-500/10 !border-amber-500/30 !text-amber-400 hover:!bg-amber-500/20 hover:!border-amber-500/60 hover:!text-amber-200 text-xs font-semibold"
+                className="!bg-amber-500/10 !border-amber-500/30 !text-portal-orange hover:!bg-amber-500/20 hover:!border-amber-500/60 hover:!text-portal-orange text-xs font-semibold"
               />
 
               {/* Roles Management (Multiple Dropdown) */}

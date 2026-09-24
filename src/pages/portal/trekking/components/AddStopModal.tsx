@@ -48,11 +48,12 @@ interface Props {
   trekRegionId: string;
   trekRegionName: string;
   nextSequence: number;
+  existingCustomerIds?: string[];
   stop?: TrekStop;
   onSuccess?: () => void;
 }
 
-export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekRegionId, trekRegionName, nextSequence, stop, onSuccess }) => {
+export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekRegionId, trekRegionName, nextSequence, existingCustomerIds = [], stop, onSuccess }) => {
   const [customerAccountId, setCustomerAccountId] = useState('');
   const [districtId, setDistrictId]               = useState('');
   const [sequence, setSequence]                   = useState(nextSequence);
@@ -63,6 +64,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
   const [saving, setSaving]                       = useState(false);
   const [errors, setErrors]                       = useState<{ customerAccountId?: string; sequence?: string; products?: string }>({});
   const customerChanged = Boolean(stop && customerAccountId !== stop.customerAccountId);
+  const unavailableCustomerIds = useMemo(
+    () => new Set(existingCustomerIds.filter((id) => id !== stop?.customerAccountId)),
+    [existingCustomerIds, stop?.customerAccountId]
+  );
 
   const initialStopCustomer = useMemo(() => stop ? ({
     id: stop.customerAccountId,
@@ -149,8 +154,13 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
         if (!errs[f]) errs[f] = i.message;
       });
     }
+    if (customerAccountId && unavailableCustomerIds.has(customerAccountId)) {
+      errs.customerAccountId = 'This customer is already a stop on the trek.';
+    }
     if (shouldSendProducts && (validProducts.length === 0 || products.some((p) => !p.productId))) {
       errs.products = 'Select a product for every line.';
+    } else if (shouldSendProducts && new Set(validProducts.map((p) => p.productId)).size !== validProducts.length) {
+      errs.products = 'Each product can only be added once.';
     } else if (shouldSendProducts && products.some((p) => {
       const basic = p.plannedBasicQuantity === '' ? 0 : Number(p.plannedBasicQuantity);
       const packaging = p.plannedPackagingQuantity === '' ? 0 : Number(p.plannedPackagingQuantity);
@@ -248,6 +258,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
               fetchFn={fetchCustomers}
               optionValue="id"
               optionLabel="businessName"
+              optionDisabled={(customer) => unavailableCustomerIds.has(customer.id)}
               selectedItemTemplate={(item) => (
                 <span className="truncate text-xs text-portal-text">
                   {item.businessName} <span className="font-mono text-portal-muted">· {item.customerCode}</span>
@@ -299,6 +310,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                     fetchFn={fetchProducts}
                     optionValue="id"
                     optionLabel={(p) => `${p.name} · ${p.packagingUnitName ? `${p.packagingUnitName} / ` : ''}${p.basicUnitName || 'basic unit'}`}
+                    optionDisabled={(product) => products.some((selected, index) => index !== i && selected.productId === product.id)}
                     itemTemplate={(p) => (
                       <div>
                         <span className="text-white text-xs">{p.name}</span>

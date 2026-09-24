@@ -39,7 +39,9 @@ interface Props {
   products: Product[];
   controlAvailable: boolean;
   syncBusy: boolean;
+  startingTrek: boolean;
   onSync: () => Promise<void>;
+  onStartTrek: () => void;
   online: boolean;
   device: DriverDevice | null;
   phoneAddress: string | null;
@@ -173,7 +175,9 @@ export function DriverDashboard({
   products,
   controlAvailable,
   syncBusy,
+  startingTrek,
   onSync,
+  onStartTrek,
   online,
   device,
   phoneAddress,
@@ -528,6 +532,19 @@ export function DriverDashboard({
 
                     {/* Link to the assigned trek's stops */}
                     <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                      {trek.status === 'Scheduled' && (
+                        <FlatButton
+                          size="sm"
+                          variant="primary"
+                          leftIcon="pi pi-play"
+                          loading={startingTrek}
+                          disabled={!online || startingTrek}
+                          onClick={onStartTrek}
+                          className="text-[11px] sm:text-xs"
+                        >
+                          Start Trek
+                        </FlatButton>
+                      )}
                       <CockpitButton
                         icon="pi-arrow-right"
                         onClick={() => setActiveView('assigned')}
