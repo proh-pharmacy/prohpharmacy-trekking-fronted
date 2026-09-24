@@ -606,6 +606,7 @@ export const TrekDetailPage: React.FC = () => {
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
+        existingCustomerIds={trek.stops.map((stop) => stop.customerAccountId)}
         onSuccess={() => loadTrek(true)}
       />
 
@@ -616,6 +617,7 @@ export const TrekDetailPage: React.FC = () => {
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={editingStop.sequence}
+        existingCustomerIds={trek.stops.map((stop) => stop.customerAccountId)}
         stop={editingStop}
         onSuccess={() => loadTrek(true)}
       />}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'primereact/tooltip';
-import { useAuth } from '../../../context';
+import { useAuth, useTheme } from '../../../context';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { PORTAL_NAV_SECTIONS } from './portalNavItems';
 import toast from 'react-hot-toast';
@@ -20,6 +20,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const { hasAnyPermission } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
@@ -293,7 +294,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded bg-sidebar-canvas border border-sidebar-border flex items-center justify-center shrink-0">
                   <img
-                    src="/images/prohpharmacy_icon_white.png"
+                    src={theme === 'dark' ? '/images/prohpharmacy_icon_white.png' : '/images/prohpharmacy_icon.png'}
                     alt="ProH Logo"
                     className="w-4 h-4 object-contain"
                   />

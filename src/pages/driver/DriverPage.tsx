@@ -496,6 +496,8 @@ export const DriverPage: React.FC = () => {
   const [trekListTab, setTrekListTab] = useState<'mine' | 'region'>('region');
   const [trekToSwitch, setTrekToSwitch] = useState<RegionTrek | null>(null);
   const [switchingTrek, setSwitchingTrek] = useState(false);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [startingTrek, setStartingTrek] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completingTrek, setCompletingTrek] = useState(false);
   const switchTrek = async (trekId: string): Promise<boolean> => {
@@ -534,6 +536,24 @@ export const DriverPage: React.FC = () => {
       toast.error(completionError instanceof Error ? completionError.message : 'The trek could not be completed.');
     } finally {
       setCompletingTrek(false);
+    }
+  };
+
+  const handleStartTrek = async () => {
+    if (!online) {
+      toast.error('Connect to the internet before starting the trek.');
+      return;
+    }
+    setStartingTrek(true);
+    try {
+      await treksApi.startByDriverToken(token);
+      await refresh(true);
+      setStartDialogOpen(false);
+      toast.success('Trek started.');
+    } catch (startError: any) {
+      toast.error(startError.response?.data?.detail || startError.response?.data?.message || 'The trek could not be started.');
+    } finally {
+      setStartingTrek(false);
     }
   };
 
@@ -683,7 +703,9 @@ export const DriverPage: React.FC = () => {
           products={products}
           controlAvailable={controlAvailable}
           syncBusy={syncing || refreshing || uploadingPhotos || completingTrek}
+          startingTrek={startingTrek}
           onSync={sync}
+          onStartTrek={() => setStartDialogOpen(true)}
           online={online}
           device={device}
           phoneAddress={phoneAddress?.label ?? null}
@@ -1260,6 +1282,28 @@ export const DriverPage: React.FC = () => {
           <p className="text-sm text-portal-text">Switch to <span className="font-semibold text-portal-accent">{trekToSwitch?.trekNumber}</span>?</p>
           <p className="mt-2 text-[11px] text-portal-muted">This trek will become your primary workspace. New activity will be recorded there.</p>
         </> : <p className="text-sm text-portal-text">Connect to the internet to switch workspace.</p>}
+      </FlatModal>
+
+      <FlatModal
+        visible={startDialogOpen}
+        onHide={() => { if (!startingTrek) setStartDialogOpen(false); }}
+        title="Start trek"
+        size="sm"
+        footer={
+          <>
+            <FlatButton size="sm" variant="ghost" disabled={startingTrek} onClick={() => setStartDialogOpen(false)}>
+              Cancel
+            </FlatButton>
+            <FlatButton size="sm" variant="primary" loading={startingTrek} disabled={!online} onClick={() => void handleStartTrek()}>
+              Start trek
+            </FlatButton>
+          </>
+        }
+      >
+        <p className="text-sm text-portal-text">
+          Start this trek now? Delivery, stop, sale, and return actions will become available.
+        </p>
+        {!online && <p className="mt-3 text-xs text-yellow-400">Connect to the internet before starting this trek.</p>}
       </FlatModal>
 
       <FlatModal
