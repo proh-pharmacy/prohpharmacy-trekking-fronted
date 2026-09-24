@@ -366,7 +366,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                     <p className="text-[11px] text-portal-muted truncate">
                       {trek.scheduledDate}
-                      {trek.driverName ? ` · ${trek.driverName}` : ''}
+                      {trek.regionName ? ` · ${trek.regionName}` : ''}
                     </p>
                   </div>
                   <span className="font-mono text-xs text-portal-accent shrink-0" title={fmtGhs(trek.totalCollected)}>
