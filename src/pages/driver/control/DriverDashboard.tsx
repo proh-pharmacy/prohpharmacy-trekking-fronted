@@ -146,7 +146,7 @@ function ActionDrawerLink({
       onClick={onClick}
       disabled={disabled}
       className={`driver-action-drawer-link flex min-h-[40px] w-full items-center justify-between !rounded-none px-3 py-2 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${danger
-          ? 'text-red-accent hover:bg-red-500/10'
+          ? 'driver-action-drawer-link-danger text-red-accent hover:bg-red-500/10'
           : 'text-portal-text hover:bg-portal-hover hover:text-portal-heading'
         }`}
     >
