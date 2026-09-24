@@ -469,6 +469,12 @@ html.light #mobile-action-drawer .driver-action-drawer-link:not(.text-red-accent
   color: var(--color-portal-accent) !important;
 }
 
+html.light .driver-action-drawer-link-danger:not(:disabled):hover,
+[data-theme="light"] .driver-action-drawer-link-danger:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--color-red-accent) 10%, transparent) !important;
+  color: var(--color-red-accent) !important;
+}
+
 @media (min-width: 768px) {
   html.light .portal-mobile-header,
   [data-theme="light"] .portal-mobile-header {
