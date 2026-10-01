@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
-import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PercentCrop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { FlatButton } from '../../../../components/flat-form';
 import { idDocumentSides, type IdDocumentType } from '../../../../api-client/customerDocuments';
@@ -79,8 +79,8 @@ export function IdCardScannerModal({
   const [side, setSide] = useState<Side>('front');
   const [stage, setStage] = useState<Stage>('scanning');
   const [guide, setGuide] = useState<CardGuide | null>(null);
-  const [aligned, setAligned] = useState(false);
-  const [stableProgress, setStableProgress] = useState(0);
+  const [, setAligned] = useState(false);
+  const [, setStableProgress] = useState(0);
   const [starting, setStarting] = useState(true);
   const [error, setError] = useState('');
   const [flash, setFlash] = useState(false);
@@ -494,7 +494,7 @@ function AdjustOverlay({
     if (!width || !height || !naturalWidth || !naturalHeight) return;
 
     const detected = cornersBoundingArea(result);
-    const percentCrop: Crop = {
+    const percentCrop: PercentCrop = {
       unit: '%',
       x: (detected.x / naturalWidth) * 100,
       y: (detected.y / naturalHeight) * 100,
