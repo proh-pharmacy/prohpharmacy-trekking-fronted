@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
+import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type TrekStockLoad, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { FlatDataTable, resetTableData } from '../../../components/data-table';
@@ -66,6 +66,13 @@ interface DeliveryRow {
 
 type ProductTableRow = TrekStopProduct & { displayRow?: Partial<DeliveryRow> };
 
+interface StockWarning {
+  load: TrekStockLoad;
+  notTracked: boolean;
+  basicShortfall: number;
+  packagingShortfall: number;
+}
+
 function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
   trek.stops.forEach((stop) => {
@@ -96,6 +103,9 @@ export const TrekDetailPage: React.FC = () => {
 
   const [trek, setTrek] = useState<Trek | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stockLoads, setStockLoads] = useState<TrekStockLoad[]>([]);
+  const [stockReadinessLoading, setStockReadinessLoading] = useState(true);
+  const [stockReadinessError, setStockReadinessError] = useState(false);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
   const [syncingPrices, setSyncingPrices] = useState(false);
@@ -117,6 +127,20 @@ export const TrekDetailPage: React.FC = () => {
   const [confirmStart, setConfirmStart] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
 
+  const loadStockReadiness = useCallback(async () => {
+    if (!trekId) return;
+    setStockReadinessLoading(true);
+    try {
+      const data = await treksApi.getStockLoads(trekId);
+      setStockLoads(data);
+      setStockReadinessError(false);
+    } catch {
+      setStockReadinessError(true);
+    } finally {
+      setStockReadinessLoading(false);
+    }
+  }, [trekId]);
+
   const loadTrek = useCallback(async (silent = false) => {
     if (!trekId) return;
     if (!silent) setLoading(true);
@@ -124,12 +148,13 @@ export const TrekDetailPage: React.FC = () => {
       const data = await treksApi.getTrek(trekId);
       setTrek(data);
       setDeliveryRows(initDeliveryRows(data));
+      await loadStockReadiness();
     } catch {
       toast.error('Failed to load trek.');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [trekId]);
+  }, [trekId, loadStockReadiness]);
 
   useEffect(() => { loadTrek(); }, [loadTrek]);
 
@@ -548,6 +573,13 @@ export const TrekDetailPage: React.FC = () => {
         <p className="text-[11px] text-portal-muted italic border-l-2 border-portal-border pl-3">{trek.notes}</p>
       )}
 
+      <StockReadinessPanel
+        loads={stockLoads}
+        loading={stockReadinessLoading}
+        hasError={stockReadinessError}
+        onRetry={loadStockReadiness}
+      />
+
       {/* ── Stops ── */}
       <div className="bg-portal-surface border border-portal-border/60 rounded">
         <div className="flex items-center justify-between px-5 py-3 border-b border-portal-border/60">
@@ -596,13 +628,18 @@ export const TrekDetailPage: React.FC = () => {
         visible={editVisible}
         onHide={() => setEditVisible(false)}
         trek={trek}
-        onSuccess={(updated) => setTrek(updated)}
+        onSuccess={(updated) => {
+          setTrek(updated);
+          setDeliveryRows(initDeliveryRows(updated));
+          void loadStockReadiness();
+        }}
       />
 
       <AddStopModal
         visible={addStopVisible && !isStructureLocked}
         onHide={() => setAddStopVisible(false)}
         trekId={trek.id}
+        trekVehicleId={trek.vehicleId}
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
@@ -614,6 +651,7 @@ export const TrekDetailPage: React.FC = () => {
         visible
         onHide={() => setEditingStop(null)}
         trekId={trek.id}
+        trekVehicleId={trek.vehicleId}
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={editingStop.sequence}
@@ -714,6 +752,95 @@ export const TrekDetailPage: React.FC = () => {
         variant="primary"
         loading={syncingPrices}
       />
+    </div>
+  );
+};
+
+const StockReadinessPanel: React.FC<{
+  loads: TrekStockLoad[];
+  loading: boolean;
+  hasError: boolean;
+  onRetry: () => void;
+}> = ({ loads, loading, hasError, onRetry }) => {
+  const warnings: StockWarning[] = loads.flatMap((load) => {
+    const notTracked = load.vehicleBasicOnHand == null;
+    const basicShortfall = notTracked
+      ? 0
+      : Math.max(0, load.basicQuantityLoaded - load.vehicleBasicOnHand!);
+    const packagingAvailable = load.vehiclePackagingOnHand ?? 0;
+    const packagingShortfall = notTracked
+      ? 0
+      : Math.max(0, load.packagingQuantityLoaded - packagingAvailable);
+
+    return notTracked || basicShortfall > 0 || packagingShortfall > 0
+      ? [{ load, notTracked, basicShortfall, packagingShortfall }]
+      : [];
+  });
+
+  if (loading && loads.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-portal-border/60 bg-portal-surface px-4 py-3 text-[11px] text-portal-muted">
+        <i className="pi pi-spin pi-spinner" />
+        Checking vehicle stock…
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-surface px-4 py-3">
+        <div className="flex items-center gap-2 text-[11px] text-portal-orange">
+          <i className="pi pi-exclamation-triangle" />
+          Vehicle stock check is unavailable.
+        </div>
+        <button type="button" onClick={onRetry} className="text-[11px] font-medium text-portal-accent hover:underline">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (loads.length === 0) return null;
+
+  if (warnings.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-portal-border/60 bg-portal-surface px-4 py-3 text-[11px] text-portal-accent">
+        <i className="pi pi-check-circle" />
+        <span className="font-medium">Vehicle stock covers all {loads.length} {loads.length === 1 ? 'allocation' : 'allocations'}.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded border border-portal-border/60 bg-portal-surface">
+      <div className="flex items-center gap-2 border-b border-portal-border/60 px-4 py-3 text-xs font-semibold text-portal-orange">
+        <i className="pi pi-exclamation-triangle" />
+        Vehicle stock needs attention
+        <span className="font-normal text-portal-muted">({warnings.length})</span>
+      </div>
+      <div className="divide-y divide-portal-border/40">
+        {warnings.map(({ load, notTracked, basicShortfall, packagingShortfall }) => (
+          <div key={load.id || load.productId} className="px-4 py-3">
+            <p className="text-xs font-semibold text-white">{load.productName}</p>
+            {notTracked ? (
+              <p className="mt-1 text-[11px] text-red-400">Not in vehicle catalogue</p>
+            ) : (
+              <div className="mt-1 space-y-0.5 text-[11px] text-portal-muted">
+                {basicShortfall > 0 && (
+                  <p>
+                    {load.basicQuantityLoaded} {load.basicUnitName} loaded · {load.vehicleBasicOnHand} available · <span className="text-portal-orange">{basicShortfall} short</span>
+                  </p>
+                )}
+                {packagingShortfall > 0 && (
+                  <p>
+                    {load.packagingQuantityLoaded} {load.packagingUnitName || 'packaging units'} loaded · {load.vehiclePackagingOnHand ?? 0} available · <span className="text-portal-orange">{packagingShortfall} short</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

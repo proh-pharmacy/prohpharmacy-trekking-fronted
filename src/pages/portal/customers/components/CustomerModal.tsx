@@ -1,3 +1,5 @@
+import { CustomerIdCapture } from './CustomerIdCapture';
+import { validateIdDocument, type CustomerPhotos, type IdDocumentType } from '../../../../api-client/customerDocuments';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -6,6 +8,7 @@ import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatInputText, FlatInputNumber, FlatDropdown, FlatTextarea, FlatCheckbox } from '../../../../components/flat-form';
 import {
   customersApi,
+  getApiError,
   organisationApi,
   type Customer,
   type CustomerLocation,
@@ -17,7 +20,7 @@ import {
 } from '../../../../api-client';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
-import { formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
+import { formatGhanaPhoneNumber, normalizeGhanaPhoneNumber } from '../../../../lib/utils';
 
 const pinIcon = L.divIcon({
   className: '',
@@ -72,8 +75,9 @@ interface CustomerModalProps {
   customer: Customer | null;
   driverMode?: {
     districts: District[];
+    pendingPhotos?: CustomerPhotos;
     region?: { id: string; name: string };
-    onSubmit: (payload: Record<string, unknown>, photos: { premises?: File; portrait?: File }) => Promise<void>;
+    onSubmit: (payload: Record<string, unknown>, photos: CustomerPhotos) => Promise<void>;
   };
   onAddLocation?: () => void;
   onEditLocation?: (location: CustomerLocation) => void;
@@ -91,6 +95,11 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   onDeleteLocation,
   pendingLocationIds = [],
 }) => {
+  const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null);
+  const [idType, setIdType] = useState<IdDocumentType | ''>('');
+  const [idNumber, setIdNumber] = useState('');
+  const [idPhotos, setIdPhotos] = useState<CustomerPhotos>({});
+  useEffect(() => { if (!visible) setCreatedCustomer(null); }, [visible]);
   const isEditing = Boolean(customer);
   const additionalLocations = customer?.additionalLocations ?? customer?.locations ?? [];
   const [showAdditionalLocations, setShowAdditionalLocations] = useState(false);
@@ -266,6 +275,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   // Initialize form on open
   useEffect(() => {
     if (!visible) return;
+    setIdType(customer?.idDocumentType || '');
+    setIdNumber(customer?.idDocumentNumber || '');
+    setIdPhotos({});
     if (customer) {
       // Keep the persisted premises image visible when opening an existing
       // customer, even when the selected row was refreshed independently of
@@ -292,9 +304,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setDistrictId(customer.primaryLocation?.districtId || '');
       setStreetAddress(customer.primaryLocation?.streetAddress || '');
       setLandmark(customer.primaryLocation?.landmarkAndDirections || '');
-      setLatitude(customer.primaryLocation?.latitude ?? null);
-      setLongitude(customer.primaryLocation?.longitude ?? null);
-      setAccuracy(customer.primaryLocation?.accuracyMetres ?? null);
+      const lat = customer.primaryLocation?.latitude ?? null;
+      const lng = customer.primaryLocation?.longitude ?? null;
+      const acc = customer.primaryLocation?.accuracyMetres ?? null;
+      const hasRealGps = !(lat === 0 && lng === 0 && (acc === 0 || acc === null));
+      setLatitude(hasRealGps ? lat : null);
+      setLongitude(hasRealGps ? lng : null);
+      setAccuracy(hasRealGps ? acc : null);
     } else {
       setBusinessName('');
       setTradingName('');
@@ -350,6 +366,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   // ── Submit ─────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
     if (!businessName.trim()) { toast.error('Business name is required.'); return; }
     if (!customerType) { toast.error('Customer type is required.'); return; }
@@ -367,11 +384,23 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     if (!repPhone.trim()) { toast.error('Representative phone number is required.'); return; }
     if (!driverMode && !districtId) { toast.error('District is required.'); return; }
 
+    const documentChanged = idType !== (customer?.idDocumentType || '')
+      || idNumber.trim() !== (customer?.idDocumentNumber || '');
+    const hasDocumentDetails = Boolean(idType || idNumber.trim());
+    if (hasDocumentDetails || documentChanged) {
+      const validation = validateIdDocument(idType, idNumber);
+      if (validation) { toast.error(validation); return; }
+    }
+
     setSubmitting(true);
+    let targetCustomer = createdCustomer || customer;
+    let createdDuringSubmit = false;
+
     try {
       if (driverMode) {
         await driverMode.onSubmit({
           ...(isEditing && customer ? { customerId: customer.id } : {}),
+          ...(documentChanged ? { idDocumentType: idType, idDocumentNumber: idNumber.trim() } : {}),
           businessName: businessName.trim(), primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone), customerType,
           ...(tradingName.trim() && { tradingName: tradingName.trim() }), ...(whatsAppNumber.trim() && { whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) }),
           ...(districtId && { districtId }),
@@ -379,13 +408,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             : { ...(streetAddress.trim() && { streetAddress: streetAddress.trim() }), ...(landmark.trim() && { landmarkAndDirections: landmark.trim() }) }),
           representative: { firstName: repFirstName.trim(), ...(repMiddleName.trim() && { middleName: repMiddleName.trim() }), lastName: repLastName.trim(), relationshipType: repRelationship, primaryPhoneNumber: normalizeGhanaPhoneNumber(repPhone), ...(repGhanaCard.trim() && { ghanaCardNumber: repGhanaCard.trim() }) },
           gps: latitude !== null && longitude !== null && accuracy !== null ? { latitude, longitude, accuracyMetres: accuracy } : null,
-        }, { premises: premisesPhotoFile || undefined, portrait: portraitFile || undefined });
+        }, { premises: premisesPhotoFile || undefined, portrait: portraitFile || undefined, ...idPhotos });
         resetTableData();
         onHide();
         return;
       }
-      if (isEditing && customer) {
-        await customersApi.updateCustomer(customer.id, {
+
+      if (customer) {
+        targetCustomer = await customersApi.updateCustomer(customer.id, {
           businessName: businessName.trim(),
           tradingName: tradingName.trim() || undefined,
           customerType: customerType as CustomerType,
@@ -410,25 +440,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           },
         });
         resetTableData();
-        if (portraitFile && customer.primaryPerson?.id) {
-          try {
-            await customersApi.uploadPortrait(customer.id, customer.primaryPerson.id, portraitFile);
-            resetTableData();
-          } catch {
-            toast.error('Customer updated but portrait upload failed.');
-          }
-        }
-        if (premisesPhotoFile) {
-          try {
-            await customersApi.uploadPremisesPhoto(customer.id, premisesPhotoFile);
-            resetTableData();
-          } catch {
-            toast.error('Customer updated but premises photo upload failed.');
-          }
-        }
-        toast.success(`Customer "${businessName.trim()}" updated.`);
-      } else {
-        const created = await customersApi.createCustomer({
+      } else if (!targetCustomer) {
+        targetCustomer = await customersApi.createCustomer({
           businessName: businessName.trim(),
           tradingName: tradingName.trim() || undefined,
           customerType: customerType as CustomerType,
@@ -453,33 +466,78 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               : {}),
           },
         });
+        createdDuringSubmit = true;
+        setCreatedCustomer(targetCustomer);
         resetTableData();
-        if (portraitFile && created.primaryPerson?.id) {
-          try {
-            await customersApi.uploadPortrait(created.id, created.primaryPerson.id, portraitFile);
-            resetTableData();
-          } catch {
-            toast.error('Customer created but portrait upload failed.');
-          }
-        }
-        if (premisesPhotoFile) {
-          try {
-            await customersApi.uploadPremisesPhoto(created.id, premisesPhotoFile);
-            resetTableData();
-          } catch {
-            toast.error('Customer created but premises photo upload failed.');
-          }
-        }
-        toast.success(`Customer "${businessName.trim()}" created.`);
       }
 
+      if (!targetCustomer) throw new Error('Customer could not be saved.');
+
+      if (hasDocumentDetails && (documentChanged || createdDuringSubmit || createdCustomer)) {
+        await customersApi.setIdDocument(targetCustomer.id, {
+          idDocumentType: idType as IdDocumentType,
+          idDocumentNumber: idNumber.trim(),
+        });
+        resetTableData();
+      }
+
+      const runUpload = async (label: string, action: () => Promise<unknown>): Promise<boolean> => {
+        try {
+          await action();
+          resetTableData();
+          return true;
+        } catch (uploadErr: unknown) {
+          const apiError = getApiError(uploadErr);
+          const detail = apiError?.message
+            || (uploadErr instanceof Error ? uploadErr.message : null)
+            || 'Upload failed.';
+          toast.error(`${label}: ${detail}`);
+          return false;
+        }
+      };
+
+      let uploadFailures = 0;
+
+      if (idPhotos.idFront) {
+        const ok = await runUpload('Front ID photo upload failed', () =>
+          customersApi.uploadIdCard(targetCustomer!.id, 'front', idPhotos.idFront!));
+        if (ok) setIdPhotos((photos) => ({ ...photos, idFront: undefined }));
+        else uploadFailures++;
+      }
+      if (idPhotos.idBack) {
+        const ok = await runUpload('Back ID photo upload failed', () =>
+          customersApi.uploadIdCard(targetCustomer!.id, 'back', idPhotos.idBack!));
+        if (ok) setIdPhotos((photos) => ({ ...photos, idBack: undefined }));
+        else uploadFailures++;
+      }
+      if (portraitFile && targetCustomer.primaryPerson?.id) {
+        const personId = targetCustomer.primaryPerson.id;
+        const ok = await runUpload('Representative photo upload failed', () =>
+          customersApi.uploadPortrait(targetCustomer!.id, personId, portraitFile));
+        if (ok) setPortraitFile(null);
+        else uploadFailures++;
+      }
+      if (premisesPhotoFile) {
+        const ok = await runUpload('Premises photo upload failed', () =>
+          customersApi.uploadPremisesPhoto(targetCustomer!.id, premisesPhotoFile));
+        if (ok) setPremisesPhotoFile(null);
+        else uploadFailures++;
+      }
+
+      if (uploadFailures > 0) {
+        toast.success(`Customer "${businessName.trim()}" ${customer ? 'updated' : 'created'}. Retry the failed uploads.`);
+        return;
+      }
+
+      toast.success(`Customer "${businessName.trim()}" ${customer ? 'updated' : 'created'}.`);
       onHide();
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        'Failed to save customer.';
-      toast.error(msg);
+    } catch (err: unknown) {
+      const apiError = getApiError(err);
+      const msg = apiError?.message
+        || (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
+        || (err instanceof Error ? err.message : null)
+        || 'Failed to save customer.';
+      toast.error(targetCustomer && !customer ? `Customer saved. ${msg}` : msg);
     } finally {
       setSubmitting(false);
     }
@@ -498,21 +556,23 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   return (
     <FlatModal
       visible={visible}
-      onHide={onHide}
+      onHide={() => { if (!submitting) onHide(); }}
       title={isEditing ? 'Edit Customer' : 'Add Customer'}
       size="lg"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton
             variant="danger-outline"
-            label="Cancel"
+            size="sm"
+            label="Close"
             onClick={onHide}
             disabled={submitting}
           />
           <FlatButton
+            size="sm"
             variant="primary"
-            label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Customer'}
-            icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}
+            label={submitting ? 'Saving...' : isEditing || createdCustomer ? 'Save Changes' : 'Create Customer'}
+            icon={isEditing || createdCustomer ? 'pi pi-check' : 'pi pi-plus'}
             onClick={handleSubmit}
             loading={submitting}
             disabled={submitting || !businessName.trim()}
@@ -525,26 +585,17 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         <SectionLabel>Business Info</SectionLabel>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FlatInputText
-            label="Business Name"
-            placeholder="e.g. Accra Pharmacy Ltd"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            size="sm"
-            maxLength={200}
-            required
-          />
-          <FlatInputText
-            label="Trading Name"
-            placeholder="e.g. Accra Pharma"
-            value={tradingName}
-            onChange={(e) => setTradingName(e.target.value)}
-            size="sm"
-            maxLength={200}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="sm:col-span-2">
+            <FlatInputText
+              label="Business Name"
+              placeholder="e.g. Accra Pharmacy Ltd"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              size="sm"
+              maxLength={200}
+              required
+            />
+          </div>
           <FlatDropdown
             label="Customer Type"
             value={customerType}
@@ -554,6 +605,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             filter
             filterPlaceholder="Search..."
             size="sm"
+          />
+          <FlatInputText
+            label="Trading Name"
+            placeholder="e.g. Accra Pharma"
+            value={tradingName}
+            onChange={(e) => setTradingName(e.target.value)}
+            size="sm"
+            maxLength={200}
           />
           {!isEditing && !driverMode && (
             <FlatInputNumber
@@ -640,14 +699,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 size="sm"
                 maxLength={30}
                 required
-              />
-              <FlatInputText
-                label="Ghana Card No."
-                placeholder="GHA-..."
-                value={repGhanaCard}
-                onChange={(e) => setRepGhanaCard(formatGhanaCardNumber(e.target.value))}
-                size="sm"
-                maxLength={30}
               />
             </div>
 
@@ -848,8 +899,17 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             )}
           </>
 
-        {/* ── Attachments ─────────────────────────────────────────── */}
-        <SectionLabel>Attachments</SectionLabel>
+        <SectionLabel>Identification</SectionLabel>
+        <div>
+          {driverMode && customer?.regionId && driverMode.region?.id && customer.regionId !== driverMode.region.id
+            ? <p className="text-xs text-portal-muted">Identification can only be edited for customer accounts registered in this trek’s region.</p>
+            : <CustomerIdCapture type={idType} number={idNumber} onType={setIdType} onNumber={setIdNumber}
+                photos={idPhotos} onPhotos={setIdPhotos} pendingPhotos={driverMode?.pendingPhotos}
+                frontUrl={customer?.idCardFrontUrl} backUrl={customer?.idCardBackUrl} disabled={submitting} />}
+        </div>
+
+        {/* ── Additional Attachments ──────────────────────────────── */}
+        <SectionLabel>Additional Attachments</SectionLabel>
 
         <div className="flex items-center gap-4 mb-4">
           <button
@@ -955,7 +1015,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               </div>
             )}
 
-        </form>
+      </form>
     </FlatModal>
   );
 };

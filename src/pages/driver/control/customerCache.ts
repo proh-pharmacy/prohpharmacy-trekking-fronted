@@ -49,6 +49,10 @@ export function registrationDetails(action: QueuedAction, districts: FieldDistri
     tradingName: asText(payload.tradingName),
     whatsAppNumber: asText(payload.whatsAppNumber),
     regionName,
+    ...(action.syncResult !== 'AlreadySynced' ? {
+      idDocumentType: payload.idDocumentType as FieldCustomer['idDocumentType'],
+      idDocumentNumber: asText(payload.idDocumentNumber),
+    } : {}),
     primaryContactFirstName: asText(representative.firstName),
     primaryContactMiddleName: asText(representative.middleName),
     primaryContactLastName: asText(representative.lastName),
@@ -86,7 +90,7 @@ export function applyCustomerUpdate(customer: FieldCustomer, payload: Record<str
   const districtId = asText(payload.districtId);
   const district = districts.find((item) => item.id === districtId);
   const updated: FieldCustomer = { ...customer };
-  for (const field of ['businessName', 'tradingName', 'customerType', 'primaryPhoneNumber', 'whatsAppNumber'] as const) {
+  for (const field of ['businessName', 'tradingName', 'customerType', 'primaryPhoneNumber', 'whatsAppNumber', 'idDocumentType', 'idDocumentNumber'] as const) {
     if (field in payload) (updated as unknown as Record<string, unknown>)[field] = payload[field];
   }
   if (representative) {

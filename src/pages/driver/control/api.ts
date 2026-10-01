@@ -1,3 +1,4 @@
+import type { CustomerIdentification } from '../../../api-client/customerDocuments';
 import { baseURL, publicApi } from '../../../api-client/api';
 import { treksApi, type DriverTrek, type DriverReturn } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
@@ -15,7 +16,7 @@ export interface RegionTrek {
 }
 export interface FieldDistrict { id: string; name: string; code: string; regionId: string; }
 
-export interface FieldCustomer {
+export interface FieldCustomer extends CustomerIdentification {
   id: string;
   customerCode?: string;
   businessName: string;
@@ -123,12 +124,18 @@ export interface QueuedAction {
   personId?: string | null;
   reason?: string;
   localBeforeLocation?: FieldCustomerLocation;
+  syncResult?: 'Created' | 'AlreadySynced' | 'Conflict';
 }
 
-export type QueuedPhotoKind = 'premises' | 'portrait';
+export type QueuedPhotoKind = 'premises' | 'portrait' | 'idFront' | 'idBack';
 export interface QueuedPhoto {
   photoId: string;
-  customerClientId: string;
+  customerClientId?: string;
+  customerId?: string;
+  metadataActionId?: string;
+  capturedAt?: string;
+  attempts?: number;
+  nextAttemptAt?: number;
   kind: QueuedPhotoKind;
   file: File;
   status: 'pending' | 'uploaded' | 'conflict';
@@ -208,11 +215,12 @@ async function uploadDriverPhoto<T>(token: string, suffix: string, file: File): 
       detail?: string;
       message?: string;
       title?: string;
+      code?: string;
       errors?: Record<string, string[]>;
     } | null;
     console.error('[Driver photo upload] server rejected upload', { suffix, status: response.status, problem });
     const fieldError = problem?.errors && Object.values(problem.errors).flat().join(' ');
-    throw new Error(problem?.detail || problem?.message || fieldError || problem?.title || `Photo upload failed (${response.status}).`);
+    throw Object.assign(new Error(problem?.detail || problem?.message || fieldError || problem?.title || `Photo upload failed (${response.status}).`), { status: response.status, code: problem?.code });
   }
   return response.json() as Promise<T>;
 }
@@ -227,6 +235,9 @@ const unwrapList = <T>(value: unknown): T[] => {
 };
 
 export const fieldApi = {
+  uploadIdCard: (token: string, customerId: string, side: 'front' | 'back', file: File) =>
+    uploadDriverPhoto<{ customerId: string; idCardFrontUrl: string | null; idCardBackUrl: string | null }>(
+      token, `/customers/${encodeURIComponent(customerId)}/id-card/${side}`, file),
   getDevice: async (token: string): Promise<DriverDevice> => {
     const response = await publicApi.get<DriverDevice>(path(token, '/device'));
     return response.data;

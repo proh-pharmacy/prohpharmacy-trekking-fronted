@@ -159,6 +159,23 @@ export interface TrekPriceDiffResponse {
   differences: TrekPriceDifference[];
 }
 
+export interface TrekStockLoad {
+  id: string;
+  productId: string;
+  productName: string;
+  basicUnitId: string;
+  basicUnitName: string;
+  packagingUnitId: string | null;
+  packagingUnitName: string | null;
+  basicQuantityLoaded: number;
+  packagingQuantityLoaded: number;
+  vehicleBasicOnHand: number | null;
+  vehiclePackagingOnHand: number | null;
+  exceedsVehicleStock: boolean;
+  loadedBy: string | null;
+  loadedAt: string | null;
+}
+
 export interface DriverStopProduct {
   stopProductId: string;
   productName: string;
@@ -278,6 +295,11 @@ export const treksApi = {
   getTrek: async (id: string): Promise<Trek> => {
     const res = await apiClient.get<Trek>(`/treks/${id}`);
     return normalizeTrekProducts(res.data);
+  },
+
+  getStockLoads: async (trekId: string): Promise<TrekStockLoad[]> => {
+    const res = await apiClient.get<TrekStockLoad[]>(`/treks/${trekId}/stock-loads`);
+    return Array.isArray(res.data) ? res.data : [];
   },
 
   createTrek: async (payload: CreateTrekPayload): Promise<Trek> => {

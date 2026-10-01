@@ -1,3 +1,5 @@
+import { photoLabel, photoCustomerReference } from './control/photoLifecycle';
+import { registrationDetails, applyCustomerUpdate } from './control/customerCache';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -81,6 +83,8 @@ function customerForModal(customer: FieldCustomer, districts: { id: string; name
     regionName: customer.regionName || '',
     createdAt: '',
     premisesPhotoUrl: customer.premisesPhotoUrl,
+    idDocumentType: customer.idDocumentType, idDocumentNumber: customer.idDocumentNumber,
+    idCardFrontUrl: customer.idCardFrontUrl, idCardBackUrl: customer.idCardBackUrl,
     primaryPerson: customer.primaryPerson || (representativeName ? {
       id: customer.primaryPersonId || '',
       fullName: representativeName,
@@ -483,7 +487,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
+  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
@@ -642,18 +646,12 @@ export const DriverPage: React.FC = () => {
   });
   const customerRows: CustomerListRow[] = [
     ...registeredCustomerActions.filter((action) => action.status !== 'synced').map((action) => ({
+      ...queue.filter(update => update.type === 'UpdateCustomer' && update.payload.customerClientId === action.clientId)
+        .reduce((customer, update) => applyCustomerUpdate(customer, update.payload, districts),
+          registrationDetails({ ...action, serverId: action.clientId }, districts, trek.regionName)!),
+      clientGeneratedId: action.clientId,
+      regionId: districts[0]?.regionId,
       id: action.clientId,
-      businessName: String(action.payload.businessName || ''),
-      primaryPhoneNumber: String(action.payload.primaryPhoneNumber || ''),
-      customerType: String(action.payload.customerType || ''),
-      primaryContactName: [
-        (action.payload.representative as Record<string, unknown> | undefined)?.firstName,
-        (action.payload.representative as Record<string, unknown> | undefined)?.lastName,
-      ].filter(Boolean).join(' '),
-      primaryPersonId: (action.payload.primaryPersonId as string | undefined) ?? null,
-      latitude: (action.payload.gps as { latitude?: number } | null | undefined)?.latitude ?? null,
-      longitude: (action.payload.gps as { longitude?: number } | null | undefined)?.longitude ?? null,
-      accuracyMetres: (action.payload.gps as { accuracyMetres?: number } | null | undefined)?.accuracyMetres ?? null,
       syncStatus: action.status as 'pending' | 'conflict',
       syncReason: action.reason,
     })),
@@ -906,9 +904,15 @@ export const DriverPage: React.FC = () => {
                 onEditLocation={(location) => { setEditingLocation(location); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
                 pendingLocationIds={queue.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending')
                   .map((action) => String(action.payload.locationId || action.payload.locationClientId || ''))}
-                driverMode={{ districts, region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName }, onSubmit: async (payload, photos) => {
+                driverMode={{ districts, pendingPhotos: Object.fromEntries(photoQueue.filter(photo => photo.status !== 'uploaded' && photoCustomerReference(photo, queue) === editingCustomer.id).map(photo => [photo.kind, photo.file])), region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName }, onSubmit: async (payload, photos) => {
                   const { districtId, streetAddress, landmarkAndDirections, gps, ...customerFields } = payload;
-                  await enqueue('UpdateCustomer', customerFields);
+                  const localRegistration = queue.find(action => action.type === 'RegisterCustomer' && action.clientId === editingCustomer.id && action.status !== 'synced');
+                  const { customerId: _customerId, ...fields } = customerFields;
+                  void _customerId;
+                  await enqueue('UpdateCustomer', {
+                    ...fields,
+                    ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }),
+                  }, photos);
                   const currentLocation = editingCustomer.primaryLocation;
                   const locationChanges: Record<string, unknown> = {};
                   if (typeof districtId === 'string' && districtId !== (currentLocation?.districtId || '')) locationChanges.districtId = districtId;
@@ -920,12 +924,10 @@ export const DriverPage: React.FC = () => {
                   }
                   if (Object.keys(locationChanges).length) {
                     await enqueue(currentLocation?.id ? 'UpdateCustomerLocation' : 'AddCustomerLocation', {
-                      ...(currentLocation?.id ? { locationId: currentLocation.id } : { customerId: editingCustomer.id, isPrimary: true }),
+                      ...(currentLocation?.id ? { locationId: currentLocation.id } : { ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }), isPrimary: true }),
                       ...locationChanges,
                     });
                   }
-                  if (photos.premises) { if (!online) throw new Error('Connect to upload customer photos.'); await uploadCustomerPremisesPhoto(editingCustomer.id, photos.premises); }
-                  if (photos.portrait) { if (!online || !editingCustomer.primaryPersonId) throw new Error('Representative photo upload requires an online representative record.'); await uploadCustomerPortrait(editingCustomer.id, editingCustomer.primaryPersonId, photos.portrait); }
                   toast.success('Customer update saved on this device.');
                 }}}
               />}
@@ -1010,7 +1012,7 @@ export const DriverPage: React.FC = () => {
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
                     ? <span className={`text-[11px] ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
                     : <span className="text-[11px] text-portal-muted">Available offline</span> },
-                  { field: 'actions', header: 'Action', body: (item) => item.syncStatus ? null : <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
+                  { field: 'actions', header: 'Action', body: (item) => <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
                 heading={`Customers in ${trek.regionName}`}
                 hasAction
@@ -1258,8 +1260,8 @@ export const DriverPage: React.FC = () => {
                   <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
                   {photoQueue.filter((photo) => photo.status !== 'uploaded').map((photo) => (
                     <div key={photo.photoId} className="flex flex-wrap items-center justify-between gap-2 border-t border-portal-border/40 pt-2.5 text-xs">
-                      <span className="text-portal-text">{photo.kind === 'premises' ? 'Premises photo' : 'Representative photo'}<span className="ml-2 text-[11px] text-portal-muted">{photo.file.name}</span></span>
-                      <span className="flex items-center gap-2"><span className={photo.status === 'conflict' || photo.reason?.startsWith('Upload failed:') ? 'text-red-400' : 'text-portal-accent'}>{photo.reason || 'Awaiting sync'}</span>{photo.status !== 'conflict' && <FlatButton size="sm" variant="ghost" onClick={() => void retryPhoto(photo.photoId)}>Retry</FlatButton>}<FlatButton size="sm" variant="ghost" onClick={() => void removePhoto(photo.photoId)}>Remove</FlatButton></span>
+                      <span className="text-portal-text">{photoLabel(photo.kind)}<span className="ml-2 text-[11px] text-portal-muted">{photo.file.name}</span></span>
+                      <span className="flex items-center gap-2"><span className={photo.status === 'conflict' || photo.reason?.startsWith('Upload failed:') ? 'text-red-400' : 'text-portal-accent'}>{photo.reason || 'Awaiting sync'}</span><FlatButton size="sm" variant="ghost" onClick={() => void retryPhoto(photo.photoId)}>Retry</FlatButton><FlatButton size="sm" variant="ghost" onClick={() => void removePhoto(photo.photoId)}>Remove</FlatButton></span>
                     </div>
                   ))}
                 </div>

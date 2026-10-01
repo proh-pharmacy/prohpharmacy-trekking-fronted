@@ -1,3 +1,4 @@
+import { photoLabel } from './photoLifecycle';
 import { useEffect, useRef, useState } from 'react';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
@@ -67,7 +68,7 @@ export function SyncNotifications({ queue, photos, trek, customers, products, on
     })),
     ...uploads.map((photo) => ({
       id: photo.photoId,
-      title: photo.kind === 'premises' ? 'Premises photo' : 'Representative photo',
+      title: photoLabel(photo.kind),
       detail: photo.file.name,
       status: photo.status,
       reason: photo.reason,

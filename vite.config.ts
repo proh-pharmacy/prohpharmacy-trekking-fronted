@@ -12,8 +12,24 @@ export default defineConfig({
       manifest: false, // we use our own public/manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: ['opencv/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
         runtimeCaching: [
+          {
+            // Keep the on-device card detector available after its first load.
+            urlPattern: /\/opencv\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'card-detector-cache',
+              expiration: {
+                maxEntries: 8,
+                maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
           {
             // Network-first for API calls — fresh data when online, cached when offline
             urlPattern: /\/api\/v1\/.*/i,

@@ -9,6 +9,7 @@ export * from './products';
 export * from './pricingMarkups';
 export * from './customers';
 export * from './fleet';
+export * from './vehicleStock';
 export * from './treks';
 export * from './reports';
 export * from './dataExports';

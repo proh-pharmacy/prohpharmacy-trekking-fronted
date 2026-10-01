@@ -500,7 +500,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                       aria-disabled={isItemDisabled}
                       onClick={() => { if (!isItemDisabled) handleSelectItem(item); }}
                       className={`
-                        p-2.5 rounded transition-colors flex items-center justify-between gap-3
+                        px-3 py-2.5 md:py-3 rounded transition-colors flex items-center justify-between gap-3
                         ${
                           isItemDisabled
                             ? 'cursor-not-allowed opacity-45 text-portal-muted'

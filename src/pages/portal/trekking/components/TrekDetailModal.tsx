@@ -338,6 +338,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           visible={addStopVisible}
           onHide={() => setAddStopVisible(false)}
           trekId={trek.id}
+          trekVehicleId={trek.vehicleId}
           trekRegionId={trek.regionId}
           trekRegionName={trek.regionName}
           nextSequence={trek.stops.length + 1}
@@ -350,6 +351,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           visible
           onHide={() => setEditingStop(null)}
           trekId={trek.id}
+          trekVehicleId={trek.vehicleId}
           trekRegionId={trek.regionId}
           trekRegionName={trek.regionName}
           nextSequence={editingStop.sequence}

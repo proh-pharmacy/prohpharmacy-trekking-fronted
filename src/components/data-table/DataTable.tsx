@@ -970,7 +970,18 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 key={col.field}
                 field={col.field}
                 header={
-                  <div className="flex items-center gap-2">
+                  <div className={cn(
+                    'flex items-center gap-2',
+                    col.headerStyle?.textAlign === 'right' && 'w-full justify-end',
+                    col.headerStyle?.textAlign === 'center' && 'w-full justify-center',
+                  )} style={{
+                    width: col.headerStyle?.textAlign ? '100%' : undefined,
+                    justifyContent: col.headerStyle?.textAlign === 'right'
+                      ? 'flex-end'
+                      : col.headerStyle?.textAlign === 'center'
+                        ? 'center'
+                        : undefined,
+                  }}>
                     <span className="text-table-header-text font-medium">{col.header}</span>
                     {sortableColumns?.find((s) => s.key === col.field) && (
                       <button

@@ -7,7 +7,6 @@ import {
   treksApi, customersApi, organisationApi,
   type Customer, type Product, type District, type TrekStop, type AddStopPayload,
 } from '../../../../api-client';
-import apiClient from '../../../../api-client/api';
 import { resetTableData } from '../../../../components/data-table';
 import toast from 'react-hot-toast';
 
@@ -45,6 +44,7 @@ interface Props {
   visible: boolean;
   onHide: () => void;
   trekId: string;
+  trekVehicleId: string;
   trekRegionId: string;
   trekRegionName: string;
   nextSequence: number;
@@ -53,12 +53,13 @@ interface Props {
   onSuccess?: () => void;
 }
 
-export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekRegionId, trekRegionName, nextSequence, existingCustomerIds = [], stop, onSuccess }) => {
+export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVehicleId, trekRegionId, trekRegionName, nextSequence, existingCustomerIds = [], stop, onSuccess }) => {
   const [customerAccountId, setCustomerAccountId] = useState('');
   const [districtId, setDistrictId]               = useState('');
   const [sequence, setSequence]                   = useState(nextSequence);
   const [notes, setNotes]                         = useState('');
   const [products, setProducts]                   = useState<ProductRow[]>([emptyProductRow()]);
+  const [productScope, setProductScope]           = useState<'vehicle' | 'all'>('vehicle');
   const [districts, setDistricts]                 = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts]   = useState(false);
   const [saving, setSaving]                       = useState(false);
@@ -84,6 +85,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
       setDistricts([]);
       setNotes(stop?.notes ?? '');
       setProducts(stop && stop.products.length ? productRowsFromStop(stop) : [emptyProductRow()]);
+      setProductScope('vehicle');
       setErrors({});
     }
   }, [visible, nextSequence, trekRegionId, stop]);
@@ -103,11 +105,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
     if (!stop) setCustomerAccountId('');
   }, [districtId, stop]);
 
-  const fetchProducts = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
-    const res = await apiClient.get<any>('/products', { params: { ...params, isActive: true } });
-    const raw  = res.data?.data ?? res.data?.items ?? (Array.isArray(res.data) ? res.data : []);
-    return { data: raw as Product[], totalPages: res.data?.totalPages ?? 1 };
-  }, []);
+  const productPickerParams = useMemo(() => ({
+    isActive: true,
+    ...(productScope === 'vehicle' ? { vehicleId: trekVehicleId } : {}),
+  }), [productScope, trekVehicleId]);
 
   // fetchFn recreated when the trek region or selected district changes
   const fetchCustomers = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
@@ -307,7 +308,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                       productId: v ?? '', product: product ?? null, hasPackagingUnit: Boolean(product?.packagingUnitId),
                       plannedBasicQuantity: '', plannedPackagingQuantity: '',
                     })}
-                    fetchFn={fetchProducts}
+                    endpointUrl="/products"
+                    defaultParams={productPickerParams}
+                    pageSize={15}
+                    searchParam="search"
                     optionValue="id"
                     optionLabel={(p) => `${p.name} · ${p.packagingUnitName ? `${p.packagingUnitName} / ` : ''}${p.basicUnitName || 'basic unit'}`}
                     optionDisabled={(product) => products.some((selected, index) => index !== i && selected.productId === product.id)}
@@ -323,6 +327,15 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekReg
                     )}
                     size="sm"
                     clearable={false}
+                    filter={{
+                      label: 'Product scope',
+                      value: productScope,
+                      options: [
+                        { label: 'Vehicle catalogue', value: 'vehicle' },
+                        { label: 'All products', value: 'all' },
+                      ],
+                      onChange: (value) => setProductScope(value === 'all' ? 'all' : 'vehicle'),
+                    }}
                   />
                 </div>
                 <div

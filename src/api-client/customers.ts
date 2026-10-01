@@ -1,3 +1,4 @@
+import { validateIdDocument, validateIdImage, type CustomerIdDocument, type CustomerIdentification } from './customerDocuments';
 import apiClient, { baseURL } from './api';
 import { getAccessToken } from './tokenStorage';
 import type {
@@ -71,7 +72,7 @@ export interface CustomerLocation {
   isPrimary: boolean;
 }
 
-export interface Customer {
+export interface Customer extends CustomerIdentification {
   id: string;
   customerCode: string;
   businessName: string;
@@ -275,6 +276,29 @@ export interface CustomerImportResult {
 
 // ── API ────────────────────────────────────────────────────────────────
 export const customersApi = {
+  setIdDocument: async (customerId: string, payload: CustomerIdDocument): Promise<CustomerIdDocument & { customerId: string }> => {
+    const error = validateIdDocument(payload.idDocumentType, payload.idDocumentNumber);
+    if (error) throw new Error(error);
+    const res = await apiClient.post<CustomerIdDocument & { customerId: string }>(
+      `/customers/${customerId}/id-document`,
+      { ...payload, idDocumentNumber: payload.idDocumentNumber.trim() },
+    );
+    return res.data;
+  },
+
+  uploadIdCard: async (customerId: string, side: 'front' | 'back', file: File): Promise<{
+    customerId: string; idCardFrontUrl?: string; idCardBackUrl?: string;
+  }> => {
+    const error = validateIdImage(file);
+    if (error) throw new Error(error);
+    const form = new FormData();
+    form.append('file', file);
+    const res = await apiClient.post(`/customers/${customerId}/id-card/${side}`, form, {
+      headers: { 'Content-Type': undefined },
+    });
+    return res.data;
+  },
+
   getMapPins: async (params?: { branchId?: string; regionId?: string; districtId?: string }): Promise<CustomerMapPin[]> => {
     const res = await apiClient.get<CustomerMapPin[]>('/customers/map-pins', { params });
     return res.data;

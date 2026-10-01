@@ -1,3 +1,4 @@
+import type { CustomerPhotos } from '../../../api-client/customerDocuments';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { DriverTrek } from '../../../api-client/treks';
@@ -23,7 +24,7 @@ interface Props {
   customers: FieldCustomer[];
   districts: FieldDistrict[];
   queue: QueuedAction[];
-  enqueue: (type: ActionType, payload: Record<string, unknown>) => Promise<string>;
+  enqueue: (type: ActionType, payload: Record<string, unknown>, photos?: CustomerPhotos) => Promise<string>;
   queuePhoto: (customerClientId: string, kind: 'premises' | 'portrait', file: File) => Promise<string>;
   request?: FieldActionRequest | null;
   backendReady: boolean;
@@ -205,9 +206,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
 
   return <>
     {kind === 'customer' && <CustomerModal visible onHide={close} customer={null} driverMode={{ districts, region: { id: districts[0]?.regionId || '', name: trek.regionName }, onSubmit: async (payload, photos) => {
-      const customerClientId = await enqueue('RegisterCustomer', payload);
-      if (photos.premises) await queuePhoto(customerClientId, 'premises', photos.premises);
-      if (photos.portrait) await queuePhoto(customerClientId, 'portrait', photos.portrait);
+      await enqueue('RegisterCustomer', payload, photos);
       toast.success('Customer saved on this device. It will sync when connected.');
     } }} />}
     {!modalOnly && <div className="space-y-4">

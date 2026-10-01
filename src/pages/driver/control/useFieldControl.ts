@@ -1,3 +1,5 @@
+import type { CustomerPhotos } from '../../../api-client/customerDocuments';
+import { acknowledgePhoto, isIdPhoto, photoFailure, replaceQueuedPhoto, resolvePhotoDependency, reconcileRegistrationDocuments } from './photoLifecycle';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetTableData } from '../../../components/data-table';
 import type { DriverTrek } from '../../../api-client/treks';
@@ -6,6 +8,8 @@ import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, t
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
 import { applyOfflineSyncResults, successfulServerIds } from './offlineLifecycle';
+
+const photoWorkers = new Map<string, Promise<void>>();
 
 function mergeById<T extends { id: string }>(oldItems: T[], updates: T[]): T[] {
   const items = new Map(oldItems.map((item) => [item.id, item]));
@@ -49,7 +53,7 @@ export function useFieldControl(token: string) {
     const productSince = cachedProducts?.length ? since : undefined;
     // Older installs hold the previous slim customer seed. Download the full
     // response once before using deltas so locations and representatives exist.
-    const customerSince = cachedCustomers?.length && customerSeedVersion === 2 ? since : undefined;
+    const customerSince = cachedCustomers?.length && customerSeedVersion === 3 ? since : undefined;
     const districtSince = cachedDistricts?.length ? since : undefined;
     const started = new Date().toISOString();
     const results = await Promise.allSettled([
@@ -89,9 +93,9 @@ export function useFieldControl(token: string) {
       for (const registered of registrations) {
         if (!data.some((customer) => customer.id === registered.id)) data.unshift(registered);
       }
-      for (const action of actions.filter((item) => item.status === 'pending')) {
+      for (const action of actions.filter((item) => item.status !== 'synced')) {
         if (action.type === 'UpdateCustomer') {
-          data = data.map((customer) => customer.id === action.payload.customerId
+          data = data.map((customer) => customer.id === action.payload.customerId || (Boolean(action.payload.customerClientId) && customer.clientGeneratedId === action.payload.customerClientId)
             ? applyCustomerUpdate(customer, action.payload, availableDistricts) : customer);
         } else if (action.type === 'AddCustomerLocation') {
           data = data.map((customer) => {
@@ -108,7 +112,7 @@ export function useFieldControl(token: string) {
         }
       }
       setCustomers(data); await fieldStore.set(token, 'customers', data);
-      await fieldStore.set(token, 'customerSeedVersion', 2);
+      await fieldStore.set(token, 'customerSeedVersion', 3);
     }
     if (results[3].status === 'fulfilled') {
       const prior = (await fieldStore.get<FieldDistrict[]>(token, 'districts')) ?? [];
@@ -185,89 +189,64 @@ export function useFieldControl(token: string) {
 
   const processPhotoQueue = useCallback(async () => {
     if (!navigator.onLine) return;
-    const [photos, actions, savedCustomers] = await Promise.all([
-      fieldStore.photoQueue(token), fieldStore.queue(token), fieldStore.get<FieldCustomer[]>(token, 'customers'),
-    ]);
-    let next = [...photos];
-    let customersSnapshot = savedCustomers ?? [];
-    let fullCustomersRefreshed = false;
-    for (const photo of photos.filter((item) => item.status === 'pending')) {
-      const customerAction = actions.find((action) => action.clientId === photo.customerClientId);
-      console.info('[Driver photo queue] attempting upload', {
-        photoId: photo.photoId,
-        kind: photo.kind,
-        customerClientId: photo.customerClientId,
-        fileName: photo.file?.name || '(unnamed)',
-        fileType: photo.file?.type || '(unknown)',
-        fileSizeBytes: photo.file?.size ?? 0,
-        fileIsFile: photo.file instanceof File,
-        fileIsBlob: photo.file instanceof Blob,
-        customerActionStatus: customerAction?.status ?? 'missing',
-        customerServerId: customerAction?.serverId ?? null,
-        customerPersonId: customerAction?.personId ?? null,
-      });
-      if (!customerAction || customerAction.status === 'conflict') {
-        next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'conflict' as const, reason: customerAction?.reason || 'Customer registration conflicted.' } : item);
-        continue;
-      }
-      if (!customerAction.serverId) {
-        next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'Waiting for customer registration to finish.' } : item);
-        continue;
-      }
-      if (photo.kind === 'portrait' && customerAction.personId === null) {
-        next = next.map((item) => item.photoId === photo.photoId ? {
-          ...item, status: 'conflict' as const,
-          reason: 'No representative is registered for this customer. The portrait was not uploaded.',
-        } : item);
-        continue;
-      }
-      const customerId = customerAction.serverId;
-      let customer = customersSnapshot.find((item) => item.id === customerAction.serverId);
-      // Older sync responses may lack personId. The full customer seed is a fallback.
-      if (photo.kind === 'portrait' && customerAction.personId === undefined
-        && !customer?.primaryPersonId && !customer?.primaryPerson?.id && !fullCustomersRefreshed) {
-        fullCustomersRefreshed = true;
-        try {
-          const downloaded = await fieldApi.getCustomers(token);
-          const priorById = new Map(customersSnapshot.map((item) => [item.id, item]));
-          customersSnapshot = mergeById(customersSnapshot,
-            downloaded.map((item) => mergeCachedCustomer(priorById.get(item.id), item)));
-          await fieldStore.set(token, 'customers', customersSnapshot);
-          setCustomers(customersSnapshot);
-          customer = customersSnapshot.find((item) => item.id === customerAction.serverId);
-        } catch {
-          // Keep the photo pending so the next sync can retry the lookup.
-        }
-      }
+    if (photoWorkers.has(token)) return photoWorkers.get(token);
+    const run = async () => {
+      setUploadingPhotoCount(count => count + 1);
+      const attempted = new Set<string>();
       try {
-        validateCustomerPhoto(photo.file);
-        if (photo.kind === 'premises') {
-          const result = await fieldApi.uploadPremisesPhoto(token, customerId, photo.file);
-          customersSnapshot = customersSnapshot.map((item) => item.id === customerId
-            ? { ...item, premisesPhotoUrl: result.premisesPhotoUrl } : item);
+        while (navigator.onLine) {
+          const [photos, actions] = await Promise.all([fieldStore.photoQueue(token), fieldStore.queue(token)]);
+          const photo = photos.find(item => item.status === 'pending' && !attempted.has(item.photoId)
+            && (!item.nextAttemptAt || item.nextAttemptAt <= Date.now()));
+          if (!photo) break;
+          attempted.add(photo.photoId);
+          const dependency = resolvePhotoDependency(photo, actions);
+          if (!dependency.customerId) {
+            setPhotoQueue(await fieldStore.updatePhotos(token, current => current.map(item => item.photoId === photo.photoId
+              ? { ...item, reason: dependency.reason } : item)));
+            continue;
+          }
+          const customerId = dependency.customerId;
+          // Persist the resolved ID before sending any bytes.
+          await fieldStore.updatePhotos(token, current => current.map(item => item.photoId === photo.photoId ? { ...item, customerId } : item));
+          try {
+            validateCustomerPhoto(photo.file);
+            let changes: Partial<FieldCustomer>;
+            if (isIdPhoto(photo)) {
+              const result = await fieldApi.uploadIdCard(token, customerId, photo.kind === 'idFront' ? 'front' : 'back', photo.file);
+              changes = photo.kind === 'idFront' ? { idCardFrontUrl: result.idCardFrontUrl } : { idCardBackUrl: result.idCardBackUrl };
+            } else if (photo.kind === 'premises') {
+              const result = await fieldApi.uploadPremisesPhoto(token, customerId, photo.file);
+              changes = { premisesPhotoUrl: result.premisesPhotoUrl };
+            } else {
+              const registration = actions.find(action => action.clientId === photo.customerClientId);
+              let customer = (await fieldStore.get<FieldCustomer[]>(token, 'customers'))?.find(item => item.id === customerId);
+              if (!registration?.personId && !customer?.primaryPersonId && !customer?.primaryPerson?.id) {
+                customer = (await fieldApi.getCustomers(token)).find(item => item.id === customerId);
+              }
+              const personId = registration?.personId || customer?.primaryPersonId || customer?.primaryPerson?.id;
+              if (!personId) throw Object.assign(new Error('No representative is registered for this customer.'), { code: '400' });
+              const result = await fieldApi.uploadCustomerPortrait(token, customerId, personId, photo.file);
+              changes = { primaryPersonId: personId, portraitUrl: result.portraitUrl,
+                ...(customer?.primaryPerson ? { primaryPerson: { ...customer.primaryPerson, portraitUrl: result.portraitUrl } } : {}) };
+            }
+            resetTableData();
+            const saved = await fieldStore.get<FieldCustomer[]>(token, 'customers') ?? [];
+            const updated = saved.map(customer => customer.id === customerId ? { ...customer, ...changes } : customer);
+            await fieldStore.set(token, 'customers', updated);
+            setCustomers(updated);
+            setPhotoQueue(await fieldStore.updatePhotos(token, current => acknowledgePhoto(current, photo.photoId)));
+          } catch (error) {
+            setPhotoQueue(await fieldStore.updatePhotos(token, current => current.map(item => item.photoId === photo.photoId
+              ? photoFailure(item, error) : item)));
+          }
         }
-        else if (customerAction.personId || customer?.primaryPersonId || customer?.primaryPerson?.id) {
-          const personId = customerAction.personId || customer?.primaryPersonId || customer?.primaryPerson?.id || '';
-          const result = await fieldApi.uploadCustomerPortrait(token, customerId, personId, photo.file);
-          customersSnapshot = customersSnapshot.map((item) => item.id === customerId
-            ? { ...item, primaryPersonId: personId, portraitUrl: result.portraitUrl,
-              primaryPerson: item.primaryPerson ? { ...item.primaryPerson, portraitUrl: result.portraitUrl } : item.primaryPerson } : item);
-        }
-        else {
-          next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: 'Representative details are not available from the server yet. Try Sync again.' } : item);
-          continue;
-        }
-        next = next.map((item) => item.photoId === photo.photoId ? { ...item, status: 'uploaded' as const } : item);
-      } catch (error) {
-        const response = (error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
-        const reason = response?.detail || response?.message || (error instanceof Error ? error.message : 'Photo upload failed.');
-        next = next.map((item) => item.photoId === photo.photoId ? { ...item, reason: `Upload failed: ${reason}` } : item);
-      }
-    }
-    await fieldStore.set(token, 'customers', customersSnapshot);
-    setCustomers(customersSnapshot);
-    await fieldStore.setPhotoQueue(token, next);
-    setPhotoQueue(next);
+      } finally { setUploadingPhotoCount(count => count - 1); }
+    };
+    const task = (navigator.locks ? navigator.locks.request(`customer-photos:${token}`, run) : run())
+      .finally(() => photoWorkers.delete(token));
+    photoWorkers.set(token, task);
+    return task;
   }, [token]);
 
   const sync = useCallback(async () => {
@@ -281,104 +260,116 @@ export function useFieldControl(token: string) {
       return;
     }
     syncingRef.current = true; setSyncing(true);
-    try {
-      await mutationRef.current;
-      let pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-      while (pending.length) {
-        const batch = pending.slice(0, 199);
-        const allActions = await fieldStore.queue(token);
-        const batchIds = new Set(batch.map((action) => action.clientId));
-        const invalidLocationUpdates = batch.filter((action) => {
-          if (action.type !== 'UpdateCustomerLocation' || !action.payload.locationClientId) return false;
-          const source = allActions.find((item) => item.type === 'AddCustomerLocation' && item.clientId === action.payload.locationClientId);
-          return !batchIds.has(String(action.payload.locationClientId)) && (!source || source.status === 'conflict');
-        });
-        if (invalidLocationUpdates.length) {
-          const invalidIds = new Set(invalidLocationUpdates.map((action) => action.clientId));
-          let remaining: QueuedAction[] = [];
-          mutationRef.current = mutationRef.current.then(async () => {
+    const run = async () => {
+      try {
+        await mutationRef.current;
+        let pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+        while (pending.length) {
+          const batch = pending.slice(0, 199);
+          const allActions = await fieldStore.queue(token);
+          const batchIds = new Set(batch.map((action) => action.clientId));
+          const invalidLocationUpdates = batch.filter((action) => {
+            if (action.type !== 'UpdateCustomerLocation' || !action.payload.locationClientId) return false;
+            const source = allActions.find((item) => item.type === 'AddCustomerLocation' && item.clientId === action.payload.locationClientId);
+            return !batchIds.has(String(action.payload.locationClientId)) && (!source || source.status === 'conflict');
+          });
+          if (invalidLocationUpdates.length) {
+            const invalidIds = new Set(invalidLocationUpdates.map((action) => action.clientId));
+            let remaining: QueuedAction[] = [];
+            mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
+              const current = await fieldStore.queue(token);
+              const next = current.map((action) => invalidIds.has(action.clientId)
+                ? { ...action, status: 'conflict' as const, reason: 'The location was not created. Remove or retry its add action first.' }
+                : action);
+              await fieldStore.setQueue(token, next);
+              setQueue(next);
+              remaining = next.filter((action) => action.status === 'pending')
+                .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+            });
+            await mutationRef.current;
+            pending = remaining;
+            continue;
+          }
+          const prepared = batch.map((action) => {
+            if (action.type !== 'UpdateCustomerLocation' || !action.payload.locationClientId
+              || batchIds.has(String(action.payload.locationClientId))) return action;
+            const source = allActions.find((item) => item.type === 'AddCustomerLocation' && item.clientId === action.payload.locationClientId);
+            if (!source?.serverId) throw new Error('The location must finish syncing before its update can be uploaded.');
+            const { locationClientId: _locationClientId, ...rest } = action.payload;
+            void _locationClientId;
+            return { ...action, payload: { ...rest, locationId: source.serverId } };
+          });
+          const results = await fieldApi.sync(token, prepared);
+          if (results.length !== batch.length) throw new Error('Incomplete sync response');
+          if (results.some((result) => result.status !== 'Conflict')) resetTableData();
+          mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
             const current = await fieldStore.queue(token);
-            const next = current.map((action) => invalidIds.has(action.clientId)
-              ? { ...action, status: 'conflict' as const, reason: 'The location was not created. Remove or retry its add action first.' }
-              : action);
-            await fieldStore.setQueue(token, next);
+            const locationIds = successfulServerIds(current, results, 'AddCustomerLocation');
+            const reconciled = reconcileRegistrationDocuments(applyOfflineSyncResults(current, results), results, () => crypto.randomUUID());
+            const next = reconciled.actions;
+            setPhotoQueue(await fieldStore.updatePhotos(token, photos => photos.map(photo => {
+              const registration = next.find(action => action.clientId === photo.customerClientId && action.status === 'synced');
+              const dependency = photo.metadataActionId && reconciled.dependencies.get(photo.metadataActionId);
+              return { ...photo, ...(registration?.serverId ? { customerId: registration.serverId } : {}),
+                ...(dependency ? { metadataActionId: dependency } : {}) };
+            }), next));
             setQueue(next);
-            remaining = next.filter((action) => action.status === 'pending')
-              .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+            const registrations = next.filter((action) => action.type === 'RegisterCustomer' && action.status === 'synced' && action.serverId);
+            if (locationIds.size || registrations.length) {
+              const [saved, savedDistricts, savedTrek] = await Promise.all([
+                fieldStore.get<FieldCustomer[]>(token, 'customers'),
+                fieldStore.get<FieldDistrict[]>(token, 'districts'),
+                fieldStore.get<DriverTrek>(token, 'trek'),
+              ]);
+              const registrationById = new Map(registrations.map((action) => [action.serverId!, action]));
+              const updated: FieldCustomer[] = (saved ?? []).map((customer) => {
+                const registration = registrationById.get(customer.id);
+                const personId = registration?.personId;
+                return {
+                  ...customer,
+                  ...(personId !== undefined ? {
+                    primaryPersonId: personId,
+                    primaryPerson: personId && customer.primaryPerson
+                      ? { ...customer.primaryPerson, id: personId } : personId === null ? null : customer.primaryPerson,
+                  } : {}),
+                  primaryLocation: customer.primaryLocation?.id && locationIds.has(customer.primaryLocation.id)
+                    ? { ...customer.primaryLocation, id: locationIds.get(customer.primaryLocation.id) } : customer.primaryLocation,
+                  additionalLocations: customer.additionalLocations?.map((location) => locationIds.has(location.id)
+                    ? { ...location, id: locationIds.get(location.id)! } : location),
+                };
+              });
+              for (const registration of registrations) {
+                if (updated.some((customer) => customer.id === registration.serverId)) continue;
+                const customer = registrationDetails(registration, savedDistricts ?? [], savedTrek?.regionName ?? '');
+                if (customer) updated.unshift(customer);
+              }
+              await fieldStore.set(token, 'customers', updated); setCustomers(updated);
+            }
           });
           await mutationRef.current;
-          pending = remaining;
-          continue;
+          pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
         }
-        const prepared = batch.map((action) => {
-          if (action.type !== 'UpdateCustomerLocation' || !action.payload.locationClientId
-            || batchIds.has(String(action.payload.locationClientId))) return action;
-          const source = allActions.find((item) => item.type === 'AddCustomerLocation' && item.clientId === action.payload.locationClientId);
-          if (!source?.serverId) throw new Error('The location must finish syncing before its update can be uploaded.');
-          const { locationClientId: _locationClientId, ...rest } = action.payload;
-          void _locationClientId;
-          return { ...action, payload: { ...rest, locationId: source.serverId } };
-        });
-        const results = await fieldApi.sync(token, prepared);
-        if (results.length !== batch.length) throw new Error('Incomplete sync response');
-        mutationRef.current = mutationRef.current.then(async () => {
+        await refresh(true);
+        await processPhotoQueue();
+      } catch (error) {
+        const responseDetail = (error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
+        const reason = responseDetail?.detail || responseDetail?.message || (error instanceof Error ? error.message : 'The server could not process the queued actions.');
+        const syncReason = `Sync failed: ${reason}`;
+        mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
           const current = await fieldStore.queue(token);
-          const locationIds = successfulServerIds(current, results, 'AddCustomerLocation');
-          const next = applyOfflineSyncResults(current, results);
-          await fieldStore.setQueue(token, next); setQueue(next);
-          const registrations = next.filter((action) => action.type === 'RegisterCustomer' && action.status === 'synced' && action.serverId);
-          if (locationIds.size || registrations.length) {
-            const [saved, savedDistricts, savedTrek] = await Promise.all([
-              fieldStore.get<FieldCustomer[]>(token, 'customers'),
-              fieldStore.get<FieldDistrict[]>(token, 'districts'),
-              fieldStore.get<DriverTrek>(token, 'trek'),
-            ]);
-            const registrationById = new Map(registrations.map((action) => [action.serverId!, action]));
-            const updated: FieldCustomer[] = (saved ?? []).map((customer) => {
-              const registration = registrationById.get(customer.id);
-              const personId = registration?.personId;
-              return {
-                ...customer,
-                ...(personId !== undefined ? {
-                  primaryPersonId: personId,
-                  primaryPerson: personId && customer.primaryPerson
-                    ? { ...customer.primaryPerson, id: personId } : personId === null ? null : customer.primaryPerson,
-                } : {}),
-                primaryLocation: customer.primaryLocation?.id && locationIds.has(customer.primaryLocation.id)
-                  ? { ...customer.primaryLocation, id: locationIds.get(customer.primaryLocation.id) } : customer.primaryLocation,
-                additionalLocations: customer.additionalLocations?.map((location) => locationIds.has(location.id)
-                  ? { ...location, id: locationIds.get(location.id)! } : location),
-              };
-            });
-            for (const registration of registrations) {
-              if (updated.some((customer) => customer.id === registration.serverId)) continue;
-              const customer = registrationDetails(registration, savedDistricts ?? [], savedTrek?.regionName ?? '');
-              if (customer) updated.unshift(customer);
-            }
-            await fieldStore.set(token, 'customers', updated); setCustomers(updated);
-          }
+          const next = current.map((action) => action.status === 'pending' ? { ...action, reason: syncReason } : action);
+          await fieldStore.setQueue(token, next);
+          setQueue(next);
         });
         await mutationRef.current;
-        if (results.some((result) => result.status !== 'Conflict')) resetTableData();
-        pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+        if ((responseDetail as { code?: string } | undefined)?.code === '409') await refresh(true);
+        setError(syncReason);
+      } finally {
+        syncingRef.current = false; setSyncing(false);
       }
-      await refresh(true);
-      await processPhotoQueue();
-    } catch (error) {
-      const responseDetail = (error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
-      const reason = responseDetail?.detail || responseDetail?.message || (error instanceof Error ? error.message : 'The server could not process the queued actions.');
-      const syncReason = `Sync failed: ${reason}`;
-      mutationRef.current = mutationRef.current.then(async () => {
-        const current = await fieldStore.queue(token);
-        const next = current.map((action) => action.status === 'pending' ? { ...action, reason: syncReason } : action);
-        await fieldStore.setQueue(token, next);
-        setQueue(next);
-      });
-      await mutationRef.current;
-      setError(syncReason);
-    } finally {
-      syncingRef.current = false; setSyncing(false);
-    }
+    };
+    if (navigator.locks) await navigator.locks.request(`customer-actions:${token}`, run);
+    else await run();
   }, [token, refresh, processPhotoQueue]);
 
   const completeTrek = useCallback(async () => {
@@ -456,9 +447,19 @@ export function useFieldControl(token: string) {
     return () => { alive = false; window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
   }, [token, refresh, sync]);
 
-  const enqueue = useCallback(async (type: ActionType, payload: Record<string, unknown>) => {
-    const action: QueuedAction = { type, clientId: crypto.randomUUID(), occurredAt: new Date().toISOString(), payload, status: 'pending' };
-    mutationRef.current = mutationRef.current.then(async () => {
+  useEffect(() => {
+    const resume = () => { if (navigator.onLine) void processPhotoQueue().catch(() => setError('Could not process saved photos. Try Sync again.')); };
+    const timer = window.setInterval(resume, 15_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') resume(); };
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener('online', resume); document.removeEventListener('visibilitychange', onVisible); };
+  }, [processPhotoQueue]);
+
+  const enqueue = useCallback(async (type: ActionType, payload: Record<string, unknown>, photos: CustomerPhotos = {}) => {
+    Object.values(photos).filter(Boolean).forEach(file => validateCustomerPhoto(file!));
+    let action: QueuedAction = { type, clientId: crypto.randomUUID(), occurredAt: new Date().toISOString(), payload, status: 'pending' };
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
       if (type === 'UpdateCustomerLocation') {
         const saved = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
         const locationId = String(payload.locationId || payload.locationClientId || '');
@@ -467,14 +468,44 @@ export function useFieldControl(token: string) {
         if (location) action.localBeforeLocation = { ...location, id: locationId };
       }
       const current = await fieldStore.queue(token);
+      // Correct an unsynced conflict in place so dependent images keep their link.
+      const conflicted = type === 'UpdateCustomer' ? current.find(item => (item.status === 'conflict' || (item.status === 'pending' && item.reason?.startsWith('Sync failed:') && !syncingRef.current)) && (
+        (item.type === 'RegisterCustomer' && item.clientId === payload.customerClientId) ||
+        (item.type === 'UpdateCustomer' && (payload.customerId ? item.payload.customerId === payload.customerId : item.payload.customerClientId === payload.customerClientId))
+      )) : undefined;
+      if (conflicted) {
+        action = { ...conflicted, payload: { ...conflicted.payload, ...payload }, status: 'pending', reason: undefined };
+        if (action.type === 'RegisterCustomer') { delete action.payload.customerClientId; delete action.payload.customerId; }
+      }
+      const lastTime = current.reduce((time, item) => Math.max(time, Date.parse(item.occurredAt)), 0);
+      if (!conflicted || action.type !== 'RegisterCustomer') action.occurredAt = new Date(Math.max(Date.now(), lastTime + 1)).toISOString();
       // A planned stop product has one editable delivery outcome. Keep only
       // its latest unsynced save, unless an earlier save is being uploaded.
       const next = type === 'RecordDelivery' && !syncingRef.current
         ? [...current.filter((item) => !(item.type === 'RecordDelivery'
           && item.status !== 'synced'
           && item.payload.stopProductId === payload.stopProductId)), action]
-        : [...current, action];
-      await fieldStore.setQueue(token, next); setQueue(next);
+        : [...current.filter(item => item.clientId !== action.clientId), action];
+      const storedPhotos = await fieldStore.updatePhotos(token, existing => {
+        let nextPhotos = existing.map(photo => {
+          const reference = payload.customerId || payload.customerClientId;
+          const sameCustomer = reference && (photo.customerId === reference || photo.customerClientId === reference);
+          return sameCustomer && isIdPhoto(photo) && payload.idDocumentType && payload.idDocumentNumber
+            ? { ...photo, metadataActionId: action.clientId } : photo;
+        });
+        for (const [kind, file] of Object.entries(photos)) {
+          if (!file) continue;
+          const photo: QueuedPhoto = { photoId: crypto.randomUUID(), kind: kind as QueuedPhoto['kind'], file,
+            customerId: typeof payload.customerId === 'string' && action.type !== 'RegisterCustomer' ? payload.customerId : undefined,
+            customerClientId: action.type === 'RegisterCustomer' ? action.clientId : payload.customerClientId as string | undefined,
+            metadataActionId: (kind === 'idFront' || kind === 'idBack') ? action.clientId : undefined,
+            capturedAt: action.occurredAt, attempts: 0, status: 'pending' };
+          nextPhotos = replaceQueuedPhoto(nextPhotos, photo, next);
+        }
+        return nextPhotos;
+      }, next);
+      setPhotoQueue(storedPhotos);
+      setQueue(next);
       if (type === 'UpdateCustomer' || type === 'AddCustomerLocation' || type === 'UpdateCustomerLocation') {
         const [savedCustomers, savedDistricts] = await Promise.all([
           fieldStore.get<FieldCustomer[]>(token, 'customers'),
@@ -517,15 +548,15 @@ export function useFieldControl(token: string) {
   const queuePhoto = useCallback(async (customerClientId: string, kind: QueuedPhoto['kind'], file: File) => {
     validateCustomerPhoto(file);
     const photo: QueuedPhoto = { photoId: crypto.randomUUID(), customerClientId, kind, file, status: 'pending' };
-    const next = [...await fieldStore.photoQueue(token), photo];
-    await fieldStore.setPhotoQueue(token, next);
+    const actions = await fieldStore.queue(token);
+    const next = await fieldStore.updatePhotos(token, current => replaceQueuedPhoto(current, photo, actions));
     setPhotoQueue(next);
     if (navigator.onLine) void sync();
     return photo.photoId;
   }, [token, sync]);
 
   const retry = useCallback(async (clientId: string) => {
-    mutationRef.current = mutationRef.current.then(async () => {
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
       const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId
         ? { ...action, status: 'pending' as const, reason: undefined }
         : action);
@@ -537,7 +568,7 @@ export function useFieldControl(token: string) {
   }, [token, sync]);
 
   const remove = useCallback(async (clientId: string) => {
-    mutationRef.current = mutationRef.current.then(async () => {
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
       const current = await fieldStore.queue(token);
       const target = current.find((action) => action.clientId === clientId);
       const removedIds = new Set([clientId]);
@@ -579,9 +610,8 @@ export function useFieldControl(token: string) {
         await fieldStore.set(token, 'customers', updated);
         setCustomers(updated);
       }
-      if (target?.type === 'RegisterCustomer') {
-        const photos = (await fieldStore.photoQueue(token)).filter((photo) => photo.customerClientId !== clientId);
-        await fieldStore.setPhotoQueue(token, photos);
+      {
+        const photos = await fieldStore.updatePhotos(token, current => current.filter((photo) => !removedIds.has(photo.customerClientId || '') && !removedIds.has(photo.metadataActionId || '')));
         setPhotoQueue(photos);
       }
     });
@@ -589,16 +619,14 @@ export function useFieldControl(token: string) {
   }, [token]);
 
   const removePhoto = useCallback(async (photoId: string) => {
-    const next = (await fieldStore.photoQueue(token)).filter((photo) => photo.photoId !== photoId);
-    await fieldStore.setPhotoQueue(token, next);
+    const next = await fieldStore.updatePhotos(token, current => acknowledgePhoto(current, photoId));
     setPhotoQueue(next);
   }, [token]);
 
   const retryPhoto = useCallback(async (photoId: string) => {
-    const next = (await fieldStore.photoQueue(token)).map((photo) => photo.photoId === photoId
-      ? { ...photo, status: 'pending' as const, reason: undefined }
-      : photo);
-    await fieldStore.setPhotoQueue(token, next);
+    const next = await fieldStore.updatePhotos(token, current => current.map((photo) => photo.photoId === photoId
+      ? { ...photo, status: 'pending' as const, reason: undefined, nextAttemptAt: undefined }
+      : photo));
     setPhotoQueue(next);
     if (navigator.onLine) await processPhotoQueue();
   }, [token, processPhotoQueue]);

@@ -80,6 +80,9 @@ const TraccarPage = lazy(() =>
 const FleetPage = lazy(() =>
   import('./pages/portal/fleet').then((m) => ({ default: m.FleetPage }))
 );
+const VehicleStockPage = lazy(() =>
+  import('./pages/portal/fleet').then((m) => ({ default: m.VehicleStockPage }))
+);
 const UsersAndRolesPage = lazy(() =>
   import('./pages/portal/settings').then((m) => ({ default: m.UsersAndRolesPage }))
 );
@@ -184,6 +187,7 @@ export default function App() {
                   <Route path="product-pricing-rules" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductPricingRulesPage /></PermissionGuard>} />
                   <Route path="product" element={<Navigate to="/portal/products" replace />} />
                   <Route path="fleet" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><FleetPage /></PermissionGuard>} />
+                  <Route path="fleet/vehicles/:vehicleId/stock" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><VehicleStockPage /></PermissionGuard>} />
                   <Route path="reports/ledger-summary" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><LedgerSummaryPage /></PermissionGuard>} />
                   <Route path="reports/treks" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewTreks', 'Reports.Export']}><TrekReportPage /></PermissionGuard>} />
                   <Route path="reports/collections" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewCollections', 'Reports.Export']}><CollectionsReportPage /></PermissionGuard>} />

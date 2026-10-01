@@ -36,7 +36,27 @@ async function write(key: string, value: unknown): Promise<void> {
 
 const key = (token: string, part: string) => `${token}:${part}`;
 
+// Read/modify/write in one IndexedDB transaction to avoid losing replacements
+// queued by another tab while an upload is in flight.
+async function updatePhotos(token: string, change: (photos: QueuedPhoto[]) => QueuedPhoto[], actions?: QueuedAction[]): Promise<QueuedPhoto[]> {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const request = store.get(key(token, 'photoQueue'));
+    let next: QueuedPhoto[] = [];
+    request.onsuccess = () => {
+      next = change(request.result ?? []);
+      store.put(next, key(token, 'photoQueue'));
+      if (actions) store.put(actions, key(token, 'queue'));
+    };
+    tx.oncomplete = () => { db.close(); resolve(next); };
+    tx.onabort = tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
 export const fieldStore = {
+  updatePhotos,
   get: <T>(token: string, part: Key) => read<T>(key(token, part)),
   set: (token: string, part: Key, value: unknown) => write(key(token, part), value),
   queue: async (token: string) => (await read<QueuedAction[]>(key(token, 'queue'))) ?? [],

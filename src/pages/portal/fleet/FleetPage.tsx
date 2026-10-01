@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   FlatDataTable,
   type ColumnDef,
@@ -33,6 +34,7 @@ const VEHICLE_STATUS_FILTER_OPTIONS = [
 ];
 
 export const FleetPage: React.FC = () => {
+  const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
   const canManageVehicles = hasAnyPermission('Vehicles.Manage', 'Vehicles.Create', 'Vehicles.Edit');
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
@@ -156,7 +158,14 @@ export const FleetPage: React.FC = () => {
       header: 'Registration',
       style: { width: '130px' },
       body: (row) => (
-        <span className="font-mono text-xs text-portal-accent">{row.registrationNumber}</span>
+        <button
+          type="button"
+          onClick={() => navigate(`/portal/fleet/vehicles/${row.id}/stock`)}
+          className="font-mono text-xs text-portal-accent hover:text-portal-accent-hover hover:underline"
+          title={`Manage stock for ${row.registrationNumber}`}
+        >
+          {row.registrationNumber}
+        </button>
       ),
     },
     {
@@ -227,7 +236,7 @@ export const FleetPage: React.FC = () => {
         );
       },
     },
-  ], [vehicleMenu]);
+  ], [navigate, vehicleMenu]);
 
   return (
     <div className="space-y-6">
@@ -303,6 +312,14 @@ export const FleetPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
+              <button
+                type="button"
+                onClick={() => { const id = vehicleMenu.vehicle.id; setVehicleMenu(null); navigate(`/portal/fleet/vehicles/${id}/stock`); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
+              >
+                <i className="pi pi-box text-portal-accent text-xs w-4" />
+                <span>Manage Stock</span>
+              </button>
               <button
                 type="button"
                 onClick={() => { setEditingVehicle(vehicleMenu.vehicle); setVehicleModalVisible(true); setVehicleMenu(null); }}
