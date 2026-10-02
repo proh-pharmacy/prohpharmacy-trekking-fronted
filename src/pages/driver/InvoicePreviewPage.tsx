@@ -89,11 +89,11 @@ export const InvoicePreviewPage: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex min-h-dvh items-center justify-center bg-portal-canvas text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading invoice...</div>;
+    return <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading invoice...</div>;
   }
 
   if (!invoice) {
-    return <div className="flex min-h-dvh items-center justify-center bg-portal-canvas p-5"><div className="w-full max-w-sm rounded border border-portal-border bg-portal-surface p-6 text-center text-xs text-red-accent">{error || 'Invoice unavailable.'}</div></div>;
+    return <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-5"><div className="w-full max-w-sm rounded border border-portal-border bg-portal-surface p-6 text-center text-xs text-red-accent">{error || 'Invoice unavailable.'}</div></div>;
   }
 
   const issuedAt = invoice.stop.invoice?.issuedAt || invoice.stop.products[0]?.deliveredAt;
