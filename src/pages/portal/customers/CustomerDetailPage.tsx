@@ -239,6 +239,21 @@ export const CustomerDetailPage: React.FC = () => {
           ),
       },
       {
+        field: 'invoiceNumber',
+        header: 'Invoice',
+        style: { width: '150px' },
+        body: (row) => row.invoiceNumber ? (
+          <Link
+            to={`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`}
+            className="font-mono text-[11px] text-portal-accent hover:underline"
+          >
+            {row.invoiceNumber}
+          </Link>
+        ) : (
+          <span className="text-xs text-portal-muted">—</span>
+        ),
+      },
+      {
         field: 'paymentMethod',
         header: 'Payment',
         style: { width: '120px' },

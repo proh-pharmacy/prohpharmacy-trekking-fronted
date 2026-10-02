@@ -683,11 +683,18 @@ export function FlatDataTable<TData extends Record<string, any>>({
         );
 
       case 'DateRangeFilter':
+        const rangeValue = Array.isArray(filter.accessor)
+          ? filter.accessor.map((accessor) => {
+              const rangePart = filters[accessor];
+              if (!rangePart) return null;
+              return rangePart instanceof Date ? rangePart : new Date(rangePart);
+            })
+          : value;
         return (
           <FlatDatePicker
             label={filter.label}
             size="sm"
-            value={value}
+            value={rangeValue}
             selectionMode="range"
             onChange={(val) => handleFilterChange(filter.accessor, val)}
             placeholder={`Range for ${filter.label}`}

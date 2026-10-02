@@ -14,4 +14,5 @@ export * from './treks';
 export * from './reports';
 export * from './dataExports';
 export * from './dashboard';
+export * from './invoices';
 export { default } from './api';
