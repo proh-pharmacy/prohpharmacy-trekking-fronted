@@ -15,4 +15,5 @@ export * from './reports';
 export * from './dataExports';
 export * from './dashboard';
 export * from './invoices';
+export * from './returns';
 export { default } from './api';

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Tooltip } from 'primereact/tooltip';
 import { useAuth, useTheme } from '../../../context';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { PENDING_RETURNS_COUNT_QUERY_KEY, returnsApi } from '../../../api-client';
 import { PORTAL_NAV_SECTIONS } from './portalNavItems';
 import toast from 'react-hot-toast';
 
@@ -25,6 +27,14 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: pendingRefundCount = 0 } = useQuery({
+    queryKey: PENDING_RETURNS_COUNT_QUERY_KEY,
+    queryFn: returnsApi.getPendingCount,
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
 
   // Track responsive screen size (>= 768px is desktop)
   const [isDesktop, setIsDesktop] = useState(
@@ -77,10 +87,14 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   const filteredNavSections = PORTAL_NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) =>
-      item.label.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
-      (!item.permissions || item.permissions.length === 0 || hasAnyPermission(...item.permissions))
-    ),
+    items: section.items
+      .filter((item) =>
+        item.label.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+        (!item.permissions || item.permissions.length === 0 || hasAnyPermission(...item.permissions))
+      )
+      .map((item) => item.to === '/portal/finance/refund-approvals'
+        ? { ...item, badge: pendingRefundCount > 0 ? pendingRefundCount : undefined }
+        : item),
   })).filter((section) => section.items.length > 0);
 
   return (
@@ -249,6 +263,12 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                         isActive ? 'text-white dark:text-portal-canvas' : 'text-sidebar-accent group-hover:text-sidebar-accent'
                       }`}
                     />
+
+                    {showCollapsed && item.badge ? (
+                      <span className="absolute right-1.5 top-1.5 min-w-4 bg-red-accent px-1 text-center text-[9px] font-semibold leading-4 text-white">
+                        {item.badge}
+                      </span>
+                    ) : null}
 
                     {!showCollapsed && (
                       <span className="truncate flex-1 tracking-tight">{item.label}</span>

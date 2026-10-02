@@ -27,7 +27,7 @@ function todayStr() {
 }
 
 // ── Page ───────────────────────────────────────────────────────────────
-export const LedgerSummaryPage: React.FC = () => {
+export const CustomerBalancesPage: React.FC = () => {
   const navigate = useNavigate();
 
   // ── Summary stats (side-effected from dataMapper) ──────────────────
@@ -242,7 +242,7 @@ export const LedgerSummaryPage: React.FC = () => {
       <FlatDataTable<LedgerSummaryCustomer>
         dataSourceUrl="/ledger/summary"
         columns={columns}
-        heading="Ledger Summary"
+        heading="Customer Balances"
         hasAction
         actionName="Export Report"
         onAction={() => setExportVisible(true)}
@@ -289,7 +289,7 @@ export const LedgerSummaryPage: React.FC = () => {
       <FlatModal
         visible={exportVisible}
         onHide={resetExportModal}
-        title="Export Ledger Report"
+        title="Export Customer Balances"
         size="sm"
         footer={
           <div className="flex items-center justify-end gap-3 w-full">
@@ -370,4 +370,4 @@ export const LedgerSummaryPage: React.FC = () => {
   );
 };
 
-export default LedgerSummaryPage;
+export default CustomerBalancesPage;

@@ -92,8 +92,11 @@ const UserDetailsPage = lazy(() =>
 const OrganisationPage = lazy(() =>
   import('./pages/portal/settings').then((m) => ({ default: m.OrganisationPage }))
 );
-const LedgerSummaryPage = lazy(() =>
-  import('./pages/portal/reports/LedgerSummaryPage').then((m) => ({ default: m.LedgerSummaryPage }))
+const CustomerBalancesPage = lazy(() =>
+  import('./pages/portal/finance/CustomerBalancesPage').then((m) => ({ default: m.CustomerBalancesPage }))
+);
+const RefundApprovalsPage = lazy(() =>
+  import('./pages/portal/finance/RefundApprovalsPage').then((m) => ({ default: m.RefundApprovalsPage }))
 );
 const TrekReportPage = lazy(() =>
   import('./pages/portal/reports/TrekReportPage').then((m) => ({ default: m.TrekReportPage }))
@@ -203,7 +206,9 @@ export default function App() {
                   <Route path="fleet/vehicles/:vehicleId/stock" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><VehicleStockPage /></PermissionGuard>} />
                   <Route path="invoices" element={<InvoicesPage />} />
                   <Route path="invoices/:invoiceNumber" element={<InvoiceDetailPage />} />
-                  <Route path="reports/ledger-summary" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><LedgerSummaryPage /></PermissionGuard>} />
+                  <Route path="finance/refund-approvals" element={<RefundApprovalsPage />} />
+                  <Route path="finance/customer-balances" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><CustomerBalancesPage /></PermissionGuard>} />
+                  <Route path="reports/ledger-summary" element={<Navigate to="/portal/finance/customer-balances" replace />} />
                   <Route path="reports/treks" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewTreks', 'Reports.Export']}><TrekReportPage /></PermissionGuard>} />
                   <Route path="reports/collections" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewCollections', 'Reports.Export']}><CollectionsReportPage /></PermissionGuard>} />
                   <Route path="reports/products" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewProducts', 'Reports.Export']}><ProductsReportPage /></PermissionGuard>} />
