@@ -195,6 +195,7 @@ export interface TrekStockWarning {
   requestedPackagingQty: number;
   availablePackagingQty: number;
   packagingShortfall: number;
+  notInVehicleCatalogue: boolean;
 }
 
 export interface TrekStockCheckResult {

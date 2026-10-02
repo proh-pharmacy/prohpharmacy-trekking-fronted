@@ -90,6 +90,51 @@ export interface DriverDevice {
   traccarStatus: string | null;
 }
 
+export interface DriverTrekReport {
+  generatedAt: string;
+  trekNumber: string;
+  scheduledDate: string;
+  status: string;
+  driverName: string;
+  salesStaffName: string | null;
+  vehicleDisplayName: string;
+  regionName: string;
+  summary: {
+    totalSalesValue: number;
+    totalCollected: number;
+    totalOutstanding: number;
+    totalApprovedRefunds: number;
+    netCashOnHand: number;
+    totalStops: number;
+    stopsVisited: number;
+  };
+  collectionsByMethod: Array<{ method: string; amount: number }>;
+  stops: Array<{
+    sequence: number;
+    customerName: string;
+    invoiceNumber: string | null;
+    amountDue: number;
+    amtPaid: number;
+    balance: number;
+    paymentMethods: string[];
+    returns: Array<{
+      productName: string;
+      basicQtyReturned: number;
+      refundAmount: number | null;
+      refundMethod: string | null;
+      approvalStatus: string;
+    }>;
+  }>;
+  stockSummary: Array<{
+    productId: string;
+    productName: string;
+    basicQtyLoaded: number;
+    basicQtyDelivered: number;
+    basicQtyApprovedReturns: number;
+    basicQtyRemaining: number;
+  }>;
+}
+
 export interface DriverLocation {
   latitude: number;
   longitude: number;
@@ -268,8 +313,13 @@ export const fieldApi = {
     const response = await publicApi.post<{ token: string; url: string }>(path(token, `/treks/${encodeURIComponent(trekId)}/generate-token`));
     return response.data;
   },
-  getProducts: async (token: string, since?: string): Promise<{ products: Product[]; stopPriceOverrides: StopPriceOverrides }> => {
-    const response = await publicApi.get(path(token, '/offline/products'), { params: since ? { since } : undefined });
+  getProducts: async (token: string, since?: string, all = false): Promise<{ products: Product[]; stopPriceOverrides: StopPriceOverrides }> => {
+    const response = await publicApi.get(path(token, '/offline/products'), {
+      params: {
+        ...(since ? { since } : {}),
+        ...(all ? { all: true } : {}),
+      },
+    });
     const data = response.data;
     if (Array.isArray(data)) return { products: data as Product[], stopPriceOverrides: {} };
     return {
@@ -318,6 +368,23 @@ export const fieldApi = {
   getTrek: async (token: string): Promise<DriverTrek> => {
     const response = await publicApi.get<DriverTrek>(path(token, '/offline/trek'));
     return response.data;
+  },
+  getDriverReport: async (token: string): Promise<DriverTrekReport> => {
+    const response = await publicApi.get<DriverTrekReport>(path(token, '/report'));
+    return response.data;
+  },
+  downloadDriverReport: async (token: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await publicApi.get<Blob>(path(token, '/report/pdf'), { responseType: 'blob' });
+    const disposition = response.headers['content-disposition'] as string | undefined;
+    const encoded = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    let filename = `TrekReport.pdf`;
+    if (encoded) {
+      try { filename = decodeURIComponent(encoded.replace(/^"|"$/g, '')); }
+      catch { filename = encoded.replace(/^"|"$/g, ''); }
+    } else {
+      filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1]?.trim() || filename;
+    }
+    return { blob: response.data, filename };
   },
   completeTrek: async (token: string): Promise<DriverTrek> => {
     const response = await publicApi.post<DriverTrek>(path(token, '/complete'));

@@ -27,6 +27,7 @@ export interface Product {
   packagingUnitName: string | null;
   packagingUnitPrice: number | null;
   isActive: boolean;
+  inVehicleCatalogue?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
   vehicleStock?: {

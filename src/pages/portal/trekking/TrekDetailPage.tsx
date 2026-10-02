@@ -775,7 +775,12 @@ export const TrekDetailPage: React.FC = () => {
                 <tbody className="divide-y divide-portal-border/40">
                   {stockWarnings.map((warning) => (
                     <tr key={warning.productId}>
-                      <td className="px-3 py-2 text-xs font-semibold text-portal-text">{warning.productName}</td>
+                      <td className="px-3 py-2">
+                        <span className="block text-xs font-semibold text-portal-text">{warning.productName}</span>
+                        {warning.notInVehicleCatalogue && (
+                          <span className="mt-0.5 block text-[10px] font-medium text-portal-orange">Not in vehicle catalogue</span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
                         {formatStockUnits(warning.requestedBasicQty, warning.basicUnitName, warning.requestedPackagingQty, warning.packagingUnitName)}
                       </td>
@@ -855,7 +860,7 @@ export const TrekDetailPage: React.FC = () => {
                 </div>
               </div>
             )}
-            <p className="text-portal-muted">Syncing updates the trek prices and recalculates planned totals.</p>
+            <p className="text-portal-muted">Syncing updates the trek prices and recalculates billable totals.</p>
           </div>
         }
         cancelLabel="Close"

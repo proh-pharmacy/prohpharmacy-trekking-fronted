@@ -23,6 +23,7 @@ import { useFieldControl } from './control/useFieldControl';
 import { FieldActions, type FieldActionKind, type FieldActionRequest } from './control/FieldActions';
 import { visibleActionsForStop, visibleWalkInStopActions } from './control/offlineLifecycle';
 import { DriverDashboard } from './control/DriverDashboard';
+import { DriverTrekReportView } from './control/DriverTrekReportView';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
 import { fieldApi, type FieldCustomer, type QueuedAction, type RegionTrek } from './control/api';
@@ -508,6 +509,7 @@ export const DriverPage: React.FC = () => {
   const [completingTrek, setCompletingTrek] = useState(false);
   const [stockWarnings, setStockWarnings] = useState<TrekStockWarning[]>([]);
   const [stockWarningVisible, setStockWarningVisible] = useState(false);
+  const [stockWarningAction, setStockWarningAction] = useState<'start' | 'complete' | null>(null);
   const switchTrek = async (trekId: string): Promise<boolean> => {
     if (!navigator.onLine) { toast.error('Online required to switch.'); return false; }
     try {
@@ -542,6 +544,57 @@ export const DriverPage: React.FC = () => {
       toast.success('Trek completed and ledger synced.');
     } catch (completionError) {
       toast.error(completionError instanceof Error ? completionError.message : 'The trek could not be completed.');
+    } finally {
+      setCompletingTrek(false);
+    }
+  };
+
+  const handleCompleteRequest = async () => {
+    if (!online) {
+      toast.error('Connect to the internet before completing the trek.');
+      return;
+    }
+    if (!trek) return;
+    setCompletingTrek(true);
+    try {
+      const checkItems = new Map<string, TrekStockCheckItem>();
+      trek.stops.forEach((stop) => {
+        stop.products.forEach((product) => {
+          const row = deliveryRows[product.stopProductId];
+          const current = checkItems.get(product.productId) ?? {
+            productId: product.productId,
+            basicQty: 0,
+            packagingQty: 0,
+          };
+          current.basicQty += numberInputValue(row?.basicQtyDelivered)
+            ?? Number(product.basicQtyDelivered ?? 0);
+          current.packagingQty += numberInputValue(row?.packagingQtyDelivered)
+            ?? Number(product.packagingQtyDelivered ?? 0);
+          checkItems.set(product.productId, current);
+        });
+      });
+      queue.filter((action) => action.type === 'RecordUnplannedSale' && action.status === 'pending')
+        .forEach((action) => {
+          const productId = String(action.payload.productId || '');
+          if (!productId) return;
+          const current = checkItems.get(productId) ?? { productId, basicQty: 0, packagingQty: 0 };
+          current.basicQty += Number(action.payload.basicQtyDelivered ?? 0);
+          current.packagingQty += Number(action.payload.packagingQtyDelivered ?? 0);
+          checkItems.set(productId, current);
+        });
+      const items = [...checkItems.values()];
+      if (items.length > 0) {
+        const result = await treksApi.checkStockLoadsByDriverToken(token, items);
+        if (result.hasWarnings && result.warnings.length > 0) {
+          setStockWarningAction('complete');
+          setStockWarnings(result.warnings);
+          setStockWarningVisible(true);
+          return;
+        }
+      }
+      setCompleteDialogOpen(true);
+    } catch (checkError: any) {
+      toast.error(checkError.response?.data?.detail || checkError.response?.data?.message || 'Failed to check vehicle stock.');
     } finally {
       setCompletingTrek(false);
     }
@@ -584,6 +637,7 @@ export const DriverPage: React.FC = () => {
         try {
           const result = await treksApi.checkStockLoadsByDriverToken(token, items);
           if (result.hasWarnings && result.warnings.length > 0) {
+            setStockWarningAction('start');
             setStockWarnings(result.warnings);
             setStockWarningVisible(true);
             return;
@@ -599,8 +653,15 @@ export const DriverPage: React.FC = () => {
     }
   };
 
-  const continueStartTrek = async () => {
+  const continueStockAction = async () => {
+    const action = stockWarningAction;
     setStockWarningVisible(false);
+    setStockWarningAction(null);
+    if (action === 'complete') {
+      await handleCompleteTrek();
+      setStockWarnings([]);
+      return;
+    }
     setStartingTrek(true);
     try {
       await performStartTrek();
@@ -795,7 +856,7 @@ export const DriverPage: React.FC = () => {
                     <button
                       type="button"
                       disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
-                      onClick={() => setCompleteDialogOpen(true)}
+                      onClick={() => void handleCompleteRequest()}
                       className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Complete trek"
                     >
@@ -826,6 +887,7 @@ export const DriverPage: React.FC = () => {
               <FieldActions
                 trek={trek}
                 products={products}
+                syncProducts={syncProducts}
                 stopPriceOverrides={stopPriceOverrides}
                 customers={customers}
                 districts={districts}
@@ -1031,6 +1093,7 @@ export const DriverPage: React.FC = () => {
               <FieldActions
                 trek={trek}
                 products={products}
+                syncProducts={syncProducts}
                 stopPriceOverrides={stopPriceOverrides}
                 customers={customers}
                 districts={districts}
@@ -1126,6 +1189,7 @@ export const DriverPage: React.FC = () => {
               />
             </div>
           )}
+          renderReportView={() => <DriverTrekReportView token={token} online={online} />}
           renderActionsView={() => (
             <div className="space-y-4">
               <div className="border-b border-portal-border/60 pb-3">
@@ -1136,6 +1200,7 @@ export const DriverPage: React.FC = () => {
               <FieldActions
                 trek={trek}
                 products={products}
+                syncProducts={syncProducts}
                 stopPriceOverrides={stopPriceOverrides}
                 customers={customers}
                 districts={districts}
@@ -1150,17 +1215,14 @@ export const DriverPage: React.FC = () => {
           renderOfflineView={() => (
             <div className="grid grid-cols-1 gap-4">
               <div className="border-b border-portal-border/60 pb-3">
-                <div>
-                  <h1 className="text-base font-semibold text-portal-text sm:text-lg">Offline & Sync Center</h1>
-                  <p className="text-xs text-portal-muted">Local IndexedDB database & sync status</p>
-                </div>
+                <h1 className="text-base font-semibold text-portal-text sm:text-lg">Offline &amp; Sync Center</h1>
               </div>
 
               <section className="bg-portal-surface border border-portal-border/60 rounded p-4 sm:p-5 space-y-4 shadow-md">
                 <div>
-                  <h2 className="text-sm font-semibold text-portal-text">Device Database Storage</h2>
+                  <h2 className="text-sm font-semibold text-portal-text">Offline data</h2>
                   <p className="text-[11px] text-portal-muted">
-                    Saved in this device’s IndexedDB for complete offline use.
+                    Saved on this device and available without internet.
                   </p>
                 </div>
 
@@ -1339,9 +1401,10 @@ export const DriverPage: React.FC = () => {
         visible={stockWarningVisible}
         onHide={() => {
           setStockWarningVisible(false);
+          setStockWarningAction(null);
           setStockWarnings([]);
         }}
-        onConfirm={continueStartTrek}
+        onConfirm={continueStockAction}
         title={
           <span className="inline-flex items-center gap-2">
             <span
@@ -1355,11 +1418,11 @@ export const DriverPage: React.FC = () => {
         }
         showIcon={false}
         size="lg"
-        loading={startingTrek}
+        loading={startingTrek || completingTrek}
         message={
           <div className="space-y-3">
             <p className="text-xs text-portal-text">
-              Some trek quantities exceed the vehicle's current stock. You can review the shortages and continue starting the trek.
+              Some trek quantities exceed the vehicle's current stock. You can review the shortages and continue {stockWarningAction === 'complete' ? 'completing' : 'starting'} the trek.
             </p>
             <div className="overflow-hidden rounded border border-portal-border/60">
               <table className="w-full text-[11px]">
@@ -1379,7 +1442,12 @@ export const DriverPage: React.FC = () => {
                     ].filter(Boolean).join(' · ');
                     return (
                       <tr key={warning.productId}>
-                        <td className="px-3 py-2 text-xs font-semibold text-portal-text">{warning.productName}</td>
+                        <td className="px-3 py-2">
+                          <span className="block text-xs font-semibold text-portal-text">{warning.productName}</span>
+                          {warning.notInVehicleCatalogue && (
+                            <span className="mt-0.5 block text-[10px] font-medium text-portal-orange">Not in vehicle catalogue</span>
+                          )}
+                        </td>
                         <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
                           {fmt(warning.requestedBasicQty, warning.requestedPackagingQty)}
                         </td>
@@ -1395,9 +1463,12 @@ export const DriverPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {stockWarningAction === 'complete' && (
+              <p className="text-portal-orange">Completing the trek saves its deliveries permanently and prevents further changes.</p>
+            )}
           </div>
         }
-        confirmLabel="Start anyway"
+        confirmLabel="Continue anyway"
         variant="warning"
       />
 
@@ -1411,7 +1482,7 @@ export const DriverPage: React.FC = () => {
             <FlatButton size="sm" variant="ghost" disabled={completingTrek} onClick={() => setCompleteDialogOpen(false)}>
               Cancel
             </FlatButton>
-            <FlatButton size="sm" variant="primary" loading={completingTrek} onClick={() => void handleCompleteTrek()}>
+            <FlatButton size="sm" variant="primary" loading={completingTrek} disabled={completingTrek} onClick={() => void handleCompleteTrek()}>
               Complete trek
             </FlatButton>
           </>
@@ -1420,7 +1491,6 @@ export const DriverPage: React.FC = () => {
         <p className="text-sm text-portal-text">
           This will sync any pending field actions, post the final ledger entries, and lock the trek. You cannot add stops, deliveries, sales, or returns afterwards.
         </p>
-        {!online && <p className="mt-3 text-xs text-yellow-400">Connect to the internet before completing this trek.</p>}
         {pendingCount > 0 && <p className="mt-3 text-xs text-portal-muted">{pendingCount} pending item{pendingCount === 1 ? '' : 's'} will be synced first.</p>}
       </FlatModal>
     </div>

@@ -44,13 +44,14 @@ export function useFieldControl(token: string) {
     const since = delta ? await fieldStore.get<string>(token, 'lastSyncedAt') : undefined;
     // The timestamp is shared by all seeds. If one local table is empty,
     // fetch its full seed before applying deltas to it.
-    const [cachedProducts, cachedCustomers, cachedDistricts, customerSeedVersion] = await Promise.all([
+    const [cachedProducts, cachedCustomers, cachedDistricts, customerSeedVersion, productSeedVersion] = await Promise.all([
       fieldStore.get<Product[]>(token, 'products'),
       fieldStore.get<FieldCustomer[]>(token, 'customers'),
       fieldStore.get<FieldDistrict[]>(token, 'districts'),
       fieldStore.get<number>(token, 'customerSeedVersion'),
+      fieldStore.get<number>(token, 'productSeedVersion'),
     ]);
-    const productSince = cachedProducts?.length ? since : undefined;
+    const productSince = cachedProducts?.length && productSeedVersion === 2 ? since : undefined;
     // Older installs hold the previous slim customer seed. Download the full
     // response once before using deltas so locations and representatives exist.
     const customerSince = cachedCustomers?.length && customerSeedVersion === 3 ? since : undefined;
@@ -77,6 +78,7 @@ export function useFieldControl(token: string) {
       const data = productSince ? mergeById(prior, fetched) : fetched;
       setProducts(data); await fieldStore.set(token, 'products', data);
       setStopPriceOverrides(newOverrides); await fieldStore.set(token, 'stopPriceOverrides', newOverrides);
+      await fieldStore.set(token, 'productSeedVersion', 2);
     }
     if (results[2].status === 'fulfilled') {
       const prior = (await fieldStore.get<FieldCustomer[]>(token, 'customers')) ?? [];
@@ -140,12 +142,13 @@ export function useFieldControl(token: string) {
     return complete;
   }, [token]);
 
-  const syncProducts = useCallback(async () => {
+  const syncProducts = useCallback(async (all = false) => {
     setRefreshing(true);
     try {
-      const { products: data, stopPriceOverrides: newOverrides } = await fieldApi.getProducts(token);
+      const { products: data, stopPriceOverrides: newOverrides } = await fieldApi.getProducts(token, undefined, all);
       await fieldStore.set(token, 'products', data);
       await fieldStore.set(token, 'stopPriceOverrides', newOverrides);
+      await fieldStore.set(token, 'productSeedVersion', 2);
       setProducts(data);
       setStopPriceOverrides(newOverrides);
       return data.length;

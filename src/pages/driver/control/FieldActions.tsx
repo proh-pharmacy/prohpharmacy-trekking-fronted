@@ -24,6 +24,7 @@ interface Props {
   customers: FieldCustomer[];
   districts: FieldDistrict[];
   queue: QueuedAction[];
+  syncProducts: (all?: boolean) => Promise<number>;
   enqueue: (type: ActionType, payload: Record<string, unknown>, photos?: CustomerPhotos) => Promise<string>;
   queuePhoto: (customerClientId: string, kind: 'premises' | 'portrait', file: File) => Promise<string>;
   request?: FieldActionRequest | null;
@@ -54,10 +55,12 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, syncProducts, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
+  const [productScope, setProductScope] = useState<'vehicle' | 'all'>('vehicle');
+  const [loadingAllProducts, setLoadingAllProducts] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'capturing' | 'captured' | 'unavailable'>('idle');
   const [premisesPhoto, setPremisesPhoto] = useState<File | null>(null);
   const [portraitPhoto, setPortraitPhoto] = useState<File | null>(null);
@@ -82,7 +85,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     />
   );
   const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="sm" />;
-  const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setKind(next); };
+  const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setProductScope('vehicle'); setKind(next); };
   const requestedKind = request?.kind;
   const requestedTrekId = request?.trekId;
   const requestedStopId = request?.stopId;
@@ -92,6 +95,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
   useEffect(() => {
     if (!requestedKind) { setKind(null); return; }
     setValues({ ...(requestedKind === 'stop' && { trekId: fixedTrekId || requestedTrekId || trek.trekId }), ...(requestedStopId && { stopId: `id:${requestedStopId}` }), ...(requestedStopClientId && { stopId: `client:${requestedStopClientId}` }), ...(requestedSequence && { sequence: String(requestedSequence) }) });
+    setProductScope('vehicle');
     setKind(requestedKind);
   }, [requestedKind, requestedTrekId, requestedStopId, requestedStopClientId, requestedSequence, requestedNonce, fixedTrekId, trek.trekId]);
   const pendingCustomers = queue
@@ -109,6 +113,15 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ...pendingStops.filter((action) => !fixedTrekId || action.payload.trekId === fixedTrekId).map((action) => ({ label: `Additional stop ${action.payload.sequence} · saved on device`, value: `client:${action.clientId}` })),
   ];
   const selectedProduct = products.find((product) => product.id === values.productId);
+  const visibleProducts = products.filter((product) =>
+    product.isActive !== false && (productScope === 'all' || product.inVehicleCatalogue !== false));
+  const productChoices = visibleProducts.map((product) => ({
+    label: product.name,
+    value: product.id,
+    inVehicleCatalogue: product.inVehicleCatalogue !== false,
+    basicUnitName: product.basicUnitName,
+    packagingUnitName: product.packagingUnitName,
+  }));
   // Resolve the stop-specific price if the customer has a custom markup rule; fall back to region price
   const rawStopId = values.stopId ?? '';
   const resolvedStopId = rawStopId.startsWith('id:') ? rawStopId.slice(3) : null;
@@ -130,7 +143,24 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ? 0
     : Math.max(0, calculatedSaleAmount - saleAmountPaid);
   const selectedStop = values.stopId ?? '';
-  const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
+  const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setProductScope('vehicle'); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
+  const changeProductScope = async (scope: 'vehicle' | 'all') => {
+    setProductScope(scope);
+    set('productId', '');
+    if (scope !== 'all' || products.some((product) => product.inVehicleCatalogue === false)) return;
+    if (!navigator.onLine) {
+      toast.error('Connect to load the full product catalogue.');
+      return;
+    }
+    setLoadingAllProducts(true);
+    try {
+      await syncProducts(true);
+    } catch {
+      toast.error('Could not load the full product catalogue.');
+    } finally {
+      setLoadingAllProducts(false);
+    }
+  };
   const choosePhoto = (setter: (file: File | null) => void, previewSetter: (preview: string | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -270,7 +300,42 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         </>}
         {(kind === 'sale' || kind === 'return') && <>
           {!(modalOnly && (requestedStopId || requestedStopClientId)) && select('stopId', 'Stop', stopChoices, true)}
-          {select('productId', 'Product', products.filter((product) => product.isActive !== false).map((product) => ({ label: product.name, value: product.id })), true)}
+          <div className="col-span-full flex items-center gap-4 text-[11px]">
+            <button type="button" onClick={() => void changeProductScope('vehicle')} className={`transition-colors ${productScope === 'vehicle' ? 'font-semibold text-portal-accent' : 'text-portal-muted hover:text-portal-text'}`}>Vehicle catalogue</button>
+            <button type="button" onClick={() => void changeProductScope('all')} className={`inline-flex items-center gap-1.5 transition-colors ${productScope === 'all' ? 'font-semibold text-portal-accent' : 'text-portal-muted hover:text-portal-text'}`}>
+              {loadingAllProducts && <i className="pi pi-spin pi-spinner text-[10px]" />}
+              All products
+            </button>
+          </div>
+          <FlatDropdown
+            label="Product"
+            value={values.productId ?? ''}
+            options={productChoices}
+            onChange={(value) => set('productId', value ?? '')}
+            optionLabel="label"
+            optionValue="value"
+            itemTemplate={(option) => (
+              <div className="min-w-0">
+                <span className="block truncate text-xs text-portal-text">{option.label}</span>
+                <span className={`block truncate text-[11px] ${option.inVehicleCatalogue ? 'text-portal-muted' : 'text-amber-400'}`}>
+                  {option.inVehicleCatalogue
+                    ? [option.packagingUnitName, option.basicUnitName].filter(Boolean).join(' / ')
+                    : 'Not in vehicle catalogue'}
+                </span>
+              </div>
+            )}
+            placeholder={loadingAllProducts ? 'Loading products...' : 'Select a product'}
+            disabled={loadingAllProducts}
+            required
+            filter
+            size="sm"
+          />
+          {selectedProduct?.inVehicleCatalogue === false && (
+            <p className="self-end pb-2 text-[11px] text-amber-400">
+              <i className="pi pi-exclamation-triangle mr-1.5 text-[10px]" />
+              This product is not loaded on this vehicle. Ask an admin to load it, then sync products again.
+            </p>
+          )}
           {number('basicQty', kind === 'sale' ? `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}` : `Basic qty returned${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
           {selectedProduct?.packagingUnitName && number('packagingQty', `${kind === 'sale' ? 'Packaging qty delivered' : 'Packaging qty returned'} (${selectedProduct.packagingUnitName})`)}
           {kind === 'sale' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
