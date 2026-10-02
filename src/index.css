@@ -10,9 +10,11 @@
   --color-light-green: #F1FBF4;
   --color-red-accent: #DE2512;
   --color-red-accent-hover: #C51F0E;
+  --color-red-accent-light: #FF8A80;
   --color-main-text: #102218;
   --color-muted-text: #5F6F64;
   --color-light-border: #DDE9E0;
+  --color-invoice-backdrop: #22272e;
 
   /* Portal Dynamic Theme System */
   --color-portal-canvas: var(--color-portal-canvas);

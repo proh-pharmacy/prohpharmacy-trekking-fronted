@@ -25,6 +25,8 @@ export interface TrekStopProduct {
 
 export interface TrekStop {
   stopId: string;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
   sequence: number;
   customerAccountId: string;
   customerName: string;
@@ -242,6 +244,9 @@ export interface DriverReturn {
 
 export interface DriverStop {
   stopId: string;
+  customerAccountId?: string;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
   sequence: number;
   customerName: string;
   customerCode: string;

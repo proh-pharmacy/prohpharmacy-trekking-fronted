@@ -1,6 +1,7 @@
 import type { CustomerIdentification } from '../../../api-client/customerDocuments';
 import { baseURL, publicApi } from '../../../api-client/api';
 import { treksApi, type DriverTrek, type DriverReturn } from '../../../api-client/treks';
+import type { StockItem } from '../../../api-client/vehicleStock';
 import type { Product } from '../../../api-client/products';
 import type { CustomerPerson } from '../../../api-client/customers';
 
@@ -75,6 +76,81 @@ export interface GpsFix {
   accuracyMetres: number;
 }
 
+export interface ReturnableInvoiceLineItem {
+  productId: string;
+  productName: string;
+  basicUnitName: string | null;
+  packagingUnitName: string | null;
+  basicQtyDelivered: number | null;
+  packagingQtyDelivered: number | null;
+  basicUnitPrice: number;
+  packagingUnitPrice: number | null;
+}
+
+export interface ReturnableInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  issuedAt: string;
+  trekkingTripId: string;
+  trekkingTripStopId: string;
+  totalAmount: number;
+  totalPaid: number;
+  balance: number;
+  lineItems: ReturnableInvoiceLineItem[];
+}
+
+export interface DriverBatchReturnResponse {
+  stopId: string;
+  stopWasAutoAdded: boolean;
+  returns: DriverReturn[];
+}
+
+export interface DriverInvoicePreviewResponse {
+  trekNumber: string;
+  scheduledDate: string;
+  trekStatus: string;
+  regionName: string;
+  driverName: string;
+  salesStaffName: string | null;
+  vehicleDisplayName: string;
+  stop: {
+    stopId: string;
+    sequence: number;
+    isWalkIn: boolean;
+    customer: {
+      id: string;
+      customerCode: string;
+      businessName: string;
+      tradingName: string | null;
+      primaryPhoneNumber: string | null;
+      whatsAppNumber: string | null;
+      regionName: string | null;
+    };
+    invoice: {
+      id: string;
+      invoiceNumber: string;
+      status: string;
+      issuedAt: string;
+    } | null;
+    products: Array<{
+      productId: string;
+      productName: string;
+      basicUnitName: string;
+      packagingUnitName: string | null;
+      basicQtyDelivered: number;
+      packagingQtyDelivered: number | null;
+      basicUnitPrice: number;
+      packagingUnitPrice: number | null;
+      lineTotal: number;
+      amtPaid: number | null;
+      balance: number | null;
+      paymentMethod: string | null;
+      deliveredAt: string;
+    }>;
+    totals: { amountDue: number; amtPaid: number; balance: number };
+  };
+}
+
 export interface DriverDevice {
   deviceId: string;
   deviceName: string;
@@ -104,6 +180,11 @@ export interface DriverTrekReport {
     totalCollected: number;
     totalOutstanding: number;
     totalApprovedRefunds: number;
+    totalPendingRefunds: number;
+    totalRejectedRefunds: number;
+    approvedRefundCount: number;
+    pendingRefundCount: number;
+    rejectedRefundCount: number;
     netCashOnHand: number;
     totalStops: number;
     stopsVisited: number;
@@ -112,6 +193,7 @@ export interface DriverTrekReport {
   stops: Array<{
     sequence: number;
     customerName: string;
+    invoiceId: string | null;
     invoiceNumber: string | null;
     amountDue: number;
     amtPaid: number;
@@ -132,6 +214,24 @@ export interface DriverTrekReport {
     basicQtyDelivered: number;
     basicQtyApprovedReturns: number;
     basicQtyRemaining: number;
+  }>;
+  refunds: Array<{
+    returnId: string;
+    sequence: number;
+    customerName: string;
+    invoiceId: string | null;
+    invoiceNumber: string | null;
+    productId: string;
+    productName: string;
+    basicQtyReturned: number;
+    packagingQtyReturned: number | null;
+    refundAmount: number | null;
+    refundMethod: string | null;
+    approvalStatus: string;
+    reason: string | null;
+    rejectionReason: string | null;
+    recordedAt: string;
+    approvedAt: string | null;
   }>;
 }
 
@@ -373,6 +473,10 @@ export const fieldApi = {
     const response = await publicApi.get<DriverTrekReport>(path(token, '/report'));
     return response.data;
   },
+  getVehicleStock: async (token: string): Promise<StockItem[]> => {
+    const response = await publicApi.get<StockItem[]>(path(token, '/vehicle-stock'));
+    return response.data;
+  },
   downloadDriverReport: async (token: string): Promise<{ blob: Blob; filename: string }> => {
     const response = await publicApi.get<Blob>(path(token, '/report/pdf'), { responseType: 'blob' });
     const disposition = response.headers['content-disposition'] as string | undefined;
@@ -413,8 +517,24 @@ export const fieldApi = {
     const response = await publicApi.post(path(token, `/stops/${stopId}/products/unplanned`), payload);
     return response.data;
   },
-  recordReturn: async (token: string, stopId: string, payload: Record<string, unknown>): Promise<DriverReturn> => {
-    const response = await publicApi.post<DriverReturn>(path(token, `/stops/${stopId}/returns`), payload);
+  getCustomerInvoices: async (token: string, customerId: string, filters?: { from?: string; to?: string; invoiceNumber?: string }): Promise<ReturnableInvoice[]> => {
+    const response = await publicApi.get<ReturnableInvoice[]>(path(token, `/customers/${encodeURIComponent(customerId)}/invoices`), {
+      params: {
+        ...(filters?.from ? { from: filters.from } : {}),
+        ...(filters?.to ? { to: filters.to } : {}),
+        ...(filters?.invoiceNumber?.trim() ? { invoiceNumber: filters.invoiceNumber.trim() } : {}),
+      },
+    });
+    return response.data;
+  },
+  getInvoicePreview: async (token: string, customerCode: string): Promise<DriverInvoicePreviewResponse> => {
+    const response = await publicApi.get<DriverInvoicePreviewResponse>(
+      path(token, `/stops/by-customer/${encodeURIComponent(customerCode)}`),
+    );
+    return response.data;
+  },
+  recordCustomerReturns: async (token: string, payload: Record<string, unknown>): Promise<DriverBatchReturnResponse> => {
+    const response = await publicApi.post<DriverBatchReturnResponse>(path(token, '/returns'), payload);
     return response.data;
   },
   voidReturn: async (token: string, stopId: string, returnId: string) => {

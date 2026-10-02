@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetTableData } from '../../../components/data-table';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
+import type { StockItem } from '../../../api-client/vehicleStock';
 import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek, type StopPriceOverrides } from './api';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
@@ -25,6 +26,7 @@ export function useFieldControl(token: string) {
   const [districts, setDistricts] = useState<FieldDistrict[]>([]);
   const [regionTreks, setRegionTreks] = useState<RegionTrek[]>([]);
   const [assignedTreks, setAssignedTreks] = useState<RegionTrek[]>([]);
+  const [vehicleStock, setVehicleStock] = useState<StockItem[]>([]);
   const [queue, setQueue] = useState<QueuedAction[]>([]);
   const [photoQueue, setPhotoQueue] = useState<QueuedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export function useFieldControl(token: string) {
     const started = new Date().toISOString();
     const results = await Promise.allSettled([
       fieldApi.getTrek(token), fieldApi.getProducts(token, productSince),
-      fieldApi.getCustomers(token, customerSince), fieldApi.getDistricts(token, districtSince), fieldApi.getRegionTreks(token), fieldApi.getAssignedTreks(token),
+      fieldApi.getCustomers(token, customerSince), fieldApi.getDistricts(token, districtSince), fieldApi.getRegionTreks(token), fieldApi.getAssignedTreks(token), fieldApi.getVehicleStock(token),
     ]);
     const ready = results.slice(0, 3).every((result) => result.status === 'fulfilled');
     controlAvailableRef.current = ready; setControlAvailable(ready);
@@ -128,6 +130,10 @@ export function useFieldControl(token: string) {
     if (results[5].status === 'fulfilled') {
       setAssignedTreks(results[5].value);
       await fieldStore.set(token, 'assignedTreks', results[5].value);
+    }
+    if (results[6].status === 'fulfilled') {
+      setVehicleStock(results[6].value);
+      await fieldStore.set(token, 'vehicleStock', results[6].value);
     }
     const complete = results.every((result) => result.status === 'fulfilled');
     if (!complete) {
@@ -426,16 +432,16 @@ export function useFieldControl(token: string) {
     if (!token) { setError('Invalid field link.'); setLoading(false); return; }
     (async () => {
       try {
-        const [savedTrek, savedProducts, savedStopPriceOverrides, savedCustomers, savedDistricts, savedRegionTreks, savedAssignedTreks, savedQueue, savedPhotos, savedSyncTime] = await Promise.all([
+        const [savedTrek, savedProducts, savedStopPriceOverrides, savedCustomers, savedDistricts, savedRegionTreks, savedAssignedTreks, savedVehicleStock, savedQueue, savedPhotos, savedSyncTime] = await Promise.all([
           fieldStore.get<DriverTrek>(token, 'trek'), fieldStore.get<Product[]>(token, 'products'),
           fieldStore.get<StopPriceOverrides>(token, 'stopPriceOverrides'),
-          fieldStore.get<FieldCustomer[]>(token, 'customers'), fieldStore.get<FieldDistrict[]>(token, 'districts'), fieldStore.get<RegionTrek[]>(token, 'regionTreks'), fieldStore.get<RegionTrek[]>(token, 'assignedTreks'),
+          fieldStore.get<FieldCustomer[]>(token, 'customers'), fieldStore.get<FieldDistrict[]>(token, 'districts'), fieldStore.get<RegionTrek[]>(token, 'regionTreks'), fieldStore.get<RegionTrek[]>(token, 'assignedTreks'), fieldStore.get<StockItem[]>(token, 'vehicleStock'),
           fieldStore.queue(token), fieldStore.photoQueue(token), fieldStore.get<string>(token, 'lastSyncedAt'),
         ]);
         if (!alive) return;
         if (savedTrek) setTrek(savedTrek);
         setProducts(savedProducts ?? []); setStopPriceOverrides(savedStopPriceOverrides ?? {}); setCustomers(savedCustomers ?? []);
-        setDistricts(savedDistricts ?? []); setRegionTreks(savedRegionTreks ?? []); setAssignedTreks(savedAssignedTreks ?? []); setQueue(savedQueue); setPhotoQueue(savedPhotos ?? []);
+        setDistricts(savedDistricts ?? []); setRegionTreks(savedRegionTreks ?? []); setAssignedTreks(savedAssignedTreks ?? []); setVehicleStock(savedVehicleStock ?? []); setQueue(savedQueue); setPhotoQueue(savedPhotos ?? []);
         setLastSyncedAt(savedSyncTime ?? null);
         if (savedTrek) setLoading(false);
         if (navigator.onLine) { await refresh(true); await sync(); }
@@ -634,5 +640,5 @@ export function useFieldControl(token: string) {
     if (navigator.onLine) await processPhotoQueue();
   }, [token, processPhotoQueue]);
 
-  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
+  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
 }

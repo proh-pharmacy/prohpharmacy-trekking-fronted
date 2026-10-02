@@ -9,7 +9,7 @@ import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, ty
 import { fmtGhs, formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber, parseNumericInput } from '../../../lib/utils';
 import { CustomerModal } from '../../portal/customers/components/CustomerModal';
 
-export type FieldActionKind = 'customer' | 'stop' | 'sale' | 'return';
+export type FieldActionKind = 'customer' | 'stop' | 'sale';
 export interface FieldActionRequest { kind: FieldActionKind; trekId?: string; stopId?: string; stopClientId?: string; sequence?: number; nonce: number }
 type Values = Record<string, string>;
 const CUSTOMER_TYPES = ['RetailPharmacy', 'WholesalePharmacy', 'OTCMedicineSeller', 'Clinic', 'Hospital', 'ChemicalShop', 'LicensedHealthFacility', 'Other'];
@@ -134,10 +134,6 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
       + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
     : 0;
-  const calculatedReturnAmount = selectedProduct && kind === 'return'
-    ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
-      + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
-    : 0;
   const saleAmountPaid = values.amount?.trim() ? parseNumericInput(values.amount) : null;
   const saleBalance = saleAmountPaid == null || !Number.isFinite(saleAmountPaid)
     ? 0
@@ -202,31 +198,17 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         const reference = values.customer.startsWith('client:') ? { customerClientId: values.customer.slice(7) } : { customerId: values.customer.slice(3) };
         await enqueue('AddWalkInStop', { trekId: targetTrekId, ...reference, sequence: parseNumericInput(values.sequence),
           ...(values.notes && { notes: values.notes.trim() }), ...(gps && { gps }) });
-      } else if (kind === 'sale' || kind === 'return') {
+      } else if (kind === 'sale') {
         if (!selectedStop || !values.productId || !values.basicQty || parseNumericInput(values.basicQty) <= 0) throw new Error('Select a stop, product and positive basic quantity.');
-        if (kind === 'return' && !values.paymentMethod) throw new Error('Select a refund method.');
-        if (kind === 'return' && calculatedReturnAmount <= 0) throw new Error('The calculated refund must be greater than zero.');
         const stopReference = selectedStop.startsWith('client:') ? { stopClientId: selectedStop.slice(7) } : { stopId: selectedStop.slice(3) };
-        if (kind === 'sale') {
-          await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId,
-            basicUnitPrice: resolvedBasicUnitPrice,
-            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
-            basicQtyDelivered: parseNumericInput(values.basicQty),
-            ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
-            ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
-            ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
-            ...(values.notes && { notes: values.notes.trim() }) });
-        } else {
-          const gps = await captureGps();
-          await enqueue('RecordReturn', { ...stopReference, productId: values.productId,
-            basicUnitPrice: resolvedBasicUnitPrice,
-            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
-            basicQtyReturned: parseNumericInput(values.basicQty),
-            ...(values.packagingQty && { packagingQtyReturned: parseNumericInput(values.packagingQty) }),
-            refundAmount: calculatedReturnAmount,
-            ...(values.paymentMethod && { refundMethod: values.paymentMethod }),
-            ...(values.notes && { reason: values.notes.trim() }), ...(gps && { gps }) });
-        }
+        await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId,
+          basicUnitPrice: resolvedBasicUnitPrice,
+          ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
+          basicQtyDelivered: parseNumericInput(values.basicQty),
+          ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
+          ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
+          ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
+          ...(values.notes && { notes: values.notes.trim() }) });
       }
       toast.success('Saved on this device. It will sync when connected.');
       close();
@@ -245,16 +227,15 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         {!trek.isLocked && <ActionTile icon="pi-map-marker" title="Add additional stop" description="Add a customer visit to this trek." onClick={() => open('stop')} />}
         {!!stopChoices.length && <>
           <ActionTile icon="pi-shopping-cart" title="Unplanned sale" description="Record a product sold at a stop." onClick={() => open('sale')} />
-          <ActionTile icon="pi-replay" title="Record return" description="Log a product returned by a customer." onClick={() => open('return')} />
         </>}
       </div>
       <p className="flex items-center gap-2 text-[11px] text-portal-muted"><i className="pi pi-database text-portal-accent" aria-hidden="true" />{backendReady ? 'Saved on this device · syncs when connected' : 'Saved on this device · upload when the backend is available'}</p>
     </div>}
-    <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale', return: 'Record return' }[kind ?? 'customer']} size="md"
-      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (trek.isLocked && kind !== 'customer') || (kind === 'sale' && calculatedSaleAmount <= 0) || (kind === 'return' && calculatedReturnAmount <= 0)}>Save action</FlatButton></>}> 
+    <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale' }[kind ?? 'customer']} size="md"
+      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (trek.isLocked && kind !== 'customer') || (kind === 'sale' && calculatedSaleAmount <= 0)}>Save action</FlatButton></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {kind === 'stop' && !customerChoices.length && <p className="col-span-full text-xs text-yellow-400">Customer list is empty. Download offline customers or register a new customer first.</p>}
-        {(kind === 'sale' || kind === 'return') && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
+        {kind === 'sale' && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
         {kind === 'customer' && <div className="col-span-full space-y-3">
           <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
           <div className="h-px bg-portal-border" />
@@ -298,7 +279,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         {kind === 'stop' && <>
           {select('customer', 'Customer', customerChoices, true)} {number('sequence', 'Stop sequence', true, 1)} {text('notes', 'Notes')}
         </>}
-        {(kind === 'sale' || kind === 'return') && <>
+        {kind === 'sale' && <>
           {!(modalOnly && (requestedStopId || requestedStopClientId)) && select('stopId', 'Stop', stopChoices, true)}
           <div className="col-span-full flex items-center gap-4 text-[11px]">
             <button type="button" onClick={() => void changeProductScope('vehicle')} className={`transition-colors ${productScope === 'vehicle' ? 'font-semibold text-portal-accent' : 'text-portal-muted hover:text-portal-text'}`}>Vehicle catalogue</button>
@@ -336,14 +317,13 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
               This product is not loaded on this vehicle. Ask an admin to load it, then sync products again.
             </p>
           )}
-          {number('basicQty', kind === 'sale' ? `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}` : `Basic qty returned${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
-          {selectedProduct?.packagingUnitName && number('packagingQty', `${kind === 'sale' ? 'Packaging qty delivered' : 'Packaging qty returned'} (${selectedProduct.packagingUnitName})`)}
-          {kind === 'sale' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
-          {kind === 'return' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated return amount</span><span className="text-sm font-semibold text-portal-orange">{fmtGhs(calculatedReturnAmount)}</span></div>}
-          {select('paymentMethod', kind === 'sale' ? 'Payment method' : 'Refund method', options(PAYMENTS), kind === 'return')}
-          {kind === 'sale' && number('amount', 'Amount paid')}
-          {kind === 'sale' && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>}
-          {text('notes', kind === 'sale' ? 'Notes' : 'Reason')}
+          {number('basicQty', `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
+          {selectedProduct?.packagingUnitName && number('packagingQty', `Packaging qty delivered (${selectedProduct.packagingUnitName})`)}
+          {selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
+          {select('paymentMethod', 'Payment method', options(PAYMENTS))}
+          {number('amount', 'Amount paid')}
+          <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>
+          {text('notes', 'Notes')}
         </>}
       </div>
     </FlatModal>

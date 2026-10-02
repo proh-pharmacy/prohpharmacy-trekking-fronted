@@ -20,7 +20,9 @@ import {
 import { usePermissions } from '../../../hooks/usePermissions';
 import { VehicleStockModal } from './components/VehicleStockModal';
 import { VehicleStockExportModal } from './components/VehicleStockExportModal';
+import { VehicleStockSnapshotExportModal } from './components/VehicleStockSnapshotExportModal';
 import { VehicleStockTrendOverlay } from './components/VehicleStockTrendOverlay';
+import { ResetVehicleStockModal } from './components/ResetVehicleStockModal';
 
 function formatDateTime(iso: string | null): { date: string; time: string } | null {
   if (!iso) return null;
@@ -60,12 +62,14 @@ const LEDGER_SOURCE_OPTIONS: { label: string; value: StockLedgerSource }[] = [
   { label: 'Manual load', value: 'ManualLoad' },
   { label: 'Trek completion', value: 'TrekCompletion' },
   { label: 'Return approval', value: 'ReturnApproval' },
+  { label: 'Stock reset', value: 'StockReset' },
 ];
 
 const LEDGER_SOURCE_LABELS: Record<StockLedgerSource, string> = {
   ManualLoad: 'Manual load',
   TrekCompletion: 'Trek completion',
   ReturnApproval: 'Return approval',
+  StockReset: 'Stock reset',
 };
 
 interface StockLedgerTableProps {
@@ -330,6 +334,8 @@ export const VehicleStockPage: React.FC = () => {
   } | null>(null);
   const [trendVisible, setTrendVisible] = useState(false);
   const [exportVisible, setExportVisible] = useState(false);
+  const [snapshotExportVisible, setSnapshotExportVisible] = useState(false);
+  const [resetVisible, setResetVisible] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ item: StockItem; top: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -526,17 +532,15 @@ export const VehicleStockPage: React.FC = () => {
           </h1>
         </div>
 
-        {canManage && activeTab === 'stock' && (
+        {activeTab === 'stock' && (
           <div className="flex items-center gap-2">
-            <FlatButton
-              size="sm"
-              variant="primary"
-              leftIcon="pi pi-plus"
-              onClick={() => { setLockedProduct(null); setMode('load'); }}
-              disabled={vehicleLoading || !vehicle}
-            >
-              Add Stock
-            </FlatButton>
+            <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
+            {canManage && (
+              <>
+                <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
+                <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -598,6 +602,21 @@ export const VehicleStockPage: React.FC = () => {
         vehicleId={vehicleId}
         vehicleName={vehicleLabel}
         onHide={() => setExportVisible(false)}
+      />
+
+      <VehicleStockSnapshotExportModal
+        visible={snapshotExportVisible}
+        vehicleId={vehicleId}
+        vehicleName={vehicleLabel}
+        onHide={() => setSnapshotExportVisible(false)}
+      />
+
+      <ResetVehicleStockModal
+        visible={resetVisible}
+        vehicleId={vehicleId}
+        vehicleName={vehicleLabel}
+        onHide={() => setResetVisible(false)}
+        onComplete={async () => { await Promise.all([loadStock(), loadSummary()]); }}
       />
 
       <VehicleStockTrendOverlay

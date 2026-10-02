@@ -30,6 +30,7 @@ const SOURCE_OPTIONS = [
   { label: 'Manual load', value: 'ManualLoad' },
   { label: 'Trek completion', value: 'TrekCompletion' },
   { label: 'Return approval', value: 'ReturnApproval' },
+  { label: 'Stock reset', value: 'StockReset' },
 ];
 
 const STYLE_OPTIONS = [

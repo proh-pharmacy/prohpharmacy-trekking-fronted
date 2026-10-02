@@ -112,6 +112,9 @@ const DataExportPage = lazy(() =>
 const DriverPage = lazy(() =>
   import('./pages/driver/DriverPage').then((m) => ({ default: m.DriverPage }))
 );
+const InvoicePreviewPage = lazy(() =>
+  import('./pages/driver/InvoicePreviewPage').then((m) => ({ default: m.InvoicePreviewPage }))
+);
 
 // ── chunk-preview (dev showcases) ─────────────────────────────────────
 const DataTableShowcase = lazy(() =>
@@ -203,6 +206,7 @@ export default function App() {
                 <Route path="/driver/:token" element={<DriverPage />} />
                 <Route path="/treks/driver" element={<DriverPage />} />
                 <Route path="/treks/driver/:section" element={<DriverPage />} />
+                <Route path="/invoice/preview" element={<InvoicePreviewPage />} />
 
                 {/* ── Dev showcases ── */}
                 <Route path="/table" element={<DataTableShowcase />} />

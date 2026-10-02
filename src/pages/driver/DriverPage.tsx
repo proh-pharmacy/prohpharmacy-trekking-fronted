@@ -24,6 +24,8 @@ import { FieldActions, type FieldActionKind, type FieldActionRequest } from './c
 import { visibleActionsForStop, visibleWalkInStopActions } from './control/offlineLifecycle';
 import { DriverDashboard } from './control/DriverDashboard';
 import { DriverTrekReportView } from './control/DriverTrekReportView';
+import { DriverReturnModal } from './control/DriverReturnModal';
+import { openDriverInvoice, type DriverInvoiceLine } from './control/driverInvoice';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
 import { fieldApi, type FieldCustomer, type QueuedAction, type RegionTrek } from './control/api';
@@ -181,6 +183,8 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 // ── Stop card ─────────────────────────────────────────────────────────────────
 
 interface StopCardProps {
+  trek: DriverTrek;
+  token: string;
   stop: DriverStop;
   rows: Record<string, DeliveryRow>;
   locked: boolean;
@@ -200,7 +204,7 @@ interface StopCardProps {
   syncing: boolean;
 }
 
-const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing }) => {
+const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing }) => {
   const [expanded, setExpanded] = useState(Boolean(queuedStop));
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
@@ -271,6 +275,62 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
       };
     }),
   ].sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+  const invoiceLines: DriverInvoiceLine[] = [
+    ...stop.products.flatMap((product) => {
+      const pending = pendingDeliveryFor(product).at(-1);
+      const row = pending ? {
+        basicQtyDelivered: String(pending.payload.basicQtyDelivered ?? ''),
+        packagingQtyDelivered: String(pending.payload.packagingQtyDelivered ?? ''),
+        paymentMethod: String(pending.payload.paymentMethod ?? ''),
+        amtPaid: String(pending.payload.amtPaid ?? ''),
+      } : deliveryRowFromProduct(product);
+      const basicQuantity = parseNumericInput(row.basicQtyDelivered);
+      const packagingQuantity = parseNumericInput(row.packagingQtyDelivered);
+      if (basicQuantity <= 0 && packagingQuantity <= 0) return [];
+      return [{
+        productName: product.productName,
+        basicQuantity,
+        basicUnitName: product.basicUnitName || 'units',
+        basicUnitPrice: Number(product.basicUnitPrice || 0),
+        packagingQuantity,
+        packagingUnitName: product.packagingUnitName,
+        packagingUnitPrice: product.packagingUnitPrice,
+        amountPaid: parseNumericInput(row.amtPaid),
+        paymentMethod: row.paymentMethod || null,
+      }];
+    }),
+    ...queuedSales.flatMap((action) => {
+      const product = products.find((item) => item.id === action.payload.productId);
+      const basicQuantity = Number(action.payload.basicQtyDelivered ?? 0);
+      const packagingQuantity = Number(action.payload.packagingQtyDelivered ?? 0);
+      if (basicQuantity <= 0 && packagingQuantity <= 0) return [];
+      return [{
+        productName: product?.name || 'Product',
+        basicQuantity,
+        basicUnitName: product?.basicUnitName || 'units',
+        basicUnitPrice: Number(action.payload.basicUnitPrice ?? product?.basicUnitPrice ?? 0),
+        packagingQuantity,
+        packagingUnitName: product?.packagingUnitName || null,
+        packagingUnitPrice: action.payload.packagingUnitPrice == null ? product?.packagingUnitPrice ?? null : Number(action.payload.packagingUnitPrice),
+        amountPaid: Number(action.payload.amtPaid ?? 0),
+        paymentMethod: action.payload.paymentMethod ? String(action.payload.paymentMethod) : null,
+      }];
+    }),
+  ];
+
+  const generateInvoice = async () => {
+    await openDriverInvoice({
+      token,
+      invoiceNumber: stop.invoiceNumber,
+      trekNumber: trek.trekNumber,
+      scheduledDate: trek.scheduledDate,
+      vehicleName: trek.vehicleDisplayName,
+      customerName: stop.customerName,
+      customerCode: stop.customerCode,
+      customerPhone: stop.primaryPhoneNumber,
+      lines: invoiceLines,
+    });
+  };
 
   return (
     <div className="px-4 sm:px-5 py-3">
@@ -318,8 +378,18 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
       <div className="flex flex-wrap gap-2 items-center">
         {!locked && <>
           <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
-          <FlatButton size="sm" variant="ghost" className="!border-portal-orange/40 !bg-portal-orange/10 !text-portal-orange hover:!bg-portal-orange/20" onClick={() => onFieldAction('return', stop.stopId)}>Record return</FlatButton>
         </>}
+        {invoiceLines.length > 0 && (
+          <FlatButton
+            size="sm"
+            variant="ghost"
+            leftIcon="pi pi-file"
+            className="!text-red-accent hover:!text-red-accent-light"
+            onClick={() => void generateInvoice().catch((error) => toast.error(error instanceof Error ? error.message : 'Could not generate invoice.'))}
+          >
+            Invoice
+          </FlatButton>
+        )}
       </div>
       <div className="flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
         <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
@@ -491,7 +561,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
+  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
@@ -506,6 +576,7 @@ export const DriverPage: React.FC = () => {
   const [switchingTrek, setSwitchingTrek] = useState(false);
   const [startingTrek, setStartingTrek] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [completingTrek, setCompletingTrek] = useState(false);
   const [stockWarnings, setStockWarnings] = useState<TrekStockWarning[]>([]);
   const [stockWarningVisible, setStockWarningVisible] = useState(false);
@@ -839,7 +910,7 @@ export const DriverPage: React.FC = () => {
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <div className="grid grid-cols-3 gap-0 w-full sm:min-w-[320px] rounded overflow-hidden border border-portal-border/70 divide-x divide-portal-border/70 shadow-xs">
+                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] rounded overflow-hidden border border-portal-border/70 divide-x divide-portal-border/70 shadow-xs">
                     {/* 1. Add Stop (First item, highlighted green background) */}
                     <button
                       type="button"
@@ -852,7 +923,25 @@ export const DriverPage: React.FC = () => {
                       <span>Add</span>
                     </button>
 
-                    {/* 2. Complete Trek */}
+                    {/* 2. Record Return */}
+                    <button
+                      type="button"
+                      disabled={trek.isLocked || trek.status !== 'InProgress' || !online}
+                      onClick={() => {
+                        if (!online) {
+                          toast.error('Connect to the internet to record an invoice return.');
+                          return;
+                        }
+                        setReturnModalOpen(true);
+                      }}
+                      className="flex h-[38px] items-center justify-center gap-1.5 bg-red-accent/10 px-2.5 text-xs font-semibold text-red-accent transition-colors hover:bg-red-accent/20 focus:outline-none focus:ring-1 focus:ring-red-accent disabled:cursor-not-allowed disabled:opacity-40"
+                      title="Record invoice return"
+                    >
+                      <i className="pi pi-replay text-xs" aria-hidden="true" />
+                      <span>Return</span>
+                    </button>
+
+                    {/* 3. Complete Trek */}
                     <button
                       type="button"
                       disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
@@ -864,7 +953,7 @@ export const DriverPage: React.FC = () => {
                       <span>Complete</span>
                     </button>
 
-                    {/* 3. PDF Sheet (Last item) */}
+                    {/* 4. PDF Sheet (Last item) */}
                     <button
                       type="button"
                       onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
@@ -918,6 +1007,8 @@ export const DriverPage: React.FC = () => {
                     {sortedStops.map((stop) => (
                       <StopCard
                         key={stop.stopId}
+                        trek={trek}
+                        token={token}
                         stop={stop}
                         rows={deliveryRows}
                         locked={trek.isLocked}
@@ -981,6 +1072,8 @@ export const DriverPage: React.FC = () => {
                       };
                       return <StopCard
                         key={action.clientId}
+                        trek={trek}
+                        token={token}
                         stop={stop}
                         rows={deliveryRows}
                         locked={trek.isLocked || action.status === 'conflict'}
@@ -1189,7 +1282,7 @@ export const DriverPage: React.FC = () => {
               />
             </div>
           )}
-          renderReportView={() => <DriverTrekReportView token={token} online={online} />}
+          renderReportView={() => <DriverTrekReportView token={token} online={online} vehicleStock={vehicleStock} />}
           renderActionsView={() => (
             <div className="space-y-4">
               <div className="border-b border-portal-border/60 pb-3">
@@ -1396,6 +1489,15 @@ export const DriverPage: React.FC = () => {
           <p className="mt-2 text-[11px] text-portal-muted">This trek will become your primary workspace. New activity will be recorded there.</p>
         </> : <p className="text-sm text-portal-text">Connect to the internet to switch workspace.</p>}
       </FlatModal>
+
+      <DriverReturnModal
+        token={token}
+        customers={customers}
+        visible={returnModalOpen}
+        online={online}
+        onHide={() => setReturnModalOpen(false)}
+        onSaved={() => refresh(true)}
+      />
 
       <FlatConfirmDialog
         visible={stockWarningVisible}

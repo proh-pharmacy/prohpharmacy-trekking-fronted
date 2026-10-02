@@ -40,6 +40,12 @@ export interface StockMutationResponse {
   updatedStock: StockItem[];
 }
 
+export interface ResetVehicleStockResponse {
+  productsRemoved: number;
+  ledgerEntriesCreated: number;
+  resetAt: string;
+}
+
 export interface StockSummary {
   vehicleId: string;
   vehicleInfo: string;
@@ -48,7 +54,7 @@ export interface StockSummary {
   outOfStockProductCount: number;
 }
 
-export type StockLedgerSource = 'ManualLoad' | 'TrekCompletion' | 'ReturnApproval';
+export type StockLedgerSource = 'ManualLoad' | 'TrekCompletion' | 'ReturnApproval' | 'StockReset';
 export type StockLedgerChangeType = 'Addition' | 'Reduction';
 
 export interface StockLedgerEntry {
@@ -102,6 +108,14 @@ export const vehicleStockApi = {
     const res = await apiClient.post<StockMutationResponse>(
       `/vehicles/${vehicleId}/stock/remove`,
       payload,
+    );
+    return res.data;
+  },
+
+  resetStock: async (vehicleId: string, reason: string): Promise<ResetVehicleStockResponse> => {
+    const res = await apiClient.post<ResetVehicleStockResponse>(
+      `/vehicles/${vehicleId}/stock/reset`,
+      { reason },
     );
     return res.data;
   },

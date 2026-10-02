@@ -21,7 +21,7 @@ export interface StaffExportParams {
 
 export interface VehicleStockLedgerExportParams {
   productId?: string;
-  source?: 'ManualLoad' | 'TrekCompletion' | 'ReturnApproval';
+  source?: 'ManualLoad' | 'TrekCompletion' | 'ReturnApproval' | 'StockReset';
   from?: string;
   to?: string;
   exportStyle?: 'worksheet' | 'workbook';
@@ -73,6 +73,13 @@ export const dataExportsApi = {
     downloadExport(
       `/vehicles/${vehicleId}/stock/ledger/export`,
       'vehicle_stock_ledger.xlsx',
+      params,
+    ),
+
+  exportVehicleStock: (vehicleId: string, params?: { productId?: string; includeOutOfStock?: boolean }) =>
+    downloadExport(
+      `/vehicles/${vehicleId}/stock/export`,
+      'vehicle_stock.xlsx',
       params,
     ),
 };
