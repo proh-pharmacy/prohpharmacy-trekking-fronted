@@ -27,8 +27,17 @@ export interface Product {
   packagingUnitName: string | null;
   packagingUnitPrice: number | null;
   isActive: boolean;
+  inVehicleCatalogue?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
+  vehicleStock?: {
+    stockId: string;
+    basicQuantityOnHand: number;
+    packagingQuantityOnHand: number;
+    lowStockThreshold: number | null;
+    isLowStock: boolean;
+    updatedAt: string | null;
+  } | null;
 }
 
 export interface CreateProductPayload {
@@ -96,6 +105,9 @@ export const productsApi = {
     pageNumber?: number;
     pageSize?: number;
     isActive?: boolean;
+    vehicleId?: string;
+    inStockOnly?: boolean;
+    excludeVehicleStock?: boolean;
   }): Promise<Product[]> => {
     const res = await apiClient.get<any>('/products', { params });
     const payload = res.data?.data || res.data;

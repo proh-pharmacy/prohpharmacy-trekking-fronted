@@ -80,6 +80,9 @@ const TraccarPage = lazy(() =>
 const FleetPage = lazy(() =>
   import('./pages/portal/fleet').then((m) => ({ default: m.FleetPage }))
 );
+const VehicleStockPage = lazy(() =>
+  import('./pages/portal/fleet').then((m) => ({ default: m.VehicleStockPage }))
+);
 const UsersAndRolesPage = lazy(() =>
   import('./pages/portal/settings').then((m) => ({ default: m.UsersAndRolesPage }))
 );
@@ -104,10 +107,22 @@ const ProductsReportPage = lazy(() =>
 const DataExportPage = lazy(() =>
   import('./pages/portal/reports/DataExportPage').then((m) => ({ default: m.DataExportPage }))
 );
+const InvoicesPage = lazy(() =>
+  import('./pages/portal/invoices').then((m) => ({ default: m.InvoicesPage }))
+);
+const InvoiceDetailPage = lazy(() =>
+  import('./pages/portal/invoices').then((m) => ({ default: m.InvoiceDetailPage }))
+);
+const InvoicePrintPage = lazy(() =>
+  import('./pages/portal/invoices').then((m) => ({ default: m.InvoicePrintPage }))
+);
 
 // ── chunk-driver ───────────────────────────────────────────────────────
 const DriverPage = lazy(() =>
   import('./pages/driver/DriverPage').then((m) => ({ default: m.DriverPage }))
+);
+const InvoicePreviewPage = lazy(() =>
+  import('./pages/driver/InvoicePreviewPage').then((m) => ({ default: m.InvoicePreviewPage }))
 );
 
 // ── chunk-preview (dev showcases) ─────────────────────────────────────
@@ -161,6 +176,7 @@ export default function App() {
                   }
                 />
                 <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/invoice/print/:invoiceNumber" element={<AuthGuard><InvoicePrintPage /></AuthGuard>} />
 
                 {/* ── Portal (all sidebar pages) ── */}
                 <Route
@@ -184,6 +200,9 @@ export default function App() {
                   <Route path="product-pricing-rules" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductPricingRulesPage /></PermissionGuard>} />
                   <Route path="product" element={<Navigate to="/portal/products" replace />} />
                   <Route path="fleet" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><FleetPage /></PermissionGuard>} />
+                  <Route path="fleet/vehicles/:vehicleId/stock" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><VehicleStockPage /></PermissionGuard>} />
+                  <Route path="invoices" element={<InvoicesPage />} />
+                  <Route path="invoices/:invoiceNumber" element={<InvoiceDetailPage />} />
                   <Route path="reports/ledger-summary" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewLedger', 'Reports.Export']}><LedgerSummaryPage /></PermissionGuard>} />
                   <Route path="reports/treks" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewTreks', 'Reports.Export']}><TrekReportPage /></PermissionGuard>} />
                   <Route path="reports/collections" element={<PermissionGuard permissions={['Reports.View', 'Reports.ViewCollections', 'Reports.Export']}><CollectionsReportPage /></PermissionGuard>} />
@@ -199,6 +218,7 @@ export default function App() {
                 <Route path="/driver/:token" element={<DriverPage />} />
                 <Route path="/treks/driver" element={<DriverPage />} />
                 <Route path="/treks/driver/:section" element={<DriverPage />} />
+                <Route path="/invoice/preview" element={<InvoicePreviewPage />} />
 
                 {/* ── Dev showcases ── */}
                 <Route path="/table" element={<DataTableShowcase />} />

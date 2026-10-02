@@ -10,9 +10,11 @@
   --color-light-green: #F1FBF4;
   --color-red-accent: #DE2512;
   --color-red-accent-hover: #C51F0E;
+  --color-red-accent-light: #FF8A80;
   --color-main-text: #102218;
   --color-muted-text: #5F6F64;
   --color-light-border: #DDE9E0;
+  --color-invoice-backdrop: #22272e;
 
   /* Portal Dynamic Theme System */
   --color-portal-canvas: var(--color-portal-canvas);
@@ -1096,10 +1098,19 @@ div.p-icon-field {
 .p-multiselect-panel .p-multiselect-items .p-multiselect-item,
 .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
   color: var(--color-portal-text) !important;
-  padding: 6px 10px !important;
+  padding: 10px 12px !important;
   font-size: 0.75rem !important;
+  line-height: 1.35 !important;
   border-radius: 2px !important;
   transition: all 0.15s ease !important;
+}
+
+@media (min-width: 768px) {
+  .p-dropdown-panel .p-dropdown-items .p-dropdown-item,
+  .p-multiselect-panel .p-multiselect-items .p-multiselect-item,
+  .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+    padding: 12px 14px !important;
+  }
 }
 
 .p-multiselect-panel .p-multiselect-items .p-multiselect-item {
@@ -1117,9 +1128,17 @@ div.p-icon-field {
 .p-dropdown-panel-sm .p-dropdown-items .p-dropdown-item,
 .p-multiselect-panel-sm .p-multiselect-items .p-multiselect-item,
 .p-autocomplete-panel-sm .p-autocomplete-items .p-autocomplete-item {
-  padding: 5px 10px !important;
+  padding: 10px 12px !important;
   font-size: 0.75rem !important;
-  line-height: 1.25 !important;
+  line-height: 1.35 !important;
+}
+
+@media (min-width: 768px) {
+  .p-dropdown-panel-sm .p-dropdown-items .p-dropdown-item,
+  .p-multiselect-panel-sm .p-multiselect-items .p-multiselect-item,
+  .p-autocomplete-panel-sm .p-autocomplete-items .p-autocomplete-item {
+    padding: 12px 14px !important;
+  }
 }
 
 .p-dropdown-panel-sm .p-dropdown-header,

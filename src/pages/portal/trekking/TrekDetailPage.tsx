@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
+import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type TrekStockLoad, type TrekStockCheckItem, type TrekStockWarning, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { FlatDataTable, resetTableData } from '../../../components/data-table';
@@ -54,6 +54,37 @@ const calculateDeliveredAmount = (product: TrekStop['products'][number], row: Pa
     + (Number.isFinite(packaging) ? packaging : 0) * Number(product.packagingUnitPrice || 0);
 };
 
+const stockCheckItems = (trek: Trek, nextStatus: TrekStatus): TrekStockCheckItem[] => {
+  const items = new Map<string, TrekStockCheckItem>();
+  trek.stops.forEach((stop) => {
+    stop.products.forEach((product) => {
+      const current = items.get(product.productId) ?? {
+        productId: product.productId,
+        basicQty: 0,
+        packagingQty: 0,
+      };
+      current.basicQty += Number(
+        nextStatus === 'Completed' ? product.basicQtyDelivered ?? 0 : product.plannedBasicQuantity ?? 0,
+      );
+      current.packagingQty += Number(
+        nextStatus === 'Completed' ? product.packagingQtyDelivered ?? 0 : product.plannedPackagingQuantity ?? 0,
+      );
+      items.set(product.productId, current);
+    });
+  });
+  return [...items.values()];
+};
+
+const formatStockUnits = (
+  basic: number,
+  basicUnit: string,
+  packaging: number,
+  packagingUnit?: string | null,
+) => [
+  packagingUnit ? `${packaging.toLocaleString()} ${packagingUnit}` : null,
+  `${basic.toLocaleString()} ${basicUnit}`,
+].filter(Boolean).join(' · ');
+
 // ── Delivery row state ─────────────────────────────────────────────────
 interface DeliveryRow {
   basicQtyDelivered: string;
@@ -65,6 +96,13 @@ interface DeliveryRow {
 }
 
 type ProductTableRow = TrekStopProduct & { displayRow?: Partial<DeliveryRow> };
+
+interface StockWarning {
+  load: TrekStockLoad;
+  notTracked: boolean;
+  basicShortfall: number;
+  packagingShortfall: number;
+}
 
 function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
   const rows: Record<string, DeliveryRow> = {};
@@ -96,6 +134,9 @@ export const TrekDetailPage: React.FC = () => {
 
   const [trek, setTrek] = useState<Trek | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stockLoads, setStockLoads] = useState<TrekStockLoad[]>([]);
+  const [stockReadinessLoading, setStockReadinessLoading] = useState(true);
+  const [stockReadinessError, setStockReadinessError] = useState(false);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
   const [syncingPrices, setSyncingPrices] = useState(false);
@@ -113,9 +154,25 @@ export const TrekDetailPage: React.FC = () => {
   const [addStopVisible, setAddStopVisible] = useState(false);
   const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
   const [removingStop, setRemovingStop] = useState<TrekStop | null>(null);
-  const [confirmComplete, setConfirmComplete] = useState(false);
-  const [confirmStart, setConfirmStart] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState<TrekStatus | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<TrekStatus | null>(null);
+  const [stockWarnings, setStockWarnings] = useState<TrekStockWarning[]>([]);
+  const [stockWarningVisible, setStockWarningVisible] = useState(false);
+
+  const loadStockReadiness = useCallback(async () => {
+    if (!trekId) return;
+    setStockReadinessLoading(true);
+    try {
+      const data = await treksApi.getStockLoads(trekId);
+      setStockLoads(data);
+      setStockReadinessError(false);
+    } catch {
+      setStockReadinessError(true);
+    } finally {
+      setStockReadinessLoading(false);
+    }
+  }, [trekId]);
 
   const loadTrek = useCallback(async (silent = false) => {
     if (!trekId) return;
@@ -124,12 +181,13 @@ export const TrekDetailPage: React.FC = () => {
       const data = await treksApi.getTrek(trekId);
       setTrek(data);
       setDeliveryRows(initDeliveryRows(data));
+      await loadStockReadiness();
     } catch {
       toast.error('Failed to load trek.');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [trekId]);
+  }, [trekId, loadStockReadiness]);
 
   useEffect(() => { loadTrek(); }, [loadTrek]);
 
@@ -237,6 +295,33 @@ export const TrekDetailPage: React.FC = () => {
     } finally {
       setChangingStatus(null);
     }
+  };
+
+  const handleStatusRequest = async (status: TrekStatus) => {
+    if (!trek) return;
+    setCheckingStatus(status);
+    try {
+      const result = await treksApi.checkStockLoads(trek.id, stockCheckItems(trek, status));
+      if (result.hasWarnings && result.warnings.length > 0) {
+        setPendingStatus(status);
+        setStockWarnings(result.warnings);
+        setStockWarningVisible(true);
+        return;
+      }
+      await handleStatusChange(status);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || error.response?.data?.message || 'Failed to check vehicle stock.');
+    } finally {
+      setCheckingStatus(null);
+    }
+  };
+
+  const continueStatusChange = async () => {
+    if (!pendingStatus) return;
+    await handleStatusChange(pendingStatus);
+    setStockWarningVisible(false);
+    setPendingStatus(null);
+    setStockWarnings([]);
   };
 
   const handleResendEmail = async () => {
@@ -518,10 +603,10 @@ export const TrekDetailPage: React.FC = () => {
               key={s}
               variant={s === 'Cancelled' ? 'danger-outline' : s === 'Completed' ? 'primary' : 'outline'}
               size="sm"
-              label={changingStatus === s ? 'Updating...' : (NEXT_LABELS[s] ?? s)}
-              onClick={() => s === 'Completed' ? setConfirmComplete(true) : s === 'InProgress' ? setConfirmStart(true) : handleStatusChange(s)}
-              loading={changingStatus === s}
-              disabled={!!changingStatus}
+              label={checkingStatus === s ? 'Checking...' : changingStatus === s ? 'Updating...' : (NEXT_LABELS[s] ?? s)}
+              onClick={() => handleStatusRequest(s)}
+              loading={checkingStatus === s || changingStatus === s}
+              disabled={!!checkingStatus || !!changingStatus}
             />
           ))}
         </div>
@@ -547,6 +632,13 @@ export const TrekDetailPage: React.FC = () => {
       {trek.notes && (
         <p className="text-[11px] text-portal-muted italic border-l-2 border-portal-border pl-3">{trek.notes}</p>
       )}
+
+      <StockReadinessPanel
+        loads={stockLoads}
+        loading={stockReadinessLoading}
+        hasError={stockReadinessError}
+        onRetry={loadStockReadiness}
+      />
 
       {/* ── Stops ── */}
       <div className="bg-portal-surface border border-portal-border/60 rounded">
@@ -596,13 +688,18 @@ export const TrekDetailPage: React.FC = () => {
         visible={editVisible}
         onHide={() => setEditVisible(false)}
         trek={trek}
-        onSuccess={(updated) => setTrek(updated)}
+        onSuccess={(updated) => {
+          setTrek(updated);
+          setDeliveryRows(initDeliveryRows(updated));
+          void loadStockReadiness();
+        }}
       />
 
       <AddStopModal
         visible={addStopVisible && !isStructureLocked}
         onHide={() => setAddStopVisible(false)}
         trekId={trek.id}
+        trekVehicleId={trek.vehicleId}
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
@@ -614,6 +711,7 @@ export const TrekDetailPage: React.FC = () => {
         visible
         onHide={() => setEditingStop(null)}
         trekId={trek.id}
+        trekVehicleId={trek.vehicleId}
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={editingStop.sequence}
@@ -639,23 +737,81 @@ export const TrekDetailPage: React.FC = () => {
       />
 
       <FlatConfirmDialog
-        visible={confirmStart}
-        onHide={() => setConfirmStart(false)}
-        onConfirm={() => { setConfirmStart(false); return handleStatusChange('InProgress'); }}
-        title="Start Trek"
-        message="This will mark the trek as In Progress."
-        confirmLabel="Start Trek"
-        variant="primary"
-      />
-
-      <FlatConfirmDialog
-        visible={confirmComplete}
-        onHide={() => setConfirmComplete(false)}
-        onConfirm={() => { setConfirmComplete(false); handleStatusChange('Completed'); }}
-        title="Mark Trek as Completed"
-        message="Once marked as Completed, all delivery records for this trek will be saved permanently and no further changes can be made. Are you sure you want to proceed?"
-        confirmLabel="Mark Completed"
-        variant="primary"
+        visible={stockWarningVisible}
+        onHide={() => {
+          setStockWarningVisible(false);
+          setPendingStatus(null);
+          setStockWarnings([]);
+        }}
+        onConfirm={continueStatusChange}
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="inline-flex h-4 w-4 rotate-45 items-center justify-center rounded-[2px] border border-amber-200/90 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 text-amber-950 shadow-lg shadow-amber-400/40"
+              aria-hidden="true"
+            >
+              <span className="-rotate-45 text-[11px] font-bold leading-none">!</span>
+            </span>
+            Vehicle Stock Warning
+          </span>
+        }
+        showIcon={false}
+        size="lg"
+        message={
+          <div className="space-y-3">
+            <p>
+              Some trek quantities exceed the vehicle's current stock. You can review the shortages and continue to {pendingStatus ? STATUS_LABELS[pendingStatus].toLowerCase() : 'the selected status'}.
+            </p>
+            <div className="overflow-hidden rounded border border-portal-border/60">
+              <table className="w-full text-[11px]">
+                <thead className="bg-portal-canvas/60 text-portal-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium uppercase tracking-wide">Product</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Requested</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Available</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Shortfall</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-portal-border/40">
+                  {stockWarnings.map((warning) => (
+                    <tr key={warning.productId}>
+                      <td className="px-3 py-2">
+                        <span className="block text-xs font-semibold text-portal-text">{warning.productName}</span>
+                        {warning.notInVehicleCatalogue && (
+                          <span className="mt-0.5 block text-[10px] font-medium text-portal-orange">Not in vehicle catalogue</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
+                        {formatStockUnits(warning.requestedBasicQty, warning.basicUnitName, warning.requestedPackagingQty, warning.packagingUnitName)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
+                        {formatStockUnits(warning.availableBasicQty, warning.basicUnitName, warning.availablePackagingQty, warning.packagingUnitName)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-orange">
+                        {formatStockUnits(warning.basicShortfall, warning.basicUnitName, warning.packagingShortfall, warning.packagingUnitName)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {pendingStatus === 'Completed' && (
+              <p className="text-portal-orange">Completing the trek saves its deliveries permanently and prevents further changes.</p>
+            )}
+            <div className="flex justify-end">
+              <a
+                href={`/portal/fleet/vehicles/${trek.vehicleId}/stock`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-portal-accent hover:underline"
+              >
+                Manage vehicle stock <i className="pi pi-external-link text-[9px]" />
+              </a>
+            </div>
+          </div>
+        }
+        confirmLabel="Continue anyway"
+        variant="warning"
       />
 
       <FlatConfirmDialog
@@ -704,7 +860,7 @@ export const TrekDetailPage: React.FC = () => {
                 </div>
               </div>
             )}
-            <p className="text-portal-muted">Syncing updates the trek prices and recalculates planned totals.</p>
+            <p className="text-portal-muted">Syncing updates the trek prices and recalculates billable totals.</p>
           </div>
         }
         cancelLabel="Close"
@@ -714,6 +870,95 @@ export const TrekDetailPage: React.FC = () => {
         variant="primary"
         loading={syncingPrices}
       />
+    </div>
+  );
+};
+
+const StockReadinessPanel: React.FC<{
+  loads: TrekStockLoad[];
+  loading: boolean;
+  hasError: boolean;
+  onRetry: () => void;
+}> = ({ loads, loading, hasError, onRetry }) => {
+  const warnings: StockWarning[] = loads.flatMap((load) => {
+    const notTracked = load.vehicleBasicOnHand == null;
+    const basicShortfall = notTracked
+      ? 0
+      : Math.max(0, load.basicQuantityLoaded - load.vehicleBasicOnHand!);
+    const packagingAvailable = load.vehiclePackagingOnHand ?? 0;
+    const packagingShortfall = notTracked
+      ? 0
+      : Math.max(0, load.packagingQuantityLoaded - packagingAvailable);
+
+    return notTracked || basicShortfall > 0 || packagingShortfall > 0
+      ? [{ load, notTracked, basicShortfall, packagingShortfall }]
+      : [];
+  });
+
+  if (loading && loads.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-portal-border/60 bg-portal-surface px-4 py-3 text-[11px] text-portal-muted">
+        <i className="pi pi-spin pi-spinner" />
+        Checking vehicle stock…
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded border border-portal-border/60 bg-portal-surface px-4 py-3">
+        <div className="flex items-center gap-2 text-[11px] text-portal-orange">
+          <i className="pi pi-exclamation-triangle" />
+          Vehicle stock check is unavailable.
+        </div>
+        <button type="button" onClick={onRetry} className="text-[11px] font-medium text-portal-accent hover:underline">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (loads.length === 0) return null;
+
+  if (warnings.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-portal-border/60 bg-portal-surface px-4 py-3 text-[11px] text-portal-accent">
+        <i className="pi pi-check-circle" />
+        <span className="font-medium">Vehicle stock covers all {loads.length} {loads.length === 1 ? 'allocation' : 'allocations'}.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded border border-portal-border/60 bg-portal-surface">
+      <div className="flex items-center gap-2 border-b border-portal-border/60 px-4 py-3 text-xs font-semibold text-portal-orange">
+        <i className="pi pi-exclamation-triangle" />
+        Vehicle stock needs attention
+        <span className="font-normal text-portal-muted">({warnings.length})</span>
+      </div>
+      <div className="divide-y divide-portal-border/40">
+        {warnings.map(({ load, notTracked, basicShortfall, packagingShortfall }) => (
+          <div key={load.id || load.productId} className="px-4 py-3">
+            <p className="text-xs font-semibold text-white">{load.productName}</p>
+            {notTracked ? (
+              <p className="mt-1 text-[11px] text-red-400">Not in vehicle catalogue</p>
+            ) : (
+              <div className="mt-1 space-y-0.5 text-[11px] text-portal-muted">
+                {basicShortfall > 0 && (
+                  <p>
+                    {load.basicQuantityLoaded} {load.basicUnitName} loaded · {load.vehicleBasicOnHand} available · <span className="text-portal-orange">{basicShortfall} short</span>
+                  </p>
+                )}
+                {packagingShortfall > 0 && (
+                  <p>
+                    {load.packagingQuantityLoaded} {load.packagingUnitName || 'packaging units'} loaded · {load.vehiclePackagingOnHand ?? 0} available · <span className="text-portal-orange">{packagingShortfall} short</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

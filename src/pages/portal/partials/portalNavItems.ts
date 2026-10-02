@@ -3,6 +3,7 @@ import {
   Compass,
   CreditCard,
   DownloadSimple,
+  FileText,
   MapPin,
   MapTrifold,
   Package,
@@ -57,6 +58,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
   {
     title: 'Reports',
     items: [
+      { label: 'Invoice', to: '/portal/invoices', icon: FileText },
       { label: 'Ledger Summary', to: '/portal/reports/ledger-summary', icon: Receipt, permissions: ['Reports.View', 'Reports.ViewLedger', 'Reports.Export'] },
       { label: 'Trek Performance', to: '/portal/reports/treks', icon: ChartBar, permissions: ['Reports.View', 'Reports.ViewTreks', 'Reports.Export'] },
       { label: 'Collections', to: '/portal/reports/collections', icon: CreditCard, permissions: ['Reports.View', 'Reports.ViewCollections', 'Reports.Export'] },

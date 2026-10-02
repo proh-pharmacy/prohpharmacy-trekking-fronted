@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   BatteryCharging,
+  ChartBar,
   Compass,
   Database,
   DotsThree,
@@ -57,6 +58,7 @@ interface Props {
   renderStopsView?: () => React.ReactNode;
   renderCustomersView?: () => React.ReactNode;
   renderTreksView?: () => React.ReactNode;
+  renderReportView?: () => React.ReactNode;
   renderActionsView?: () => React.ReactNode;
   renderOfflineView?: () => React.ReactNode;
   sessionRemembered: boolean;
@@ -193,6 +195,7 @@ export function DriverDashboard({
   renderStopsView,
   renderCustomersView,
   renderTreksView,
+  renderReportView,
   renderActionsView,
   renderOfflineView,
   sessionRemembered,
@@ -261,7 +264,7 @@ export function DriverDashboard({
     }
   };
 
-  const moreMenuContents = (includeMap: boolean) => (
+  const moreMenuContents = (includeReport = false) => (
     <>
       <div className="mb-2.5 flex items-center justify-between border-b border-portal-border/50 pb-2 text-[11px] font-bold uppercase tracking-wider text-portal-muted">
         <span className="text-portal-text">Field Operations</span>
@@ -276,9 +279,8 @@ export function DriverDashboard({
       </div>
 
       <div className="space-y-0.5">
-        {includeMap && (
-          <ActionDrawerLink icon={MapTrifold} label="Map" onClick={() => { setActiveView('map'); setMoreOpen(false); }} />
-        )}
+        {includeReport && <ActionDrawerLink icon={ChartBar} label="Report" onClick={() => { setActiveView('report'); setMoreOpen(false); }} />}
+        <ActionDrawerLink icon={MapTrifold} label="Map" onClick={() => { setActiveView('map'); setMoreOpen(false); }} />
         <ActionDrawerLink icon={BatteryCharging} label="Battery & vehicle" onClick={() => { setActiveView('vehicle'); setMoreOpen(false); }} />
         <ActionDrawerLink icon={PlusCircle} label="Field actions" onClick={() => { setActiveView('actions'); setMoreOpen(false); }} />
         <ActionDrawerLink icon={Database} label="Offline & sync center" badge={pendingCount || undefined} onClick={() => { setActiveView('offline'); setMoreOpen(false); }} />
@@ -465,11 +467,11 @@ export function DriverDashboard({
               }}
             />
             <NavRailButton
-              icon={MapTrifold}
-              label="Map"
-              active={activeView === 'map'}
+              icon={ChartBar}
+              label="Report"
+              active={activeView === 'report'}
               onClick={() => {
-                setActiveView('map');
+                setActiveView('report');
                 setMoreOpen(false);
               }}
             />
@@ -501,7 +503,7 @@ export function DriverDashboard({
             className={`absolute bottom-2 left-full z-[1100] w-[calc(100vw-4.5rem)] max-w-64 origin-left !rounded-none border border-portal-border bg-portal-surface p-3 shadow-2xl transition-all duration-200 ease-out ${moreOpen ? 'visible translate-x-1 opacity-100' : 'invisible -translate-x-3 pointer-events-none opacity-0'
               }`}
           >
-            {moreMenuContents(false)}
+            {moreMenuContents()}
           </div>
         </aside>
 
@@ -1016,6 +1018,10 @@ export function DriverDashboard({
             <div className="mx-auto w-full max-w-6xl space-y-4">{renderTreksView()}</div>
           )}
 
+          {activeView === 'report' && renderReportView && (
+            <div className="mx-auto w-full max-w-6xl space-y-4">{renderReportView()}</div>
+          )}
+
           {activeView === 'actions' && renderActionsView && (
             <div className="mx-auto w-full max-w-4xl space-y-4">{renderActionsView()}</div>
           )}
@@ -1040,7 +1046,7 @@ export function DriverDashboard({
           mobile
           icon={DotsThree}
           label="More"
-          active={moreOpen || ['map', 'vehicle', 'actions', 'offline'].includes(activeView)}
+          active={moreOpen || ['map', 'report', 'vehicle', 'actions', 'offline'].includes(activeView)}
           expanded={moreOpen}
           controls="mobile-action-drawer"
           onClick={() => setMoreOpen((open) => !open)}

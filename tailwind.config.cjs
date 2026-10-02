@@ -11,9 +11,11 @@ module.exports = {
         'light-green': '#F1FBF4',
         'red-accent': '#DE2512',
         'red-accent-hover': '#C51F0E',
+        'red-accent-light': '#FF8A80',
         'main-text': '#102218',
         'muted-text': '#5F6F64',
         'light-border': '#DDE9E0',
+        'invoice-backdrop': '#22272e',
 
         // Portal Dynamic Theme System
         'portal-canvas': 'var(--color-portal-canvas)',

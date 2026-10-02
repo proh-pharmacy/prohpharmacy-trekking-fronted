@@ -154,6 +154,10 @@ export const CustomersPage: React.FC = () => {
         primaryLocation: c.primaryLocation || undefined,
         locations: Array.isArray(c.locations) ? c.locations : undefined,
         additionalLocations: Array.isArray(c.additionalLocations) ? c.additionalLocations : (Array.isArray(c.locations) ? c.locations : undefined),
+        idDocumentType: c.idDocumentType ?? null,
+        idDocumentNumber: c.idDocumentNumber ?? null,
+        idCardFrontUrl: c.idCardFrontUrl ?? null,
+        idCardBackUrl: c.idCardBackUrl ?? null,
       }));
 
       return {
@@ -405,6 +409,7 @@ export const CustomersPage: React.FC = () => {
       />
 
       <CustomerModal
+        key={editingCustomer?.id || 'new-customer'}
         visible={modalVisible}
         onHide={() => {
           setModalVisible(false);

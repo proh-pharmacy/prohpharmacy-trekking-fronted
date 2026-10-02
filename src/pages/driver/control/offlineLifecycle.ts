@@ -97,6 +97,7 @@ export function applyOfflineSyncResults<TAction extends OfflineActionLike>(
       payload,
       status: result.status === 'Conflict' ? 'conflict' : 'synced',
       serverId: result.serverId,
+      syncResult: result.status,
       ...(action.type === 'RegisterCustomer' && result.personId !== undefined
         ? { personId: result.personId }
         : {}),

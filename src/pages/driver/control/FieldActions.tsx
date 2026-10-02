@@ -1,3 +1,4 @@
+import type { CustomerPhotos } from '../../../api-client/customerDocuments';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { DriverTrek } from '../../../api-client/treks';
@@ -8,7 +9,7 @@ import { captureGps, type ActionType, type FieldCustomer, type FieldDistrict, ty
 import { fmtGhs, formatGhanaCardNumber, formatGhanaPhoneNumber, normalizeGhanaPhoneNumber, parseNumericInput } from '../../../lib/utils';
 import { CustomerModal } from '../../portal/customers/components/CustomerModal';
 
-export type FieldActionKind = 'customer' | 'stop' | 'sale' | 'return';
+export type FieldActionKind = 'customer' | 'stop' | 'sale';
 export interface FieldActionRequest { kind: FieldActionKind; trekId?: string; stopId?: string; stopClientId?: string; sequence?: number; nonce: number }
 type Values = Record<string, string>;
 const CUSTOMER_TYPES = ['RetailPharmacy', 'WholesalePharmacy', 'OTCMedicineSeller', 'Clinic', 'Hospital', 'ChemicalShop', 'LicensedHealthFacility', 'Other'];
@@ -23,7 +24,8 @@ interface Props {
   customers: FieldCustomer[];
   districts: FieldDistrict[];
   queue: QueuedAction[];
-  enqueue: (type: ActionType, payload: Record<string, unknown>) => Promise<string>;
+  syncProducts: (all?: boolean) => Promise<number>;
+  enqueue: (type: ActionType, payload: Record<string, unknown>, photos?: CustomerPhotos) => Promise<string>;
   queuePhoto: (customerClientId: string, kind: 'premises' | 'portrait', file: File) => Promise<string>;
   request?: FieldActionRequest | null;
   backendReady: boolean;
@@ -53,10 +55,12 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, syncProducts, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
+  const [productScope, setProductScope] = useState<'vehicle' | 'all'>('vehicle');
+  const [loadingAllProducts, setLoadingAllProducts] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'capturing' | 'captured' | 'unavailable'>('idle');
   const [premisesPhoto, setPremisesPhoto] = useState<File | null>(null);
   const [portraitPhoto, setPortraitPhoto] = useState<File | null>(null);
@@ -81,7 +85,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     />
   );
   const select = (field: string, label: string, choices: { label: string; value: string }[], required = false) => <FlatDropdown label={label} value={values[field] ?? ''} options={choices} onChange={(value) => set(field, value ?? '')} required={required} filter size="sm" />;
-  const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setKind(next); };
+  const open = (next: FieldActionKind, trekId?: string, stopId?: string) => { setValues({ ...(next === 'stop' && { trekId: trekId || fixedTrekId || trek.trekId }), ...(stopId && { stopId: `id:${stopId}` }) }); setProductScope('vehicle'); setKind(next); };
   const requestedKind = request?.kind;
   const requestedTrekId = request?.trekId;
   const requestedStopId = request?.stopId;
@@ -91,6 +95,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
   useEffect(() => {
     if (!requestedKind) { setKind(null); return; }
     setValues({ ...(requestedKind === 'stop' && { trekId: fixedTrekId || requestedTrekId || trek.trekId }), ...(requestedStopId && { stopId: `id:${requestedStopId}` }), ...(requestedStopClientId && { stopId: `client:${requestedStopClientId}` }), ...(requestedSequence && { sequence: String(requestedSequence) }) });
+    setProductScope('vehicle');
     setKind(requestedKind);
   }, [requestedKind, requestedTrekId, requestedStopId, requestedStopClientId, requestedSequence, requestedNonce, fixedTrekId, trek.trekId]);
   const pendingCustomers = queue
@@ -108,6 +113,15 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ...pendingStops.filter((action) => !fixedTrekId || action.payload.trekId === fixedTrekId).map((action) => ({ label: `Additional stop ${action.payload.sequence} · saved on device`, value: `client:${action.clientId}` })),
   ];
   const selectedProduct = products.find((product) => product.id === values.productId);
+  const visibleProducts = products.filter((product) =>
+    product.isActive !== false && (productScope === 'all' || product.inVehicleCatalogue !== false));
+  const productChoices = visibleProducts.map((product) => ({
+    label: product.name,
+    value: product.id,
+    inVehicleCatalogue: product.inVehicleCatalogue !== false,
+    basicUnitName: product.basicUnitName,
+    packagingUnitName: product.packagingUnitName,
+  }));
   // Resolve the stop-specific price if the customer has a custom markup rule; fall back to region price
   const rawStopId = values.stopId ?? '';
   const resolvedStopId = rawStopId.startsWith('id:') ? rawStopId.slice(3) : null;
@@ -120,16 +134,29 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
       + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
     : 0;
-  const calculatedReturnAmount = selectedProduct && kind === 'return'
-    ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
-      + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
-    : 0;
   const saleAmountPaid = values.amount?.trim() ? parseNumericInput(values.amount) : null;
   const saleBalance = saleAmountPaid == null || !Number.isFinite(saleAmountPaid)
     ? 0
     : Math.max(0, calculatedSaleAmount - saleAmountPaid);
   const selectedStop = values.stopId ?? '';
-  const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
+  const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setProductScope('vehicle'); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
+  const changeProductScope = async (scope: 'vehicle' | 'all') => {
+    setProductScope(scope);
+    set('productId', '');
+    if (scope !== 'all' || products.some((product) => product.inVehicleCatalogue === false)) return;
+    if (!navigator.onLine) {
+      toast.error('Connect to load the full product catalogue.');
+      return;
+    }
+    setLoadingAllProducts(true);
+    try {
+      await syncProducts(true);
+    } catch {
+      toast.error('Could not load the full product catalogue.');
+    } finally {
+      setLoadingAllProducts(false);
+    }
+  };
   const choosePhoto = (setter: (file: File | null) => void, previewSetter: (preview: string | null) => void, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -171,31 +198,17 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         const reference = values.customer.startsWith('client:') ? { customerClientId: values.customer.slice(7) } : { customerId: values.customer.slice(3) };
         await enqueue('AddWalkInStop', { trekId: targetTrekId, ...reference, sequence: parseNumericInput(values.sequence),
           ...(values.notes && { notes: values.notes.trim() }), ...(gps && { gps }) });
-      } else if (kind === 'sale' || kind === 'return') {
+      } else if (kind === 'sale') {
         if (!selectedStop || !values.productId || !values.basicQty || parseNumericInput(values.basicQty) <= 0) throw new Error('Select a stop, product and positive basic quantity.');
-        if (kind === 'return' && !values.paymentMethod) throw new Error('Select a refund method.');
-        if (kind === 'return' && calculatedReturnAmount <= 0) throw new Error('The calculated refund must be greater than zero.');
         const stopReference = selectedStop.startsWith('client:') ? { stopClientId: selectedStop.slice(7) } : { stopId: selectedStop.slice(3) };
-        if (kind === 'sale') {
-          await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId,
-            basicUnitPrice: resolvedBasicUnitPrice,
-            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
-            basicQtyDelivered: parseNumericInput(values.basicQty),
-            ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
-            ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
-            ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
-            ...(values.notes && { notes: values.notes.trim() }) });
-        } else {
-          const gps = await captureGps();
-          await enqueue('RecordReturn', { ...stopReference, productId: values.productId,
-            basicUnitPrice: resolvedBasicUnitPrice,
-            ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
-            basicQtyReturned: parseNumericInput(values.basicQty),
-            ...(values.packagingQty && { packagingQtyReturned: parseNumericInput(values.packagingQty) }),
-            refundAmount: calculatedReturnAmount,
-            ...(values.paymentMethod && { refundMethod: values.paymentMethod }),
-            ...(values.notes && { reason: values.notes.trim() }), ...(gps && { gps }) });
-        }
+        await enqueue('RecordUnplannedSale', { ...stopReference, productId: values.productId,
+          basicUnitPrice: resolvedBasicUnitPrice,
+          ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
+          basicQtyDelivered: parseNumericInput(values.basicQty),
+          ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
+          ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
+          ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
+          ...(values.notes && { notes: values.notes.trim() }) });
       }
       toast.success('Saved on this device. It will sync when connected.');
       close();
@@ -205,9 +218,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
 
   return <>
     {kind === 'customer' && <CustomerModal visible onHide={close} customer={null} driverMode={{ districts, region: { id: districts[0]?.regionId || '', name: trek.regionName }, onSubmit: async (payload, photos) => {
-      const customerClientId = await enqueue('RegisterCustomer', payload);
-      if (photos.premises) await queuePhoto(customerClientId, 'premises', photos.premises);
-      if (photos.portrait) await queuePhoto(customerClientId, 'portrait', photos.portrait);
+      await enqueue('RegisterCustomer', payload, photos);
       toast.success('Customer saved on this device. It will sync when connected.');
     } }} />}
     {!modalOnly && <div className="space-y-4">
@@ -216,16 +227,15 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         {!trek.isLocked && <ActionTile icon="pi-map-marker" title="Add additional stop" description="Add a customer visit to this trek." onClick={() => open('stop')} />}
         {!!stopChoices.length && <>
           <ActionTile icon="pi-shopping-cart" title="Unplanned sale" description="Record a product sold at a stop." onClick={() => open('sale')} />
-          <ActionTile icon="pi-replay" title="Record return" description="Log a product returned by a customer." onClick={() => open('return')} />
         </>}
       </div>
       <p className="flex items-center gap-2 text-[11px] text-portal-muted"><i className="pi pi-database text-portal-accent" aria-hidden="true" />{backendReady ? 'Saved on this device · syncs when connected' : 'Saved on this device · upload when the backend is available'}</p>
     </div>}
-    <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale', return: 'Record return' }[kind ?? 'customer']} size="md"
-      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (trek.isLocked && kind !== 'customer') || (kind === 'sale' && calculatedSaleAmount <= 0) || (kind === 'return' && calculatedReturnAmount <= 0)}>Save action</FlatButton></>}> 
+    <FlatModal visible={kind !== null && kind !== 'customer'} onHide={close} title={{ customer: 'Register customer', stop: 'Add additional stop', sale: 'Record unplanned sale' }[kind ?? 'customer']} size="md"
+      footer={<><FlatButton size="sm" variant="ghost" onClick={close}>Cancel</FlatButton><FlatButton size="sm" onClick={save} loading={saving} disabled={saving || (trek.isLocked && kind !== 'customer') || (kind === 'sale' && calculatedSaleAmount <= 0)}>Save action</FlatButton></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {kind === 'stop' && !customerChoices.length && <p className="col-span-full text-xs text-yellow-400">Customer list is empty. Download offline customers or register a new customer first.</p>}
-        {(kind === 'sale' || kind === 'return') && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
+        {kind === 'sale' && !products.length && <p className="col-span-full text-xs text-yellow-400">Product catalogue is empty. Use Sync products in Offline data first.</p>}
         {kind === 'customer' && <div className="col-span-full space-y-3">
           <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
           <div className="h-px bg-portal-border" />
@@ -269,17 +279,51 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
         {kind === 'stop' && <>
           {select('customer', 'Customer', customerChoices, true)} {number('sequence', 'Stop sequence', true, 1)} {text('notes', 'Notes')}
         </>}
-        {(kind === 'sale' || kind === 'return') && <>
+        {kind === 'sale' && <>
           {!(modalOnly && (requestedStopId || requestedStopClientId)) && select('stopId', 'Stop', stopChoices, true)}
-          {select('productId', 'Product', products.filter((product) => product.isActive !== false).map((product) => ({ label: product.name, value: product.id })), true)}
-          {number('basicQty', kind === 'sale' ? `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}` : `Basic qty returned${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
-          {selectedProduct?.packagingUnitName && number('packagingQty', `${kind === 'sale' ? 'Packaging qty delivered' : 'Packaging qty returned'} (${selectedProduct.packagingUnitName})`)}
-          {kind === 'sale' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
-          {kind === 'return' && selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated return amount</span><span className="text-sm font-semibold text-portal-orange">{fmtGhs(calculatedReturnAmount)}</span></div>}
-          {select('paymentMethod', kind === 'sale' ? 'Payment method' : 'Refund method', options(PAYMENTS), kind === 'return')}
-          {kind === 'sale' && number('amount', 'Amount paid')}
-          {kind === 'sale' && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>}
-          {text('notes', kind === 'sale' ? 'Notes' : 'Reason')}
+          <div className="col-span-full flex items-center gap-4 text-[11px]">
+            <button type="button" onClick={() => void changeProductScope('vehicle')} className={`transition-colors ${productScope === 'vehicle' ? 'font-semibold text-portal-accent' : 'text-portal-muted hover:text-portal-text'}`}>Vehicle catalogue</button>
+            <button type="button" onClick={() => void changeProductScope('all')} className={`inline-flex items-center gap-1.5 transition-colors ${productScope === 'all' ? 'font-semibold text-portal-accent' : 'text-portal-muted hover:text-portal-text'}`}>
+              {loadingAllProducts && <i className="pi pi-spin pi-spinner text-[10px]" />}
+              All products
+            </button>
+          </div>
+          <FlatDropdown
+            label="Product"
+            value={values.productId ?? ''}
+            options={productChoices}
+            onChange={(value) => set('productId', value ?? '')}
+            optionLabel="label"
+            optionValue="value"
+            itemTemplate={(option) => (
+              <div className="min-w-0">
+                <span className="block truncate text-xs text-portal-text">{option.label}</span>
+                <span className={`block truncate text-[11px] ${option.inVehicleCatalogue ? 'text-portal-muted' : 'text-amber-400'}`}>
+                  {option.inVehicleCatalogue
+                    ? [option.packagingUnitName, option.basicUnitName].filter(Boolean).join(' / ')
+                    : 'Not in vehicle catalogue'}
+                </span>
+              </div>
+            )}
+            placeholder={loadingAllProducts ? 'Loading products...' : 'Select a product'}
+            disabled={loadingAllProducts}
+            required
+            filter
+            size="sm"
+          />
+          {selectedProduct?.inVehicleCatalogue === false && (
+            <p className="self-end pb-2 text-[11px] text-amber-400">
+              <i className="pi pi-exclamation-triangle mr-1.5 text-[10px]" />
+              This product is not loaded on this vehicle. Ask an admin to load it, then sync products again.
+            </p>
+          )}
+          {number('basicQty', `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
+          {selectedProduct?.packagingUnitName && number('packagingQty', `Packaging qty delivered (${selectedProduct.packagingUnitName})`)}
+          {selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
+          {select('paymentMethod', 'Payment method', options(PAYMENTS))}
+          {number('amount', 'Amount paid')}
+          <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>
+          {text('notes', 'Notes')}
         </>}
       </div>
     </FlatModal>

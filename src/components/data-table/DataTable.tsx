@@ -89,6 +89,7 @@ export interface FlatDataTableProps<TData> {
   hasAction?: boolean;
   actionName?: string;
   actionNameMobile?: string;
+  actionIcon?: string;
   onAction?: () => void;
   actionOptions?: { asLink: boolean; link: string };
   secondaryAction?: boolean;
@@ -171,6 +172,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
   hasAction,
   actionName = 'Add Record',
   actionNameMobile,
+  actionIcon,
   onAction,
   actionOptions,
   secondaryAction,
@@ -681,11 +683,18 @@ export function FlatDataTable<TData extends Record<string, any>>({
         );
 
       case 'DateRangeFilter':
+        const rangeValue = Array.isArray(filter.accessor)
+          ? filter.accessor.map((accessor) => {
+              const rangePart = filters[accessor];
+              if (!rangePart) return null;
+              return rangePart instanceof Date ? rangePart : new Date(rangePart);
+            })
+          : value;
         return (
           <FlatDatePicker
             label={filter.label}
             size="sm"
-            value={value}
+            value={rangeValue}
             selectionMode="range"
             onChange={(val) => handleFilterChange(filter.accessor, val)}
             placeholder={`Range for ${filter.label}`}
@@ -803,7 +812,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       onClick={() => navigate(actionOptions.link)}
                       className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
-                      <Plus className="w-4 h-4" />
+                      {actionIcon ? <i className={`${actionIcon} text-xs`} /> : <Plus className="w-4 h-4" />}
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   ) : (
@@ -812,7 +821,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       onClick={onAction}
                       className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
-                      <Plus className="w-4 h-4" />
+                      {actionIcon ? <i className={`${actionIcon} text-xs`} /> : <Plus className="w-4 h-4" />}
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   )}
@@ -970,7 +979,18 @@ export function FlatDataTable<TData extends Record<string, any>>({
                 key={col.field}
                 field={col.field}
                 header={
-                  <div className="flex items-center gap-2">
+                  <div className={cn(
+                    'flex items-center gap-2',
+                    col.headerStyle?.textAlign === 'right' && 'w-full justify-end',
+                    col.headerStyle?.textAlign === 'center' && 'w-full justify-center',
+                  )} style={{
+                    width: col.headerStyle?.textAlign ? '100%' : undefined,
+                    justifyContent: col.headerStyle?.textAlign === 'right'
+                      ? 'flex-end'
+                      : col.headerStyle?.textAlign === 'center'
+                        ? 'center'
+                        : undefined,
+                  }}>
                     <span className="text-table-header-text font-medium">{col.header}</span>
                     {sortableColumns?.find((s) => s.key === col.field) && (
                       <button
