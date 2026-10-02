@@ -197,7 +197,7 @@ export const DashboardPage: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => navigate('/portal/reports/ledger-summary?hasBalance=true')}
+          onClick={() => navigate('/portal/finance/customer-balances?hasBalance=true')}
           className="flex-1 min-w-[140px] min-w-0 bg-portal-surface border border-portal-border/60 p-4 text-left hover:border-portal-accent/50 transition cursor-pointer group"
         >
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1.5">Customers with Debt</p>
@@ -297,7 +297,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-sm font-bold text-portal-heading">Top Debtors</span>
             <button
               type="button"
-              onClick={() => navigate('/portal/reports/ledger-summary')}
+              onClick={() => navigate('/portal/finance/customer-balances')}
               className="text-[11px] text-portal-muted hover:text-portal-accent transition cursor-pointer"
             >
               View all →
