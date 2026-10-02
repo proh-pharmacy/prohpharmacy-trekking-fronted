@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { getApiError } from '../../api-client';
@@ -10,6 +10,7 @@ const dateTime = (value: string) => new Date(value).toLocaleString('en-GB', {
 });
 
 export const InvoicePreviewPage: React.FC = () => {
+  const receiptRef = useRef<HTMLElement>(null);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
   const customerCode = searchParams.get('cc')?.trim() ?? '';
@@ -45,6 +46,48 @@ export const InvoicePreviewPage: React.FC = () => {
     ? [...new Set(invoice.stop.products.map((item) => item.paymentMethod).filter(Boolean))].join(', ') || '—'
     : '—', [invoice]);
 
+  const configurePrintPage = useCallback(() => {
+    const receipt = receiptRef.current;
+    if (!receipt) return;
+
+    const measurement = receipt.cloneNode(true) as HTMLElement;
+    measurement.setAttribute('aria-hidden', 'true');
+    Object.assign(measurement.style, {
+      position: 'fixed',
+      left: '-10000px',
+      top: '0',
+      width: '72mm',
+      maxWidth: 'none',
+      minHeight: '0',
+      margin: '0',
+      padding: '2mm',
+      boxShadow: 'none',
+      visibility: 'hidden',
+    });
+    document.body.appendChild(measurement);
+
+    const receiptHeightMm = measurement.getBoundingClientRect().height * 25.4 / 96;
+    measurement.remove();
+
+    let pageStyle = document.getElementById('invoice-print-page-size') as HTMLStyleElement | null;
+    if (!pageStyle) {
+      pageStyle = document.createElement('style');
+      pageStyle.id = 'invoice-print-page-size';
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.textContent = `@media print { @page { size: 80mm ${Math.max(40, Math.ceil(receiptHeightMm + 4))}mm; margin: 2mm; } }`;
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('beforeprint', configurePrintPage);
+    return () => window.removeEventListener('beforeprint', configurePrintPage);
+  }, [configurePrintPage]);
+
+  const printInvoice = () => {
+    configurePrintPage();
+    window.requestAnimationFrame(() => window.print());
+  };
+
   if (loading) {
     return <div className="flex min-h-dvh items-center justify-center bg-portal-canvas text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading invoice...</div>;
   }
@@ -59,7 +102,7 @@ export const InvoicePreviewPage: React.FC = () => {
     <main
       className="min-h-dvh bg-invoice-backdrop px-3 py-6 print:min-h-0 print:bg-white print:p-0"
     >
-      <style>{`@media print { .invoice-preview-toolbar { display: none !important; } .thermal-receipt { width: 72mm !important; max-width: none !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } @page { size: 80mm auto; margin: 2mm; } }`}</style>
+      <style>{`@media print { .invoice-preview-toolbar { display: none !important; } .thermal-receipt { width: 72mm !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }`}</style>
       <div className="invoice-preview-toolbar mb-3 flex justify-center">
         <img
           src="/images/prohpharmacy_icon_white.png"
@@ -68,7 +111,7 @@ export const InvoicePreviewPage: React.FC = () => {
         />
       </div>
 
-      <article className="thermal-receipt mx-auto min-h-[100mm] max-w-full overflow-hidden bg-white px-[4mm] pb-[7mm] pt-[5mm] font-mono text-[11px] text-main-text shadow-2xl" style={{ width: '80mm' }}>
+      <article ref={receiptRef} className="thermal-receipt mx-auto min-h-[100mm] max-w-full overflow-hidden bg-white px-[4mm] pb-[7mm] pt-[5mm] font-mono text-[11px] text-main-text shadow-2xl" style={{ width: '80mm' }}>
         <header className="text-center">
           {qrCode && <img src={qrCode} alt="Invoice QR code" className="mx-auto mb-[2mm] h-[25mm] w-[25mm]" />}
           <h1 className="m-0 text-[15px] font-bold leading-tight">ProH Pharmacy</h1>
@@ -119,7 +162,7 @@ export const InvoicePreviewPage: React.FC = () => {
       <div className="invoice-preview-toolbar mt-4 flex justify-center">
         <button
           type="button"
-          onClick={() => window.print()}
+          onClick={printInvoice}
           className="inline-flex items-center gap-1.5 !rounded-none border-0 border-b border-dotted border-red-accent-light bg-transparent px-0 pb-0.5 text-[11px] font-semibold text-red-accent-light transition-colors hover:!border-red-accent hover:!bg-transparent hover:!text-red-accent"
         >
           <i className="pi pi-print text-[10px]" aria-hidden="true" />
