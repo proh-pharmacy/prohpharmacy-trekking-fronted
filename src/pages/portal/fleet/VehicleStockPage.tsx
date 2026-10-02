@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   FlatDataTable,
   type ColumnDef,
+  type PaginatedDataResponse,
 } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
 import {
@@ -11,11 +12,15 @@ import {
   getApiError,
   vehicleStockApi,
   type StockItem,
+  type StockLedgerEntry,
+  type StockLedgerSource,
   type StockSummary,
   type Vehicle,
 } from '../../../api-client';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { VehicleStockModal } from './components/VehicleStockModal';
+import { VehicleStockExportModal } from './components/VehicleStockExportModal';
+import { VehicleStockTrendOverlay } from './components/VehicleStockTrendOverlay';
 
 function formatDateTime(iso: string | null): { date: string; time: string } | null {
   if (!iso) return null;
@@ -49,11 +54,262 @@ function UpdatedAtCell({ value }: { value: string | null }) {
   );
 }
 
+type StockTab = 'stock' | 'history';
+
+const LEDGER_SOURCE_OPTIONS: { label: string; value: StockLedgerSource }[] = [
+  { label: 'Manual load', value: 'ManualLoad' },
+  { label: 'Trek completion', value: 'TrekCompletion' },
+  { label: 'Return approval', value: 'ReturnApproval' },
+];
+
+const LEDGER_SOURCE_LABELS: Record<StockLedgerSource, string> = {
+  ManualLoad: 'Manual load',
+  TrekCompletion: 'Trek completion',
+  ReturnApproval: 'Return approval',
+};
+
+interface StockLedgerTableProps {
+  vehicleId: string;
+  onExport: () => void;
+  onViewTrend: () => void;
+}
+
+const StockLedgerTable: React.FC<StockLedgerTableProps> = ({ vehicleId, onExport, onViewTrend }) => {
+  const dataMapper = useCallback(
+    (response: any): PaginatedDataResponse<StockLedgerEntry> => {
+      if (Array.isArray(response)) {
+        return {
+          totalCount: response.length,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: response.length,
+          data: response,
+        };
+      }
+      return {
+        totalCount: response?.totalCount ?? 0,
+        totalPages: response?.totalPages ?? 1,
+        currentPage: response?.currentPage ?? 1,
+        pageSize: response?.pageSize ?? 20,
+        data: response?.data ?? [],
+      };
+    },
+    [],
+  );
+
+  const parsePayload = useCallback((payload: any) => {
+    const next: Record<string, any> = { ...payload };
+    const range = next.recordedAt;
+    delete next.recordedAt;
+    if (Array.isArray(range)) {
+      const [from, to] = range;
+      if (from instanceof Date && !Number.isNaN(from.getTime())) {
+        const start = new Date(from);
+        start.setHours(0, 0, 0, 0);
+        next.from = start.toISOString();
+      }
+      if (to instanceof Date && !Number.isNaN(to.getTime())) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        next.to = end.toISOString();
+      }
+    }
+    delete next.search;
+    return next;
+  }, []);
+
+  const columns: ColumnDef<StockLedgerEntry>[] = useMemo(
+    () => [
+      {
+        field: 'changeIndicator',
+        header: '#',
+        style: { width: '4%', whiteSpace: 'nowrap' },
+        headerStyle: { width: '4%', whiteSpace: 'nowrap' },
+        body: (row) => {
+          const isAdd = row.changeType === 'Addition';
+          return (
+            <i
+              className={`pi ${isAdd ? 'pi-arrow-up text-portal-accent' : 'pi-arrow-down text-red-400'} text-xs`}
+              aria-label={isAdd ? 'Addition' : 'Reduction'}
+            />
+          );
+        },
+      },
+      {
+        field: 'recordedAt',
+        header: 'When',
+        style: { width: '16%', whiteSpace: 'nowrap' },
+        headerStyle: { width: '16%', whiteSpace: 'nowrap' },
+        body: (row) => <UpdatedAtCell value={row.recordedAt} />,
+      },
+      {
+        field: 'productName',
+        header: 'Product',
+        style: { width: '20%', maxWidth: '20%' },
+        headerStyle: { width: '20%', maxWidth: '20%' },
+        body: (row) => (
+          <div className="min-w-0 max-w-[220px]">
+            <div className="truncate text-xs text-portal-text" title={row.productName}>
+              {row.productName}
+            </div>
+          </div>
+        ),
+      },
+      {
+        field: 'changeType',
+        header: 'Quantity',
+        style: { width: '18%', whiteSpace: 'nowrap' },
+        headerStyle: { width: '18%', whiteSpace: 'nowrap' },
+        body: (row) => {
+          const isAdd = row.changeType === 'Addition';
+          const tone = isAdd ? 'text-portal-accent' : 'text-red-400';
+          return (
+            <div className={`font-mono text-xs tabular-nums ${tone}`}>
+              <span>
+                {row.basicQtyChange} {row.basicUnitName}
+              </span>
+              {row.packagingUnitName && row.packagingQtyChange > 0 && (
+                <span className="text-portal-muted">
+                  {' · '}
+                  {row.packagingQtyChange} {row.packagingUnitName}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        field: 'basicBalanceAfter',
+        header: 'Balance',
+        style: { width: '16%', whiteSpace: 'nowrap' },
+        headerStyle: { width: '16%', whiteSpace: 'nowrap' },
+        body: (row) => {
+          const isAdd = row.changeType === 'Addition';
+          const tone = isAdd ? 'text-portal-accent' : 'text-red-400';
+          return (
+            <div className={`font-mono text-xs tabular-nums ${tone}`}>
+              <span>
+                {row.basicBalanceAfter} {row.basicUnitName}
+              </span>
+              {row.packagingUnitName && (
+                <span className="text-portal-muted">
+                  {' · '}
+                  {row.packagingBalanceAfter} {row.packagingUnitName}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        field: 'source',
+        header: 'Source',
+        style: { width: '14%', whiteSpace: 'nowrap' },
+        headerStyle: { width: '14%', whiteSpace: 'nowrap' },
+        body: (row) => (
+          <span className="text-xs text-portal-text">{LEDGER_SOURCE_LABELS[row.source] ?? row.source}</span>
+        ),
+      },
+      {
+        field: 'reason',
+        header: 'Reason',
+        style: { width: '14%', maxWidth: '14%' },
+        headerStyle: { width: '14%', maxWidth: '14%' },
+        body: (row) => (
+          <div className="min-w-0">
+            <div className="truncate text-xs text-portal-text" title={row.reason ?? ''}>
+              {row.reason || '—'}
+            </div>
+            {row.authorName && (
+              <div className="mt-0.5 truncate text-[11px] text-portal-muted" title={row.authorName}>
+                by {row.authorName}
+              </div>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
+  return (
+    <FlatDataTable<StockLedgerEntry>
+      dataSourceUrl={`/vehicles/${vehicleId}/stock/ledger`}
+      columns={columns}
+      heading="Stock history"
+      hasAction
+      actionName="Export"
+      actionIcon="pi pi-download"
+      onAction={onExport}
+      secondaryAction
+      secondaryActionName="View trend"
+      secondaryActionIcon="pi pi-chart-line"
+      onSecondaryAction={onViewTrend}
+      enablePaginator
+      initialPageSize={20}
+      enableTableFilter
+      filterable="search"
+      filterablePlaceholder=""
+      dataMapper={dataMapper}
+      parsePayload={parsePayload}
+      emptyDataText="No ledger entries yet."
+      extendedFilter={{
+        enable: true,
+        filters: [
+          {
+            type: 'AsyncSelectFilter',
+            accessor: 'productId',
+            label: 'Product',
+            args: {
+              endpointUrl: `/products?vehicleId=${encodeURIComponent(vehicleId)}`,
+              optionValue: 'id',
+              optionLabel: 'name',
+              pageSize: 20,
+              size: 'sm',
+              placeholder: 'Search products...',
+              itemTemplate: (product: any) => (
+                <div className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-white">{product.name}</span>
+                  {(product.packagingUnitName || product.basicUnitName) && (
+                    <span className="block truncate text-[11px] text-portal-muted">
+                      {[product.packagingUnitName, product.basicUnitName].filter(Boolean).join(' / ')}
+                    </span>
+                  )}
+                </div>
+              ),
+            },
+          },
+          {
+            type: 'SelectFilter',
+            accessor: 'source',
+            label: 'Source',
+            args: { options: LEDGER_SOURCE_OPTIONS },
+          },
+          {
+            type: 'DateRangeFilter',
+            accessor: 'recordedAt',
+            label: 'Date range',
+          },
+        ],
+      }}
+    />
+  );
+};
+
 export const VehicleStockPage: React.FC = () => {
   const { vehicleId = '' } = useParams<{ vehicleId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab');
+  const activeTab: StockTab = rawTab === 'history' ? 'history' : 'stock';
   const { hasAnyPermission } = usePermissions();
   const canManage = hasAnyPermission('Vehicles.Manage', 'Vehicles.Edit');
+
+  const handleTabChange = (tab: StockTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [vehicleLoading, setVehicleLoading] = useState(true);
@@ -72,6 +328,8 @@ export const VehicleStockPage: React.FC = () => {
     basicUnitName: string;
     packagingUnitName: string | null;
   } | null>(null);
+  const [trendVisible, setTrendVisible] = useState(false);
+  const [exportVisible, setExportVisible] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ item: StockItem; top: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -222,6 +480,37 @@ export const VehicleStockPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      {vehicleError && (
+        <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {vehicleError}
+        </div>
+      )}
+
+      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
+        <button
+          type="button"
+          onClick={() => handleTabChange('stock')}
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
+            activeTab === 'stock'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
+          }`}
+        >
+          <span>Stock</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('history')}
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
+            activeTab === 'history'
+              ? 'border-portal-accent text-portal-heading font-bold'
+              : 'border-transparent text-portal-muted hover:text-portal-heading'
+          }`}
+        >
+          <span>History</span>
+        </button>
+      </div>
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -237,7 +526,7 @@ export const VehicleStockPage: React.FC = () => {
           </h1>
         </div>
 
-        {canManage && (
+        {canManage && activeTab === 'stock' && (
           <div className="flex items-center gap-2">
             <FlatButton
               size="sm"
@@ -252,12 +541,8 @@ export const VehicleStockPage: React.FC = () => {
         )}
       </div>
 
-      {vehicleError && (
-        <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {vehicleError}
-        </div>
-      )}
-
+      {activeTab === 'stock' ? (
+        <>
       <div className="flex flex-wrap gap-3">
         <div className="flex-[2] min-w-[220px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Vehicle</p>
@@ -298,6 +583,28 @@ export const VehicleStockPage: React.FC = () => {
               ? 'Loading stock...'
               : 'No stock items yet. Use "Add Stock" to load products onto this vehicle.'
         }
+      />
+        </>
+      ) : (
+        <StockLedgerTable
+          vehicleId={vehicleId}
+          onExport={() => setExportVisible(true)}
+          onViewTrend={() => setTrendVisible(true)}
+        />
+      )}
+
+      <VehicleStockExportModal
+        visible={exportVisible}
+        vehicleId={vehicleId}
+        vehicleName={vehicleLabel}
+        onHide={() => setExportVisible(false)}
+      />
+
+      <VehicleStockTrendOverlay
+        visible={trendVisible}
+        vehicleId={vehicleId}
+        vehicleName={vehicleLabel}
+        onHide={() => setTrendVisible(false)}
       />
 
       {mode && vehicle && (

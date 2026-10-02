@@ -8,7 +8,7 @@ export interface FlatConfirmDialogProps {
   visible: boolean;
   onHide: () => void;
   onConfirm: () => void | Promise<void>;
-  title: string;
+  title: React.ReactNode;
   message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;

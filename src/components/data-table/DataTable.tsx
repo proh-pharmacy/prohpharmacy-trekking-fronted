@@ -89,6 +89,7 @@ export interface FlatDataTableProps<TData> {
   hasAction?: boolean;
   actionName?: string;
   actionNameMobile?: string;
+  actionIcon?: string;
   onAction?: () => void;
   actionOptions?: { asLink: boolean; link: string };
   secondaryAction?: boolean;
@@ -171,6 +172,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
   hasAction,
   actionName = 'Add Record',
   actionNameMobile,
+  actionIcon,
   onAction,
   actionOptions,
   secondaryAction,
@@ -803,7 +805,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       onClick={() => navigate(actionOptions.link)}
                       className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
-                      <Plus className="w-4 h-4" />
+                      {actionIcon ? <i className={`${actionIcon} text-xs`} /> : <Plus className="w-4 h-4" />}
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   ) : (
@@ -812,7 +814,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       onClick={onAction}
                       className="h-[38px] px-4 bg-portal-accent hover:bg-portal-accent-hover text-portal-canvas text-xs font-bold uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-xs transition"
                     >
-                      <Plus className="w-4 h-4" />
+                      {actionIcon ? <i className={`${actionIcon} text-xs`} /> : <Plus className="w-4 h-4" />}
                       {actionNameMobile ? <><span className="hidden sm:inline">{actionName}</span><span className="sm:hidden">{actionNameMobile}</span></> : actionName}
                     </button>
                   )}

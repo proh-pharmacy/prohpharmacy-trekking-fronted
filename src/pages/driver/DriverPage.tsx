@@ -12,6 +12,8 @@ import {
   type DriverReturn,
   type PaymentMethod,
   type PortalSession,
+  type TrekStockCheckItem,
+  type TrekStockWarning,
 } from '../../api-client';
 import type { Product } from '../../api-client/products';
 import type { Customer, CustomerLocation } from '../../api-client/customers';
@@ -226,6 +228,7 @@ const StopCard: React.FC<StopCardProps> = ({ stop, rows, locked, onRowChange, on
       const product = products.find((item) => item.id === action.payload.productId);
       return {
         stopProductId: action.clientId,
+        productId: String(action.payload.productId || ''),
         productName: product?.name || 'Product',
         basicUnitName: product?.basicUnitName || 'basic units',
         packagingUnitName: product?.packagingUnitName || null,
@@ -503,6 +506,8 @@ export const DriverPage: React.FC = () => {
   const [startingTrek, setStartingTrek] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completingTrek, setCompletingTrek] = useState(false);
+  const [stockWarnings, setStockWarnings] = useState<TrekStockWarning[]>([]);
+  const [stockWarningVisible, setStockWarningVisible] = useState(false);
   const switchTrek = async (trekId: string): Promise<boolean> => {
     if (!navigator.onLine) { toast.error('Online required to switch.'); return false; }
     try {
@@ -542,12 +547,7 @@ export const DriverPage: React.FC = () => {
     }
   };
 
-  const handleStartTrek = async () => {
-    if (!online) {
-      toast.error('Connect to the internet before starting the trek.');
-      return;
-    }
-    setStartingTrek(true);
+  const performStartTrek = async () => {
     try {
       await treksApi.startByDriverToken(token);
       await refresh(true);
@@ -555,8 +555,58 @@ export const DriverPage: React.FC = () => {
       navigate(driverHref('assigned'));
     } catch (startError: any) {
       toast.error(startError.response?.data?.detail || startError.response?.data?.message || 'The trek could not be started.');
+    }
+  };
+
+  const handleStartTrek = async () => {
+    if (!online) {
+      toast.error('Connect to the internet before starting the trek.');
+      return;
+    }
+    if (!trek) return;
+    setStartingTrek(true);
+    try {
+      const checkItems = new Map<string, TrekStockCheckItem>();
+      trek.stops.forEach((stop) => {
+        stop.products.forEach((product) => {
+          const current = checkItems.get(product.productId) ?? {
+            productId: product.productId,
+            basicQty: 0,
+            packagingQty: 0,
+          };
+          current.basicQty += Number(product.plannedBasicQuantity ?? 0);
+          current.packagingQty += Number(product.plannedPackagingQuantity ?? 0);
+          checkItems.set(product.productId, current);
+        });
+      });
+      const items = [...checkItems.values()];
+      if (items.length > 0) {
+        try {
+          const result = await treksApi.checkStockLoadsByDriverToken(token, items);
+          if (result.hasWarnings && result.warnings.length > 0) {
+            setStockWarnings(result.warnings);
+            setStockWarningVisible(true);
+            return;
+          }
+        } catch (checkError: any) {
+          toast.error(checkError.response?.data?.detail || checkError.response?.data?.message || 'Failed to check vehicle stock.');
+          return;
+        }
+      }
+      await performStartTrek();
     } finally {
       setStartingTrek(false);
+    }
+  };
+
+  const continueStartTrek = async () => {
+    setStockWarningVisible(false);
+    setStartingTrek(true);
+    try {
+      await performStartTrek();
+    } finally {
+      setStartingTrek(false);
+      setStockWarnings([]);
     }
   };
 
@@ -1284,6 +1334,72 @@ export const DriverPage: React.FC = () => {
           <p className="mt-2 text-[11px] text-portal-muted">This trek will become your primary workspace. New activity will be recorded there.</p>
         </> : <p className="text-sm text-portal-text">Connect to the internet to switch workspace.</p>}
       </FlatModal>
+
+      <FlatConfirmDialog
+        visible={stockWarningVisible}
+        onHide={() => {
+          setStockWarningVisible(false);
+          setStockWarnings([]);
+        }}
+        onConfirm={continueStartTrek}
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="inline-flex h-4 w-4 rotate-45 items-center justify-center rounded-[2px] border border-amber-200/90 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 text-amber-950 shadow-lg shadow-amber-400/40"
+              aria-hidden="true"
+            >
+              <span className="-rotate-45 text-[11px] font-bold leading-none">!</span>
+            </span>
+            Vehicle Stock Warning
+          </span>
+        }
+        showIcon={false}
+        size="lg"
+        loading={startingTrek}
+        message={
+          <div className="space-y-3">
+            <p className="text-xs text-portal-text">
+              Some trek quantities exceed the vehicle's current stock. You can review the shortages and continue starting the trek.
+            </p>
+            <div className="overflow-hidden rounded border border-portal-border/60">
+              <table className="w-full text-[11px]">
+                <thead className="bg-portal-canvas/60 text-portal-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium uppercase tracking-wide">Product</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Requested</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Available</th>
+                    <th className="px-3 py-2 text-right font-medium uppercase tracking-wide">Shortfall</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-portal-border/40">
+                  {stockWarnings.map((warning) => {
+                    const fmt = (basic: number, packaging: number) => [
+                      warning.packagingUnitName ? `${packaging.toLocaleString()} ${warning.packagingUnitName}` : null,
+                      `${basic.toLocaleString()} ${warning.basicUnitName}`,
+                    ].filter(Boolean).join(' · ');
+                    return (
+                      <tr key={warning.productId}>
+                        <td className="px-3 py-2 text-xs font-semibold text-portal-text">{warning.productName}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
+                          {fmt(warning.requestedBasicQty, warning.requestedPackagingQty)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-portal-text">
+                          {fmt(warning.availableBasicQty, warning.availablePackagingQty)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-amber-400">
+                          {fmt(warning.basicShortfall, warning.packagingShortfall)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+        confirmLabel="Start anyway"
+        variant="warning"
+      />
 
       <FlatModal
         visible={completeDialogOpen}

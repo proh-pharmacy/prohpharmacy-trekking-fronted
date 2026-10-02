@@ -19,6 +19,14 @@ export interface StaffExportParams {
   status?: string;
 }
 
+export interface VehicleStockLedgerExportParams {
+  productId?: string;
+  source?: 'ManualLoad' | 'TrekCompletion' | 'ReturnApproval';
+  from?: string;
+  to?: string;
+  exportStyle?: 'worksheet' | 'workbook';
+}
+
 const filenameFromDisposition = (disposition: string | undefined, fallback: string): string => {
   if (!disposition) return fallback;
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
@@ -60,4 +68,11 @@ export const dataExportsApi = {
 
   exportCustomerMarkups: (regionId?: string) =>
     downloadExport('/customers/markups/export', 'customer_markup_rules.xlsx', { regionId }),
+
+  exportVehicleStockLedger: (vehicleId: string, params?: VehicleStockLedgerExportParams) =>
+    downloadExport(
+      `/vehicles/${vehicleId}/stock/ledger/export`,
+      'vehicle_stock_ledger.xlsx',
+      params,
+    ),
 };

@@ -176,8 +176,35 @@ export interface TrekStockLoad {
   loadedAt: string | null;
 }
 
+export interface TrekStockCheckItem {
+  productId: string;
+  basicQty: number;
+  packagingQty: number;
+}
+
+export interface TrekStockWarning {
+  productId: string;
+  productName: string;
+  basicUnitId: string;
+  basicUnitName: string;
+  packagingUnitId: string | null;
+  packagingUnitName: string | null;
+  requestedBasicQty: number;
+  availableBasicQty: number;
+  basicShortfall: number;
+  requestedPackagingQty: number;
+  availablePackagingQty: number;
+  packagingShortfall: number;
+}
+
+export interface TrekStockCheckResult {
+  hasWarnings: boolean;
+  warnings: TrekStockWarning[];
+}
+
 export interface DriverStopProduct {
   stopProductId: string;
+  productId: string;
   productName: string;
   basicUnitName?: string | null;
   packagingUnitName: string | null;
@@ -302,6 +329,11 @@ export const treksApi = {
     return Array.isArray(res.data) ? res.data : [];
   },
 
+  checkStockLoads: async (trekId: string, items: TrekStockCheckItem[]): Promise<TrekStockCheckResult> => {
+    const res = await apiClient.post<TrekStockCheckResult>(`/treks/${trekId}/stock-loads/check`, { items });
+    return res.data;
+  },
+
   createTrek: async (payload: CreateTrekPayload): Promise<Trek> => {
     const res = await apiClient.post<Trek>('/treks', payload);
     return normalizeTrekProducts(res.data);
@@ -393,6 +425,17 @@ export const treksApi = {
     payload: RecordDeliveryPayload
   ): Promise<{ trekId: string; trekNumber: string; status: TrekStatus; recorded: number }> => {
     const res = await publicApi.post(`/treks/driver/${token}/record`, payload);
+    return res.data;
+  },
+
+  checkStockLoadsByDriverToken: async (
+    token: string,
+    items: TrekStockCheckItem[],
+  ): Promise<TrekStockCheckResult> => {
+    const res = await publicApi.post<TrekStockCheckResult>(
+      `/treks/driver/${encodeURIComponent(token)}/stock-loads/check`,
+      { items },
+    );
     return res.data;
   },
 };

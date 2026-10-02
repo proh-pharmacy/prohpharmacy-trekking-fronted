@@ -5,6 +5,7 @@ import { resetTableData } from '../../../../components/data-table';
 import {
   FlatAsyncSelect,
   FlatButton,
+  FlatDropdown,
   FlatInputNumber,
   FlatTextarea,
 } from '../../../../components/flat-form';
@@ -16,6 +17,15 @@ import {
 } from '../../../../api-client';
 
 type Mode = 'load' | 'remove';
+
+const REDUCTION_REASON_OPTIONS = [
+  { label: 'Damaged goods', value: 'Damaged goods' },
+  { label: 'Expired stock', value: 'Expired stock' },
+  { label: 'Inventory correction', value: 'Inventory correction' },
+  { label: 'Returned to warehouse', value: 'Returned to warehouse' },
+  { label: 'Lost or missing stock', value: 'Lost or missing stock' },
+  { label: 'Other', value: 'Other' },
+];
 
 interface StagedItem {
   productId: string;
@@ -58,6 +68,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
 
   const [items, setItems] = useState<StagedItem[]>([]);
   const [formOpen, setFormOpen] = useState(isLocked);
+  const [reasonSelection, setReasonSelection] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [excludeTracked, setExcludeTracked] = useState(false);
@@ -100,6 +111,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   useEffect(() => {
     if (visible) {
       setItems([]);
+      setReasonSelection('');
       setReason('');
       setSubmitting(false);
       setFormOpen(isLocked);
@@ -314,6 +326,35 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       </div>
     );
 
+  const reasonFields = isRemove ? (
+    <div className="space-y-2">
+      <FlatDropdown
+        label="Reason"
+        required
+        size="sm"
+        value={reasonSelection}
+        options={REDUCTION_REASON_OPTIONS}
+        placeholder="Select a reason"
+        onChange={(value) => {
+          const selected = (value as string) || '';
+          setReasonSelection(selected);
+          setReason(selected === 'Other' ? '' : selected);
+        }}
+      />
+      {reasonSelection === 'Other' && (
+        <FlatTextarea
+          label="Other reason"
+          required
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Enter the reason"
+          rows={2}
+          size="sm"
+        />
+      )}
+    </div>
+  ) : null;
+
   const productForm = (
     <div className="space-y-2 max-w-sm mx-auto">
       <div className="pb-2 mb-4 border-b border-portal-border/60">
@@ -432,17 +473,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         </div>
       )}
 
-      {isLocked && isRemove && (
-        <FlatTextarea
-          label="Reason"
-          required
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g. Damaged goods, inventory correction..."
-          rows={2}
-          size="sm"
-        />
-      )}
+      {isLocked && reasonFields}
 
       {!isLocked && (
         <div
@@ -557,17 +588,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                 </div>
               )}
 
-              {isRemove && (
-                <FlatTextarea
-                  label="Reason"
-                  required
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Damaged goods, inventory correction..."
-                  rows={2}
-                  size="sm"
-                />
-              )}
+              {isRemove && reasonFields}
             </div>
 
             <div

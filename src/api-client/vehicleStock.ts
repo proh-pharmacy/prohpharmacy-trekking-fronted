@@ -1,4 +1,5 @@
 import apiClient from './api';
+import type { PaginatedDataResponse } from '../components/data-table';
 
 export interface StockItem {
   stockId: string;
@@ -54,11 +55,14 @@ export interface StockLedgerEntry {
   id: string;
   productId: string;
   productName: string;
+  basicUnitName: string;
+  packagingUnitName: string | null;
   changeType: StockLedgerChangeType;
   source: StockLedgerSource;
   basicQtyChange: number;
   packagingQtyChange: number;
-  balanceAfter: number;
+  basicBalanceAfter: number;
+  packagingBalanceAfter: number;
   reason: string | null;
   authorName: string | null;
   recordedAt: string;
@@ -100,5 +104,34 @@ export const vehicleStockApi = {
       payload,
     );
     return res.data;
+  },
+
+  getStockLedger: async (
+    vehicleId: string,
+    params?: {
+      productId?: string;
+      source?: StockLedgerSource;
+      from?: string;
+      to?: string;
+      pageNumber?: number;
+      pageSize?: number;
+    },
+  ): Promise<PaginatedDataResponse<StockLedgerEntry>> => {
+    const res = await apiClient.get<PaginatedDataResponse<StockLedgerEntry>>(
+      `/vehicles/${vehicleId}/stock/ledger`,
+      { params },
+    );
+    return res.data;
+  },
+
+  getStockTrend: async (
+    vehicleId: string,
+    params: { productId: string; from?: string; to?: string },
+  ): Promise<StockLedgerEntry[]> => {
+    const res = await apiClient.get<StockLedgerEntry[] | PaginatedDataResponse<StockLedgerEntry>>(
+      `/vehicles/${vehicleId}/stock/ledger`,
+      { params },
+    );
+    return Array.isArray(res.data) ? res.data : (res.data.data ?? []);
   },
 };
