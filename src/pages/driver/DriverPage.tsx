@@ -572,6 +572,7 @@ export const DriverPage: React.FC = () => {
   const [assignedStopRequest, setAssignedStopRequest] = useState<FieldActionRequest | null>(null);
   const [customerRequest, setCustomerRequest] = useState<FieldActionRequest | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<FieldCustomer | null>(null);
+  const [customerSyncIssue, setCustomerSyncIssue] = useState<{ name: string; reason: string } | null>(null);
   const editingCustomerModal = useMemo(() => editingCustomer ? customerForModal(editingCustomer, districts) : null, [editingCustomer, districts]);
   const [locationCustomer, setLocationCustomer] = useState<FieldCustomer | null>(null);
   const [editingLocation, setEditingLocation] = useState<CustomerLocation | null>(null);
@@ -843,7 +844,20 @@ export const DriverPage: React.FC = () => {
       syncStatus: action.status as 'pending' | 'conflict',
       syncReason: action.reason,
     })),
-    ...orderedCustomers,
+    ...orderedCustomers.map((customer): CustomerListRow => {
+      const locationIds = new Set([customer.primaryLocation?.id, ...(customer.additionalLocations ?? []).map(location => location.id)]);
+      const actions = queue.filter(action => action.status !== 'synced' && (
+        (['UpdateCustomer', 'AddCustomerLocation'].includes(action.type)
+          && (action.payload.customerId === customer.id
+            || Boolean(customer.clientGeneratedId && action.payload.customerClientId === customer.clientGeneratedId)))
+        || (action.type === 'UpdateCustomerLocation'
+          && Boolean(action.payload.locationId || action.payload.locationClientId)
+          && locationIds.has(String(action.payload.locationId || action.payload.locationClientId)))
+      ));
+      if (!actions.length) return customer;
+      const reasons = [...new Set(actions.map(action => action.reason).filter(Boolean))].join('\n');
+      return { ...customer, syncStatus: actions.some(action => action.status === 'conflict') || reasons ? 'conflict' : 'pending', syncReason: reasons };
+    }),
   ];
   const nextStopSequence = Math.max(0, ...sortedStops.map((stop) => stop.sequence), ...queuedStops.map((action) => Number(action.payload.sequence) || 0)) + 1;
   const visibleTreks = regionTreks.length ? regionTreks : [{ trekId: trek.trekId, trekNumber: trek.trekNumber, scheduledDate: trek.scheduledDate,
@@ -1223,7 +1237,10 @@ export const DriverPage: React.FC = () => {
                       : <span className="text-xs text-portal-muted">No GPS captured</span>;
                   } },
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
-                    ? <span className={`text-xs ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
+                    ? item.syncStatus === 'conflict' || item.syncReason
+                      ? <button type="button" className="text-xs text-red-accent underline decoration-dotted underline-offset-4 cursor-pointer"
+                          onClick={() => setCustomerSyncIssue({ name: item.businessName, reason: item.syncReason || 'The customer could not be synced. Review the details and save again.' })}>Needs attention</button>
+                      : <span className="text-xs text-portal-accent">Awaiting sync</span>
                     : <span className="text-xs text-portal-muted">Available offline</span> },
                   { field: 'actions', header: 'Action', body: (item) => <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
@@ -1487,6 +1504,16 @@ export const DriverPage: React.FC = () => {
           )}
         />
       </div>
+      <FlatModal
+        visible={customerSyncIssue !== null}
+        onHide={() => setCustomerSyncIssue(null)}
+        title="Needs attention"
+        subtitle={customerSyncIssue?.name}
+        size="sm"
+        footer={<div className="flex justify-end"><FlatButton size="sm" variant="outline" onClick={() => setCustomerSyncIssue(null)}>Close</FlatButton></div>}
+      >
+        <p className="whitespace-pre-wrap break-words text-xs text-red-accent">{customerSyncIssue?.reason}</p>
+      </FlatModal>
       <FlatModal
         visible={trekToSwitch !== null}
         onHide={() => { if (!switchingTrek) setTrekToSwitch(null); }}
