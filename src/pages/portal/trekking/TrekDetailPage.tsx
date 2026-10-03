@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<TrekStatus, string> = {
 
 const NEXT_STATUSES: Partial<Record<TrekStatus, TrekStatus[]>> = {
   Draft: ['Scheduled', 'Cancelled'],
-  Scheduled: ['InProgress', 'Cancelled'],
+  Scheduled: ['Cancelled'],
   InProgress: ['Completed'],
 };
 
