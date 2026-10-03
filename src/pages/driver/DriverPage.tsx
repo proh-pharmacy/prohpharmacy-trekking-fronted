@@ -915,13 +915,13 @@ export const DriverPage: React.FC = () => {
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] border border-portal-border divide-x divide-portal-border shadow-xs">
+                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] !rounded-none border border-portal-border divide-x divide-portal-border">
                     {/* 1. Add Stop (First item, highlighted green background) */}
                     <button
                       type="button"
                       disabled={trek.isLocked || (trek.status !== 'Scheduled' && trek.status !== 'InProgress')}
                       onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Add additional stop"
                     >
                       <i className="pi pi-plus text-xs font-bold" aria-hidden="true" />
@@ -939,7 +939,7 @@ export const DriverPage: React.FC = () => {
                         }
                         setReturnModalOpen(true);
                       }}
-                      className="flex h-[38px] items-center justify-center gap-1.5 bg-red-accent/10 px-2.5 text-xs font-semibold text-red-accent transition-colors hover:bg-red-accent/20 focus:outline-none focus:ring-1 focus:ring-red-accent disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-[38px] items-center justify-center gap-1.5 bg-red-accent/10 px-2.5 text-xs font-semibold !rounded-none text-red-accent transition-colors hover:bg-red-accent/20 focus:outline-none focus:ring-1 focus:ring-red-accent disabled:cursor-not-allowed disabled:opacity-40"
                       title="Record invoice return"
                     >
                       <i className="pi pi-replay text-xs" aria-hidden="true" />
@@ -951,7 +951,7 @@ export const DriverPage: React.FC = () => {
                       type="button"
                       disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
                       onClick={() => void handleCompleteRequest()}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Complete trek"
                     >
                       <i className="pi pi-check-circle text-xs" aria-hidden="true" />
@@ -962,7 +962,7 @@ export const DriverPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDocumentsModalOpen(true)}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
                       title="Download trek documents"
                     >
                       <i className="pi pi-file-pdf text-xs font-bold text-red-400" aria-hidden="true" />
