@@ -6,6 +6,7 @@ import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { FlatDataTable, resetTableData } from '../../../components/data-table';
 import { EditTrekModal } from './components/EditTrekModal';
 import { AddStopModal } from './components/AddStopModal';
+import { TrekDocumentsModal } from './components/TrekDocumentsModal';
 import toast from 'react-hot-toast';
 import { fmtGhs, parseNumericInput } from '../../../lib/utils';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -147,7 +148,7 @@ export const TrekDetailPage: React.FC = () => {
   const [changingStatus, setChangingStatus] = useState<TrekStatus | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [openingDriverLink, setOpeningDriverLink] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [documentsVisible, setDocumentsVisible] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
   const [editVisible, setEditVisible] = useState(false);
@@ -370,25 +371,6 @@ export const TrekDetailPage: React.FC = () => {
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!trek) return;
-    setDownloadingPdf(true);
-    setShareOpen(false);
-    try {
-      const blob = await treksApi.downloadPdf(trek.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `TrekkingSheet-${trek.trekNumber}-${trek.scheduledDate}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Failed to download PDF.');
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
-
   const handleSyncPrices = async () => {
     if (!trek) return;
     setSyncingPrices(true);
@@ -539,6 +521,9 @@ export const TrekDetailPage: React.FC = () => {
           )}
 
           {/* Share dropdown */}
+          {hasAnyPermission('Treks.DownloadSheet', 'Reports.Export', 'Treks.Manage') && (
+            <FlatButton variant="outline" size="sm" leftIcon="pi pi-download" onClick={() => setDocumentsVisible(true)}>Download</FlatButton>
+          )}
           {hasAnyPermission('Treks.GenerateDriverLink', 'Treks.SendEmail', 'Treks.DownloadSheet', 'Reports.Export', 'Treks.Manage') && <div className="relative" ref={shareRef}>
             <FlatButton
               variant="outline"
@@ -581,15 +566,6 @@ export const TrekDetailPage: React.FC = () => {
                     {resendingEmail ? 'Sending...' : 'Resend Sheet & Link'}
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  disabled={downloadingPdf}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
-                >
-                  <i className="pi pi-file-pdf text-portal-accent text-[11px]" />
-                  {downloadingPdf ? 'Downloading...' : 'Download PDF'}
-                </button>
               </div>
             )}
           </div>}
@@ -684,6 +660,8 @@ export const TrekDetailPage: React.FC = () => {
       </div>
 
       {/* ── Modals ── */}
+      <TrekDocumentsModal visible={documentsVisible} onHide={() => setDocumentsVisible(false)} trek={trek} />
+
       <EditTrekModal
         visible={editVisible}
         onHide={() => setEditVisible(false)}
@@ -1129,6 +1107,7 @@ const StopCard: React.FC<StopCardProps> = ({
                   emptyDataText="No returns recorded for this stop."
                   columns={[
                     { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
+                    { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.invoiceNumber || '—'}</span> },
                     { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
                     { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
                     { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },

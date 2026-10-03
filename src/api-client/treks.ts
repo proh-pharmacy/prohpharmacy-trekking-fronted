@@ -240,6 +240,8 @@ export interface DriverReturn {
   refundMethod: PaymentMethod | null;
   reason: string | null;
   recordedAt: string;
+  saleInvoiceId: string | null;
+  invoiceNumber: string | null;
 }
 
 export interface DriverStop {
@@ -307,6 +309,11 @@ const normalizeTrekProducts = <T extends { stops: { products: { basicUnitName?: 
 });
 
 export const treksApi = {
+  downloadDocument: async (id: string, kind: 'sheet' | 'report' | 'snapshot'): Promise<Blob> => {
+    const path = kind === 'snapshot' ? 'stock-snapshot' : kind;
+    const response = await apiClient.get(`/treks/${id}/${path}/pdf`, { responseType: 'blob' });
+    return response.data as Blob;
+  },
   portalAuth: async (trekNumber: string): Promise<PortalSession> => {
     const res = await publicApi.post<PortalSession>('/treks/portal/auth', { trekNumber });
     return res.data;

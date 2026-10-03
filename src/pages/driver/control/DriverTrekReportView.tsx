@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { saveAs } from 'file-saver';
-import toast from 'react-hot-toast';
 import type { StockItem } from '../../../api-client/vehicleStock';
 import { FlatButton } from '../../../components/flat-form';
 import { fmtGhs } from '../../../lib/utils';
@@ -11,6 +9,7 @@ interface Props {
   token: string;
   online: boolean;
   vehicleStock: StockItem[];
+  onOpenDownloads: () => void;
 }
 
 const dateTime = (value: string) => new Date(value).toLocaleString('en-GB', {
@@ -27,10 +26,9 @@ const returnTone = (status: string) => status === 'Approved'
     ? 'text-red-accent'
     : 'text-portal-muted';
 
-export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleStock }) => {
+export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleStock, onOpenDownloads }) => {
   const [report, setReport] = useState<DriverTrekReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,23 +58,6 @@ export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleSt
   }, [token]);
 
   useEffect(() => { void loadReport(); }, [loadReport]);
-
-  const downloadPdf = async () => {
-    if (!online) {
-      toast.error('Connect to download the report.');
-      return;
-    }
-    setDownloading(true);
-    try {
-      const { blob, filename } = await fieldApi.downloadDriverReport(token);
-      saveAs(blob, filename);
-      toast.success('Report downloaded.');
-    } catch (downloadError: any) {
-      toast.error(downloadError.response?.data?.message || 'Could not download the report.');
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   if (loading && !report) {
     return <div className="flex min-h-72 items-center justify-center text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading report...</div>;
@@ -128,7 +109,7 @@ export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleSt
         </div>
         <div className="flex items-center gap-2">
           <FlatButton size="sm" variant="outline" leftIcon="pi pi-refresh" onClick={() => void loadReport()} loading={loading} disabled={!online || loading}>Refresh</FlatButton>
-          <FlatButton size="sm" variant="primary" leftIcon="pi pi-file-pdf" onClick={() => void downloadPdf()} loading={downloading} disabled={!online || downloading}>Download PDF</FlatButton>
+          <FlatButton size="sm" variant="primary" leftIcon="pi pi-download" onClick={onOpenDownloads}>Download</FlatButton>
         </div>
       </div>
 
@@ -213,7 +194,7 @@ export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleSt
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left">
             <thead className="bg-portal-canvas/50 text-[10px] uppercase tracking-wide text-portal-muted">
-              <tr><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Invoice</th><th className="px-3 py-2">Product</th><th className="px-3 py-2 text-right">Refund</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Reason</th><th className="px-3 py-2">Recorded</th></tr>
+              <tr><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Ref. Invoice</th><th className="px-3 py-2">Product</th><th className="px-3 py-2 text-right">Refund</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Reason</th><th className="px-3 py-2">Recorded</th></tr>
             </thead>
             <tbody className="divide-y divide-portal-border/40">
               {refunds.map((item) => {

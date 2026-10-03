@@ -18,12 +18,12 @@ import {
 import type { Product } from '../../api-client/products';
 import type { Customer, CustomerLocation } from '../../api-client/customers';
 import { FlatDataTable, resetTableData } from '../../components/data-table';
-import { baseURL } from '../../api-client/api';
 import { useFieldControl } from './control/useFieldControl';
 import { FieldActions, type FieldActionKind, type FieldActionRequest } from './control/FieldActions';
 import { visibleActionsForStop, visibleWalkInStopActions } from './control/offlineLifecycle';
 import { DriverDashboard } from './control/DriverDashboard';
 import { DriverTrekReportView } from './control/DriverTrekReportView';
+import { DriverDocumentsModal } from './control/DriverDocumentsModal';
 import { DriverReturnModal } from './control/DriverReturnModal';
 import { openDriverInvoice, type DriverInvoiceLine } from './control/driverInvoice';
 import { OfflineMapControl } from './control/OfflineMapControl';
@@ -270,6 +270,8 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
         refundMethod: (action.payload.refundMethod as PaymentMethod) || null,
         reason: action.payload.reason == null ? null : String(action.payload.reason),
         recordedAt: action.occurredAt,
+        saleInvoiceId: action.payload.saleInvoiceId == null ? null : String(action.payload.saleInvoiceId),
+        invoiceNumber: action.payload.invoiceNumber == null ? null : String(action.payload.invoiceNumber),
         queuedReturn: action,
         queuedVoid: queuedVoids.find((item) => item.payload.returnClientId === action.clientId),
       };
@@ -471,6 +473,7 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           emptyDataText="No returns recorded for this stop."
           columns={[
             { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
+            { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.invoiceNumber || '—'}</span> },
             { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
             { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
             { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
@@ -581,6 +584,7 @@ export const DriverPage: React.FC = () => {
   const [stockWarnings, setStockWarnings] = useState<TrekStockWarning[]>([]);
   const [stockWarningVisible, setStockWarningVisible] = useState(false);
   const [stockWarningAction, setStockWarningAction] = useState<'start' | 'complete' | null>(null);
+  const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
   const switchTrek = async (trekId: string): Promise<boolean> => {
     if (!navigator.onLine) { toast.error('Online required to switch.'); return false; }
     try {
@@ -613,6 +617,7 @@ export const DriverPage: React.FC = () => {
       await completeTrek();
       setCompleteDialogOpen(false);
       toast.success('Trek completed and ledger synced.');
+      window.location.reload();
     } catch (completionError) {
       toast.error(completionError instanceof Error ? completionError.message : 'The trek could not be completed.');
     } finally {
@@ -956,9 +961,9 @@ export const DriverPage: React.FC = () => {
                     {/* 4. PDF Sheet (Last item) */}
                     <button
                       type="button"
-                      onClick={() => window.open(`${baseURL}/treks/driver/${token}/sheet/pdf`, '_blank')}
+                      onClick={() => setDocumentsModalOpen(true)}
                       className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
-                      title="Download PDF Sheet"
+                      title="Download trek documents"
                     >
                       <i className="pi pi-file-pdf text-xs font-bold text-red-400" aria-hidden="true" />
                       <span>Download</span>
@@ -1282,7 +1287,7 @@ export const DriverPage: React.FC = () => {
               />
             </div>
           )}
-          renderReportView={() => <DriverTrekReportView token={token} online={online} vehicleStock={vehicleStock} />}
+          renderReportView={() => <DriverTrekReportView token={token} online={online} vehicleStock={vehicleStock} onOpenDownloads={() => setDocumentsModalOpen(true)} />}
           renderActionsView={() => (
             <div className="space-y-4">
               <div className="border-b border-portal-border/60 pb-3">
@@ -1595,6 +1600,14 @@ export const DriverPage: React.FC = () => {
         </p>
         {pendingCount > 0 && <p className="mt-3 text-xs text-portal-muted">{pendingCount} pending item{pendingCount === 1 ? '' : 's'} will be synced first.</p>}
       </FlatModal>
+
+      <DriverDocumentsModal
+        visible={documentsModalOpen}
+        onHide={() => setDocumentsModalOpen(false)}
+        token={token}
+        trekStatus={trek?.status ?? ''}
+        online={online}
+      />
     </div>
   );
 };
