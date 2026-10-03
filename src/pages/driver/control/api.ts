@@ -299,6 +299,24 @@ export interface SyncResult {
 const path = (token: string, suffix: string) => `/treks/driver/${encodeURIComponent(token)}${suffix}`;
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+async function downloadDriverPdf(
+  token: string,
+  suffix: string,
+  fallbackName: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await publicApi.get<Blob>(path(token, suffix), { responseType: 'blob' });
+  const disposition = response.headers['content-disposition'] as string | undefined;
+  const encoded = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  let filename = fallbackName;
+  if (encoded) {
+    try { filename = decodeURIComponent(encoded.replace(/^"|"$/g, '')); }
+    catch { filename = encoded.replace(/^"|"$/g, ''); }
+  } else {
+    filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1]?.trim() || filename;
+  }
+  return { blob: response.data, filename };
+}
+
 export function validateCustomerPhoto(file: File): void {
   if (!(file instanceof Blob) || file.size === 0) throw new Error('Choose a non-empty photo.');
   if (!PHOTO_TYPES.has(file.type)) throw new Error('Choose a JPEG, PNG, or WebP photo.');
@@ -478,17 +496,13 @@ export const fieldApi = {
     return response.data;
   },
   downloadDriverReport: async (token: string): Promise<{ blob: Blob; filename: string }> => {
-    const response = await publicApi.get<Blob>(path(token, '/report/pdf'), { responseType: 'blob' });
-    const disposition = response.headers['content-disposition'] as string | undefined;
-    const encoded = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
-    let filename = `TrekReport.pdf`;
-    if (encoded) {
-      try { filename = decodeURIComponent(encoded.replace(/^"|"$/g, '')); }
-      catch { filename = encoded.replace(/^"|"$/g, ''); }
-    } else {
-      filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1]?.trim() || filename;
-    }
-    return { blob: response.data, filename };
+    return downloadDriverPdf(token, '/report/pdf', 'TrekReport.pdf');
+  },
+  downloadDriverSheet: async (token: string): Promise<{ blob: Blob; filename: string }> => {
+    return downloadDriverPdf(token, '/sheet/pdf', 'TrekDeliverySheet.pdf');
+  },
+  downloadDriverStockSnapshot: async (token: string): Promise<{ blob: Blob; filename: string }> => {
+    return downloadDriverPdf(token, '/stock-snapshot/pdf', 'TrekStockSnapshot.pdf');
   },
   completeTrek: async (token: string): Promise<DriverTrek> => {
     const response = await publicApi.post<DriverTrek>(path(token, '/complete'));
