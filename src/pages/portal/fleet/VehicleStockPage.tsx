@@ -482,7 +482,7 @@ export const VehicleStockPage: React.FC = () => {
     || (vehicle ? [vehicle.regionName, vehicle.displayName].filter(Boolean).join(' - ') : '')
     || (vehicleLoading ? 'Loading…' : '—');
 
-  const handleBack = () => navigate('/portal/fleet');
+  const handleBack = () => navigate('/portal/fleet/stock');
 
   return (
     <div className="space-y-5">
@@ -523,7 +523,7 @@ export const VehicleStockPage: React.FC = () => {
             type="button"
             onClick={handleBack}
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-portal-muted transition-colors hover:bg-white/[0.08] hover:text-portal-text"
-            aria-label="Back to Fleet"
+            aria-label="Back to vehicle stock"
           >
             <i className="pi pi-arrow-left text-xs" />
           </button>

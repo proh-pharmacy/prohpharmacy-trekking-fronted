@@ -24,6 +24,19 @@ export interface Vehicle {
   updatedAt?: string | null;
 }
 
+export interface VehicleStockOverviewSummary {
+  trackedProductCount: number;
+  inStockProductCount: number;
+  outOfStockProductCount: number;
+  lowStockProductCount: number;
+  hasStockLoaded: boolean;
+  lastUpdatedAt: string | null;
+}
+
+export interface VehicleStockOverview extends Vehicle {
+  stock: VehicleStockOverviewSummary;
+}
+
 export interface CreateVehiclePayload {
   registrationNumber: string;
   displayName: string;
