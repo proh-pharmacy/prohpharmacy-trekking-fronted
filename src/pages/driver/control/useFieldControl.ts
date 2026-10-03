@@ -212,6 +212,11 @@ export function useFieldControl(token: string) {
 
   const processPhotoQueue = useCallback(async () => {
     if (!navigator.onLine) return;
+    // A worker may have skipped photos while their customer update was pending.
+    // After it finishes, make a fresh pass with the newly acknowledged actions.
+    const previousWorker = photoWorkers.get(token);
+    if (previousWorker) await previousWorker.catch(() => {});
+    if (!navigator.onLine) return;
     if (photoWorkers.has(token)) return photoWorkers.get(token);
     const run = async () => {
       setUploadingPhotoCount(count => count + 1);
@@ -373,7 +378,6 @@ export function useFieldControl(token: string) {
           pending = (await fieldStore.queue(token)).filter((action) => action.status === 'pending').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
         }
         await refresh(true);
-        await processPhotoQueue();
       } catch (error) {
         const responseDetail = (error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
         const reason = responseDetail?.detail || responseDetail?.message || (error instanceof Error ? error.message : 'The server could not process the queued actions.');
@@ -388,7 +392,15 @@ export function useFieldControl(token: string) {
         if ((responseDetail as { code?: string } | undefined)?.code === '409') await refresh(true);
         setError(syncReason);
       } finally {
-        syncingRef.current = false; setSyncing(false);
+        try {
+          // Independent photos can upload even when an action fails. Each photo
+          // still waits for its own registration/document details to succeed.
+          await processPhotoQueue();
+        } catch {
+          setError(current => current || 'Could not process saved photos. Try Sync again.');
+        } finally {
+          syncingRef.current = false; setSyncing(false);
+        }
       }
     };
     if (navigator.locks) await navigator.locks.request(`customer-actions:${token}`, run);
@@ -513,8 +525,12 @@ export function useFieldControl(token: string) {
         let nextPhotos = existing.map(photo => {
           const reference = payload.customerId || payload.customerClientId;
           const sameCustomer = reference && (photo.customerId === reference || photo.customerClientId === reference);
-          return sameCustomer && isIdPhoto(photo) && payload.idDocumentType && payload.idDocumentNumber
-            ? { ...photo, metadataActionId: action.clientId } : photo;
+          const correctedDependency = conflicted && (photo.metadataActionId === conflicted.clientId
+            || (conflicted.type === 'RegisterCustomer' && photo.customerClientId === conflicted.clientId));
+          const updatedDocument = sameCustomer && isIdPhoto(photo) && payload.idDocumentType && payload.idDocumentNumber;
+          if (!correctedDependency && !updatedDocument) return photo;
+          return { ...photo, ...(isIdPhoto(photo) ? { metadataActionId: action.clientId } : {}),
+            status: 'pending' as const, reason: undefined, nextAttemptAt: undefined, attempts: 0 };
         });
         for (const [kind, file] of Object.entries(photos)) {
           if (!file) continue;
