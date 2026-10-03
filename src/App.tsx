@@ -80,6 +80,9 @@ const TraccarPage = lazy(() =>
 const FleetPage = lazy(() =>
   import('./pages/portal/fleet').then((m) => ({ default: m.FleetPage }))
 );
+const VehicleStockOverviewPage = lazy(() =>
+  import('./pages/portal/fleet').then((m) => ({ default: m.VehicleStockOverviewPage }))
+);
 const VehicleStockPage = lazy(() =>
   import('./pages/portal/fleet').then((m) => ({ default: m.VehicleStockPage }))
 );
@@ -203,6 +206,7 @@ export default function App() {
                   <Route path="product-pricing-rules" element={<PermissionGuard permissions={['Products.View', 'Products.Manage', 'Units.View']}><ProductPricingRulesPage /></PermissionGuard>} />
                   <Route path="product" element={<Navigate to="/portal/products" replace />} />
                   <Route path="fleet" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><FleetPage /></PermissionGuard>} />
+                  <Route path="fleet/stock" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><VehicleStockOverviewPage /></PermissionGuard>} />
                   <Route path="fleet/vehicles/:vehicleId/stock" element={<PermissionGuard permissions={['Vehicles.View', 'Vehicles.Manage']}><VehicleStockPage /></PermissionGuard>} />
                   <Route path="invoices" element={<InvoicesPage />} />
                   <Route path="invoices/:invoiceNumber" element={<InvoiceDetailPage />} />

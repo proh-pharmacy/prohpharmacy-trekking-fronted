@@ -13,6 +13,7 @@ import {
   SquaresFour,
   TreeStructure,
   Truck,
+  Warehouse,
   UsersThree,
   type Icon,
 } from '@phosphor-icons/react';
@@ -54,6 +55,7 @@ export const PORTAL_NAV_SECTIONS: NavSection[] = [
       { label: 'Products & Packaging', to: '/portal/products', icon: Package, permissions: ['Products.View', 'Products.Manage', 'Units.View'] },
       { label: 'Product Pricing Rules', to: '/portal/product-pricing-rules', icon: Percent, permissions: ['Products.View', 'Products.Manage', 'Units.View'] },
       { label: 'Vehicle Fleet', to: '/portal/fleet', icon: Truck, permissions: ['Vehicles.View', 'Vehicles.Manage'] },
+      { label: 'Vehicle Stock', to: '/portal/fleet/stock', icon: Warehouse, permissions: ['Vehicles.View', 'Vehicles.Manage'] },
     ],
   },
   {

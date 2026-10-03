@@ -235,6 +235,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               {section.items.map((item) => {
                 const isActive =
                   location.pathname === item.to ||
+                  (item.to === '/portal/fleet/stock' && location.pathname.startsWith('/portal/fleet/vehicles/') && location.pathname.endsWith('/stock')) ||
                   (item.to === '/portal/dashboard' && location.pathname === '/portal');
 
                 const tooltipText = item.badge
@@ -277,11 +278,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                     {!showCollapsed && (
                       item.badge ? (
                         <span
-                          className={`ml-auto px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                            isActive
-                              ? 'bg-black/20 text-white'
-                              : 'bg-sidebar-canvas text-sidebar-accent border border-sidebar-border'
-                          }`}
+                          className="ml-auto border border-red-accent bg-red-accent px-1.5 py-0.5 text-[10px] font-medium text-white rounded"
                         >
                           {item.badge}
                         </span>
