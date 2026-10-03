@@ -207,6 +207,7 @@ export interface TrekStockCheckResult {
 
 export interface DriverStopProduct {
   stopProductId: string;
+  clientGeneratedId?: string | null;
   productId: string;
   productName: string;
   basicUnitName?: string | null;
