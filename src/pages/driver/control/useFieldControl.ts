@@ -654,5 +654,12 @@ export function useFieldControl(token: string) {
     if (navigator.onLine) await processPhotoQueue();
   }, [token, processPhotoQueue]);
 
-  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto };
+  const clearFailedPhotos = useCallback(async () => {
+    const next = await fieldStore.updatePhotos(token, current => current.filter(
+      (photo) => !(photo.status !== 'uploaded' && photo.reason?.startsWith('Upload failed:'))
+    ));
+    setPhotoQueue(next);
+  }, [token]);
+
+  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto, clearFailedPhotos };
 }

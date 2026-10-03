@@ -564,7 +564,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
+  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto, clearFailedPhotos } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
@@ -1467,7 +1467,12 @@ export const DriverPage: React.FC = () => {
               )}
               {photoQueue.some((photo) => photo.status !== 'uploaded') && (
                 <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-3 shadow-md">
-                  <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
+                    {photoQueue.some((photo) => photo.status !== 'uploaded' && photo.reason?.startsWith('Upload failed:')) && (
+                      <FlatButton size="sm" variant="ghost" onClick={() => void clearFailedPhotos()}>Clear failed</FlatButton>
+                    )}
+                  </div>
                   {photoQueue.filter((photo) => photo.status !== 'uploaded').map((photo) => (
                     <div key={photo.photoId} className="flex flex-wrap items-center justify-between gap-2 border-t border-portal-border/40 pt-2.5 text-xs">
                       <span className="text-portal-text">{photoLabel(photo.kind)}<span className="ml-2 text-[11px] text-portal-muted">{photo.file.name}</span></span>

@@ -36,51 +36,82 @@ async function write(key: string, value: unknown): Promise<void> {
 
 const key = (token: string, part: string) => `${token}:${part}`;
 
+// Store raw bytes alongside metadata instead of a Blob. iOS WebKit purges
+// IndexedDB's blob backing store on PWA cold-start, which kills Blob/File
+// references even when the Blob was originally constructed in-memory from an
+// ArrayBuffer. Storing the ArrayBuffer directly keeps the bytes inline in the
+// IDB record (via structured clone) so they survive cold-starts.
 interface StoredPhoto extends Omit<QueuedPhoto, 'file'> {
-  file: Blob;
+  bytes: ArrayBuffer;
   fileName: string;
+  mimeType: string;
 }
 
-// WebKit sometimes returns zero-byte bodies for File objects restored from
-// IndexedDB after a PWA cold start. Storing an ArrayBuffer-backed Blob plus a
-// separate filename sidesteps that bug; this cache keeps the same Blob
-// reference alive so repeated writes don't re-read the bytes.
-const BLOB_CACHE = new WeakMap<File, Blob>();
+// Cache the ArrayBuffer per File reference so repeated writes don't re-read
+// bytes from the File (which can be an expensive async call on large photos).
+const BYTES_CACHE = new WeakMap<File, ArrayBuffer>();
 
 function fromStored(raw: unknown): QueuedPhoto | null {
   if (!raw || typeof raw !== 'object') return null;
-  const stored = raw as Partial<StoredPhoto> & { file?: unknown; photoId?: unknown };
-  if (!(stored.file instanceof Blob) || typeof stored.photoId !== 'string') return null;
-  const sourceBlob = stored.file;
-  const name = stored.fileName
-    || (sourceBlob instanceof File ? sourceBlob.name : '')
-    || 'photo';
-  const type = sourceBlob.type || 'application/octet-stream';
-  const file = new File([sourceBlob], name, { type });
-  BLOB_CACHE.set(file, sourceBlob);
-  const { fileName: _fileName, file: _file, ...rest } = stored as StoredPhoto;
-  void _fileName; void _file;
-  return { ...(rest as Omit<QueuedPhoto, 'file'>), file };
+  const stored = raw as Partial<StoredPhoto> & {
+    file?: unknown;
+    bytes?: unknown;
+    photoId?: unknown;
+    fileName?: unknown;
+    mimeType?: unknown;
+  };
+  if (typeof stored.photoId !== 'string') return null;
+
+  // New format: ArrayBuffer + metadata.
+  if (stored.bytes instanceof ArrayBuffer) {
+    const fileName = typeof stored.fileName === 'string' ? stored.fileName : 'photo';
+    const mimeType = typeof stored.mimeType === 'string' ? stored.mimeType : 'application/octet-stream';
+    const file = new File([stored.bytes], fileName, { type: mimeType });
+    BYTES_CACHE.set(file, stored.bytes);
+    const { fileName: _fn, mimeType: _mt, file: _file, bytes: _b, ...rest } = stored as StoredPhoto & { file?: unknown };
+    void _fn; void _mt; void _file; void _b;
+    return { ...(rest as Omit<QueuedPhoto, 'file'>), file };
+  }
+
+  // Legacy format: Blob. The underlying reference is likely dead after a
+  // cold-start on iOS; we still rehydrate it so the user can either retry
+  // (will surface a clear error) or remove the entry.
+  if (stored.file instanceof Blob) {
+    const sourceBlob = stored.file;
+    const fileName = (typeof stored.fileName === 'string' && stored.fileName)
+      || (sourceBlob instanceof File ? sourceBlob.name : '')
+      || 'photo';
+    const mimeType = sourceBlob.type || 'application/octet-stream';
+    const file = new File([sourceBlob], fileName, { type: mimeType });
+    const { fileName: _fn, mimeType: _mt, file: _file, bytes: _b, ...rest } = stored as StoredPhoto & { file?: unknown };
+    void _fn; void _mt; void _file; void _b;
+    return { ...(rest as Omit<QueuedPhoto, 'file'>), file };
+  }
+
+  return null;
 }
 
 async function toStored(photo: QueuedPhoto): Promise<StoredPhoto> {
-  const cached = BLOB_CACHE.get(photo.file);
-  let blob: Blob;
-  if (cached && cached.size === photo.file.size && cached.type === photo.file.type) {
-    blob = cached;
+  const cached = BYTES_CACHE.get(photo.file);
+  let bytes: ArrayBuffer;
+  if (cached && cached.byteLength === photo.file.size && cached.byteLength > 0) {
+    bytes = cached;
   } else {
-    let bytes: ArrayBuffer;
     try {
       bytes = await photo.file.arrayBuffer();
     } catch {
       bytes = new ArrayBuffer(0);
     }
-    blob = new Blob([bytes], { type: photo.file.type });
-    BLOB_CACHE.set(photo.file, blob);
+    BYTES_CACHE.set(photo.file, bytes);
   }
   const { file: _file, ...rest } = photo;
   void _file;
-  return { ...rest, file: blob, fileName: photo.file.name || 'photo' };
+  return {
+    ...rest,
+    bytes,
+    fileName: photo.file.name || 'photo',
+    mimeType: photo.file.type || 'application/octet-stream',
+  };
 }
 
 function hydratePhotos(raw: unknown): QueuedPhoto[] {
