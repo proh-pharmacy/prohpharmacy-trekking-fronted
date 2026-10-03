@@ -1064,6 +1064,7 @@ export const DriverPage: React.FC = () => {
                         sequence: Number(action.payload.sequence) || 0,
                         customerName: customer?.businessName || String(queuedCustomer?.payload.businessName || 'Additional stop customer'),
                         customerCode: customer?.customerCode || '',
+                        customerClientGeneratedId: customer?.clientGeneratedId || (action.payload.customerClientId as string | undefined) || null,
                         primaryPhoneNumber: customer?.primaryPhoneNumber || String(queuedCustomer?.payload.primaryPhoneNumber || ''),
                         regionName: customer?.regionName || trek.regionName,
                         districtName: customer?.primaryLocation?.districtName || '',

@@ -20,6 +20,7 @@ import {
 import { fmtGhs } from '../../../lib/utils';
 
 const STATUS_OPTIONS = [
+  { label: 'All statuses', value: '' },
   { label: 'Pending', value: 'Pending' },
   { label: 'Approved', value: 'Approved' },
   { label: 'Rejected', value: 'Rejected' },
@@ -132,8 +133,8 @@ export const RefundApprovalsPage: React.FC = () => {
     return {
       pageNumber: payload.pageNumber || 1,
       pageSize: payload.pageSize || 20,
-      approvalStatus: payload.approvalStatus || 'Pending',
       sort: payload.sort || 'recordedAt_desc',
+      ...(payload.approvalStatus ? { approvalStatus: payload.approvalStatus } : {}),
       ...(payload.search?.trim() ? { search: payload.search.trim() } : {}),
       ...(payload.regionId ? { regionId: payload.regionId } : {}),
       ...(payload.trekId ? { trekId: payload.trekId } : {}),
@@ -247,7 +248,7 @@ export const RefundApprovalsPage: React.FC = () => {
       style: { width: '125px', textAlign: 'right' },
       headerStyle: { textAlign: 'right' },
       body: (row) => (
-        <div className="text-right">
+        <div>
           <span className="block text-xs font-semibold text-portal-text">{fmtGhs(row.refundAmount)}</span>
           <span className="mt-0.5 block text-[10px] text-portal-muted">{row.refundMethod || '—'}</span>
         </div>

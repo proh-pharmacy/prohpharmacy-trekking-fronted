@@ -692,6 +692,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 filter
                 filterPlaceholder="Search..."
                 size="sm"
+                required
               />
               <FlatInputText
                 label="Phone"
