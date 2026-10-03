@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   FlatDataTable,
   type ColumnDef,
@@ -302,7 +302,6 @@ const StockLedgerTable: React.FC<StockLedgerTableProps> = ({ vehicleId, onExport
 
 export const VehicleStockPage: React.FC = () => {
   const { vehicleId = '' } = useParams<{ vehicleId: string }>();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const activeTab: StockTab = rawTab === 'history' ? 'history' : 'stock';
@@ -482,7 +481,6 @@ export const VehicleStockPage: React.FC = () => {
     || (vehicle ? [vehicle.regionName, vehicle.displayName].filter(Boolean).join(' - ') : '')
     || (vehicleLoading ? 'Loading…' : '—');
 
-  const handleBack = () => navigate('/portal/fleet/stock');
 
   return (
     <div className="space-y-5">
@@ -517,23 +515,8 @@ export const VehicleStockPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-portal-muted transition-colors hover:bg-white/[0.08] hover:text-portal-text"
-            aria-label="Back to vehicle stock"
-          >
-            <i className="pi pi-arrow-left text-xs" />
-          </button>
-          <h1 className="truncate text-base font-semibold text-portal-text">
-            Vehicle warehouse stock
-          </h1>
-        </div>
-
         {activeTab === 'stock' && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
             {canManage && (
               <>
@@ -543,10 +526,7 @@ export const VehicleStockPage: React.FC = () => {
             )}
           </div>
         )}
-      </div>
 
-      {activeTab === 'stock' ? (
-        <>
       <div className="flex flex-wrap gap-3">
         <div className="flex-[2] min-w-[220px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Vehicle</p>
@@ -574,6 +554,7 @@ export const VehicleStockPage: React.FC = () => {
         </div>
       </div>
 
+      {activeTab === 'stock' ? (
       <FlatDataTable<StockItem>
         data={stock}
         columns={columns}
@@ -588,7 +569,6 @@ export const VehicleStockPage: React.FC = () => {
               : 'No stock items yet. Use "Add Stock" to load products onto this vehicle.'
         }
       />
-        </>
       ) : (
         <StockLedgerTable
           vehicleId={vehicleId}
