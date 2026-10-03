@@ -915,7 +915,7 @@ export const DriverPage: React.FC = () => {
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] rounded overflow-hidden border border-portal-border/70 divide-x divide-portal-border/70 shadow-xs">
+                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] border border-portal-border divide-x divide-portal-border shadow-xs">
                     {/* 1. Add Stop (First item, highlighted green background) */}
                     <button
                       type="button"
