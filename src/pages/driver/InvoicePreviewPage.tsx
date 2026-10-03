@@ -69,7 +69,7 @@ export const InvoicePreviewPage: React.FC = () => {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-6">
         <div className="w-full max-w-sm space-y-2 text-center">
-          <p className="text-sm font-medium text-white">{error || 'Invoice unavailable.'}</p>
+          <p className="text-base font-semibold text-white">{error || 'Invoice unavailable.'}</p>
           {pendingSync && (
             <p className="text-xs text-white/70">
               If your sale is very recent, we may still be processing it — please try again in a few minutes.
