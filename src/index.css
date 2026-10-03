@@ -684,13 +684,26 @@ input:disabled {
   height: 100% !important;
   display: flex !important;
   align-items: center !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
   line-height: 1 !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown .p-dropdown-label,
+  .p-dropdown.p-dropdown-sm .p-dropdown-label {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-dropdown.p-dropdown-md .p-dropdown-label {
   padding-left: 0.875rem !important;
-  font-size: 0.875rem !important;
+  font-size: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown.p-dropdown-md .p-dropdown-label {
+    font-size: 0.875rem !important;
+  }
 }
 
 .p-dropdown.p-dropdown-lg .p-dropdown-label {
@@ -715,7 +728,14 @@ input:disabled {
   min-height: 38px !important;
   display: inline-flex !important;
   align-items: center !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-multiselect,
+  .p-multiselect.p-multiselect-sm {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-multiselect .p-multiselect-label,
@@ -729,8 +749,15 @@ input:disabled {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 0.25rem !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
   line-height: 1.25 !important;
+}
+
+@media (min-width: 640px) {
+  .p-multiselect .p-multiselect-label,
+  .p-multiselect.p-multiselect-sm .p-multiselect-label {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-multiselect .p-multiselect-label.p-placeholder,
@@ -741,9 +768,16 @@ input:disabled {
   padding-right: 0.5rem !important;
   height: 36px !important;
   line-height: 36px !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
   display: flex !important;
   align-items: center !important;
+}
+
+@media (min-width: 640px) {
+  .p-multiselect .p-multiselect-label.p-placeholder,
+  .p-multiselect.p-multiselect-sm .p-multiselect-label.p-placeholder {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-multiselect .p-multiselect-trigger,
