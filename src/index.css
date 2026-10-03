@@ -1099,10 +1099,18 @@ div.p-icon-field {
 .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
   color: var(--color-portal-text) !important;
   padding: 10px 12px !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
   line-height: 1.35 !important;
   border-radius: 2px !important;
   transition: all 0.15s ease !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown-panel .p-dropdown-items .p-dropdown-item,
+  .p-multiselect-panel .p-multiselect-items .p-multiselect-item,
+  .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+    font-size: 0.75rem !important;
+  }
 }
 
 @media (min-width: 768px) {
@@ -1129,8 +1137,16 @@ div.p-icon-field {
 .p-multiselect-panel-sm .p-multiselect-items .p-multiselect-item,
 .p-autocomplete-panel-sm .p-autocomplete-items .p-autocomplete-item {
   padding: 10px 12px !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
   line-height: 1.35 !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown-panel-sm .p-dropdown-items .p-dropdown-item,
+  .p-multiselect-panel-sm .p-multiselect-items .p-multiselect-item,
+  .p-autocomplete-panel-sm .p-autocomplete-items .p-autocomplete-item {
+    font-size: 0.75rem !important;
+  }
 }
 
 @media (min-width: 768px) {
@@ -1144,7 +1160,14 @@ div.p-icon-field {
 .p-dropdown-panel-sm .p-dropdown-header,
 .p-multiselect-panel-sm .p-multiselect-header {
   padding: 5px 8px !important;
-  font-size: 0.75rem !important;
+  font-size: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown-panel-sm .p-dropdown-header,
+  .p-multiselect-panel-sm .p-multiselect-header {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-multiselect-panel-sm .p-checkbox .p-checkbox-box {
@@ -1161,7 +1184,15 @@ div.p-icon-field {
 .p-multiselect-panel-md .p-multiselect-items .p-multiselect-item,
 .p-autocomplete-panel-md .p-autocomplete-items .p-autocomplete-item {
   padding: 8px 12px !important;
-  font-size: 0.875rem !important;
+  font-size: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown-panel-md .p-dropdown-items .p-dropdown-item,
+  .p-multiselect-panel-md .p-multiselect-items .p-multiselect-item,
+  .p-autocomplete-panel-md .p-autocomplete-items .p-autocomplete-item {
+    font-size: 0.875rem !important;
+  }
 }
 
 /* Large (lg) Panels */
@@ -1197,11 +1228,18 @@ div.p-icon-field {
 .p-dropdown-panel .p-dropdown-filter-container input,
 .p-multiselect-panel .p-multiselect-filter-container input {
   height: 44px !important;
-  font-size: 0.875rem !important;
+  font-size: 1rem !important;
   padding: 2px 8px !important;
   background: var(--color-portal-surface) !important;
   border-color: var(--color-portal-border) !important;
   color: var(--color-portal-heading) !important;
+}
+
+@media (min-width: 640px) {
+  .p-dropdown-panel .p-dropdown-filter-container input,
+  .p-multiselect-panel .p-multiselect-filter-container input {
+    font-size: 0.875rem !important;
+  }
 }
 
 .p-dropdown-panel .p-dropdown-filter-container .p-dropdown-filter-icon,
@@ -1394,13 +1432,27 @@ div.p-icon-field {
 /* DatePicker Small (sm) Panel */
 .p-datepicker.p-datepicker-sm,
 .p-datepicker-sm {
-  font-size: 0.75rem !important;
+  font-size: 0.95rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-datepicker.p-datepicker-sm,
+  .p-datepicker-sm {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-datepicker.p-datepicker-sm .p-datepicker-header,
 .p-datepicker-sm .p-datepicker-header {
   padding: 4px 8px !important;
-  font-size: 0.75rem !important;
+  font-size: 0.95rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-datepicker.p-datepicker-sm .p-datepicker-header,
+  .p-datepicker-sm .p-datepicker-header {
+    font-size: 0.75rem !important;
+  }
 }
 
 .p-datepicker.p-datepicker-sm .p-datepicker-header .p-datepicker-prev,
@@ -1435,7 +1487,16 @@ div.p-icon-field {
 .p-datepicker-sm table th,
 .p-datepicker-sm table th > span {
   padding: 2px !important;
-  font-size: 0.625rem !important;
+  font-size: 0.75rem !important;
+}
+
+@media (min-width: 640px) {
+  .p-datepicker.p-datepicker-sm table th,
+  .p-datepicker.p-datepicker-sm table th > span,
+  .p-datepicker-sm table th,
+  .p-datepicker-sm table th > span {
+    font-size: 0.625rem !important;
+  }
 }
 
 .p-datepicker.p-datepicker-sm table td,
@@ -1445,10 +1506,19 @@ div.p-icon-field {
 
 .p-datepicker.p-datepicker-sm table td > span,
 .p-datepicker-sm table td > span {
-  width: 1.6rem !important;
-  height: 1.6rem !important;
-  font-size: 0.675rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  font-size: 0.9rem !important;
   border-radius: 2px !important;
+}
+
+@media (min-width: 640px) {
+  .p-datepicker.p-datepicker-sm table td > span,
+  .p-datepicker-sm table td > span {
+    width: 1.6rem !important;
+    height: 1.6rem !important;
+    font-size: 0.675rem !important;
+  }
 }
 
 /* ==========================================================================

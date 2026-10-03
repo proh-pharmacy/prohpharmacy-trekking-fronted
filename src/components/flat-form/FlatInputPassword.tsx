@@ -80,7 +80,7 @@ export const FlatInputPassword = forwardRef<HTMLInputElement, FlatInputPasswordP
             style={{ width: '100%' }}
             inputStyle={{ width: '100%' }}
             className={`!w-full flex-1 [&_.p-icon-field]:!w-full [&_.p-icon-field]:!flex-1 [&_.p-icon-field]:!flex [&_.p-icon-field]:!relative [&_.p-input-icon]:!top-0 [&_.p-input-icon]:!bottom-0 [&_.p-input-icon]:!my-auto [&_.p-input-icon]:!h-full [&_.p-input-icon]:!flex [&_.p-input-icon]:!items-center [&_.p-input-icon]:!right-3 ${
-              effectiveSize === 'sm' ? 'h-[38px] [&_.p-input-icon]:!text-xs' : ''
+              effectiveSize === 'sm' ? 'h-[42px] sm:h-[38px] [&_.p-input-icon]:!text-xs' : ''
             } ${
               isDark
                 ? '[&_.p-password-show-icon]:!text-portal-muted hover:[&_.p-password-show-icon]:!text-portal-heading [&_.p-password-hide-icon]:!text-portal-muted hover:[&_.p-password-hide-icon]:!text-portal-heading'

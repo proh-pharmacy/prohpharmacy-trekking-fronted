@@ -51,7 +51,7 @@ export const FlatChips: React.FC<FlatChipsProps> = ({
         pt={{
           container: {
             className: `
-              w-full border rounded text-xs px-2 py-1 transition-colors min-h-[38px]
+              w-full border rounded text-base sm:text-xs px-2 py-1 transition-colors min-h-[42px] sm:min-h-[38px]
               ${
                 isDark
                   ? '!bg-portal-canvas !border-portal-border !text-portal-heading hover:!border-portal-border/80 focus-within:!border-portal-accent'

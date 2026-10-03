@@ -16,12 +16,12 @@ export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value' | 'v
 const getTextareaSizeClasses = (size: FlatInputSize): string => {
   switch (size) {
     case 'sm':
-      return '!text-xs px-3 py-2 leading-relaxed placeholder:!text-xs';
+      return '!text-base sm:!text-xs px-3 py-2 leading-relaxed placeholder:!text-base sm:placeholder:!text-xs';
     case 'lg':
       return '!text-base px-4 py-3 leading-normal placeholder:!text-base';
     case 'md':
     default:
-      return '!text-sm px-3.5 py-2.5 leading-normal placeholder:!text-sm';
+      return '!text-base sm:!text-sm px-3.5 py-2.5 leading-normal placeholder:!text-base sm:placeholder:!text-sm';
   }
 };
 

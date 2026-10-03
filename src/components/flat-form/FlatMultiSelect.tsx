@@ -61,10 +61,10 @@ export const FlatMultiSelect: React.FC<FlatMultiSelectProps> = ({
           w-full border rounded transition-colors p-multiselect-${effectiveSize}
           ${
             effectiveSize === 'sm'
-              ? `${!value || value.length === 0 ? '!h-[38px]' : '!min-h-[38px]'} text-xs [&_.p-multiselect-token]:!py-0.5 [&_.p-multiselect-token]:!text-xs`
+              ? `${!value || value.length === 0 ? '!h-[42px] sm:!h-[38px]' : '!min-h-[42px] sm:!min-h-[38px]'} text-base sm:text-xs [&_.p-multiselect-token]:!py-0.5 [&_.p-multiselect-token]:!text-xs`
               : effectiveSize === 'lg'
               ? '!min-h-[50px] text-base'
-              : '!min-h-[44px] text-sm'
+              : '!min-h-[44px] text-base sm:text-sm'
           }
           ${
             isDark

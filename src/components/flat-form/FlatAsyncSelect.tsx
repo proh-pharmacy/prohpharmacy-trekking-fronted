@@ -384,7 +384,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         onClick={toggleDropdown}
         className={`
           relative w-full border rounded flex items-center justify-between cursor-pointer transition-colors select-none
-          ${effectiveSize === 'sm' ? 'h-[38px] text-xs' : effectiveSize === 'lg' ? 'h-[50px] text-base' : 'h-[44px] text-sm'}
+          ${effectiveSize === 'sm' ? 'h-[42px] sm:h-[38px] text-base sm:text-xs' : effectiveSize === 'lg' ? 'h-[50px] text-base' : 'h-[44px] text-base sm:text-sm'}
           ${
             isDark
               ? 'bg-portal-canvas border-portal-border text-portal-heading hover:border-portal-border/80'
@@ -452,7 +452,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="flat-async-select-search h-[38px] min-w-0 flex-1 bg-transparent border-none outline-none text-xs text-portal-heading placeholder-portal-muted focus:ring-0"
+                className="flat-async-select-search h-[42px] sm:h-[38px] min-w-0 flex-1 bg-transparent border-none outline-none text-base sm:text-xs text-portal-heading placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button
@@ -487,7 +487,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                     type="button"
                     disabled={option.disabled}
                     onClick={() => { filter.onChange(option.value); setIsFilterOpen(false); }}
-                    className={`w-full flex items-center justify-between rounded px-2 py-2 text-left text-xs transition-colors ${option.disabled ? 'text-portal-muted/50 cursor-not-allowed' : option.value === filter.value ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.06] cursor-pointer'}`}
+                    className={`w-full flex items-center justify-between rounded px-2 py-2 text-left text-base sm:text-xs transition-colors ${option.disabled ? 'text-portal-muted/50 cursor-not-allowed' : option.value === filter.value ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.06] cursor-pointer'}`}
                   >
                     <span>{option.label}</span>
                     {option.value === filter.value && <i className="pi pi-check text-[11px]" />}
@@ -499,7 +499,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             {/* Scrollable Items List Container */}
             <div
               onScroll={handleListScroll}
-              className="max-h-64 overflow-y-auto custom-scrollbar p-1 divide-y divide-portal-border/20 text-xs"
+              className="max-h-64 overflow-y-auto custom-scrollbar p-1 divide-y divide-portal-border/20 text-base sm:text-xs"
             >
               {showFirstLoad ? (
                 <div className="py-8 flex flex-col items-center justify-center text-portal-muted gap-2">
@@ -507,7 +507,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                   <span className="text-[11px]">Loading options...</span>
                 </div>
               ) : displayedItems.length === 0 ? (
-                <div className="py-6 text-center text-portal-muted text-xs">
+                <div className="py-6 text-center text-portal-muted text-base sm:text-xs">
                   No matching records found.
                 </div>
               ) : (

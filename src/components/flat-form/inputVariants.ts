@@ -22,7 +22,7 @@ export const getInputSizeClasses = (
   switch (size) {
     case 'sm':
       return {
-        input: `!h-[38px] !text-xs px-3 py-1 leading-tight placeholder:!text-xs ${hasLeftIcon ? '!pl-8' : ''} ${hasRightIcon ? '!pr-8' : ''}`,
+        input: `!h-[42px] sm:!h-[38px] !text-base sm:!text-xs px-3 py-1 leading-tight placeholder:!text-base sm:placeholder:!text-xs ${hasLeftIcon ? '!pl-8' : ''} ${hasRightIcon ? '!pr-8' : ''}`,
         leftIcon: 'left-2.5 text-xs',
         rightIcon: 'right-2.5 text-xs',
         label: 'text-[11px] mb-1',
@@ -39,7 +39,7 @@ export const getInputSizeClasses = (
     case 'md':
     default:
       return {
-        input: `!h-[44px] !text-sm px-3.5 py-2.5 leading-normal placeholder:!text-sm ${hasLeftIcon ? '!pl-10' : ''} ${hasRightIcon ? '!pr-10' : ''}`,
+        input: `!h-[44px] !text-base sm:!text-sm px-3.5 py-2.5 leading-normal placeholder:!text-base sm:placeholder:!text-sm ${hasLeftIcon ? '!pl-10' : ''} ${hasRightIcon ? '!pr-10' : ''}`,
         leftIcon: 'left-3.5 text-base',
         rightIcon: 'right-3 text-sm',
         label: 'text-xs mb-1.5',
