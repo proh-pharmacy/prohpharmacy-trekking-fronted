@@ -379,7 +379,7 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
       <div className="flex flex-wrap gap-2 items-center">
         {!locked && <>
-          <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
+          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => onFieldAction('sale', stop.stopId)}>Add Sale</FlatButton>
         </>}
         {invoiceLines.length > 0 && (
           <FlatButton
