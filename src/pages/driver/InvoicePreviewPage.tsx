@@ -69,13 +69,13 @@ export const InvoicePreviewPage: React.FC = () => {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-6">
         <div className="w-full max-w-sm space-y-2 text-center">
-          <p className="text-xs text-portal-text">{error || 'Invoice unavailable.'}</p>
+          <p className="text-sm font-medium text-white">{error || 'Invoice unavailable.'}</p>
           {pendingSync && (
-            <p className="text-[11px] text-portal-muted">
+            <p className="text-xs text-white/70">
               If your sale is very recent, we may still be processing it — please try again in a few minutes.
             </p>
           )}
-          <p className="pt-2 text-[11px] text-portal-muted">
+          <p className="pt-2 text-xs text-white/70">
             Need help? Visit{' '}
             <a
               href="https://prohpharmacy.com/"
