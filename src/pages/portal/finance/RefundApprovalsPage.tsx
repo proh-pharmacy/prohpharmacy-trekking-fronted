@@ -213,7 +213,7 @@ export const RefundApprovalsPage: React.FC = () => {
       style: { width: '155px' },
       body: (row) => (
         <div>
-          <button type="button" onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`)} className="block font-mono text-[11px] font-semibold text-portal-accent transition hover:text-portal-accent-hover">
+          <button type="button" onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`)} className="block font-mono text-xs font-semibold text-portal-accent transition hover:text-portal-accent-hover">
             {row.invoiceNumber || '—'}
           </button>
           <button type="button" onClick={() => navigate(`/portal/trekking/${row.trekId}`)} className="mt-0.5 block font-mono text-[10px] text-portal-muted transition hover:text-portal-accent">
@@ -259,7 +259,7 @@ export const RefundApprovalsPage: React.FC = () => {
       style: { width: '165px' },
       body: (row) => (
         <div>
-          <span className="block text-[11px] text-portal-text">{row.recordedAt ? formatDateTime(row.recordedAt) : '—'}</span>
+          <span className="block text-xs text-portal-text">{row.recordedAt ? formatDateTime(row.recordedAt) : '—'}</span>
           <span className="mt-0.5 block text-[10px] text-portal-muted">{row.recordedByName || row.driverName || '—'}</span>
         </div>
       ),
@@ -270,7 +270,7 @@ export const RefundApprovalsPage: React.FC = () => {
       style: { width: '115px' },
       body: (row) => (
         <div className="min-w-0">
-          <span className={`block text-[11px] font-semibold ${STATUS_STYLES[row.approvalStatus]}`}>{row.approvalStatus}</span>
+          <span className={`block text-xs font-semibold ${STATUS_STYLES[row.approvalStatus]}`}>{row.approvalStatus}</span>
           {row.approvedByName && <span className="mt-0.5 block truncate text-[10px] text-portal-muted" title={row.approvedAt ? `${row.approvedByName} · ${formatDateTime(row.approvedAt)}` : row.approvedByName}>{row.approvedByName}</span>}
           {row.rejectionReason && <span className="mt-0.5 block truncate text-[10px] text-portal-muted" title={row.rejectionReason}>{row.rejectionReason}</span>}
         </div>

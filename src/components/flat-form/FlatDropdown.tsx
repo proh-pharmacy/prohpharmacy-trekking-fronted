@@ -57,7 +57,7 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
         placeholder={placeholder}
         className={`
           w-full border rounded transition-colors p-dropdown-${effectiveSize}
-          ${effectiveSize === 'sm' ? '!h-[38px] text-xs' : effectiveSize === 'lg' ? '!h-[50px] text-base' : '!h-[44px] text-sm'}
+          ${effectiveSize === 'sm' ? '!h-[42px] sm:!h-[38px] text-base sm:text-xs' : effectiveSize === 'lg' ? '!h-[50px] text-base' : '!h-[44px] text-base sm:text-sm'}
           ${
             isDark
               ? '!bg-portal-canvas !border-portal-border !text-portal-heading hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label.p-placeholder]:!text-portal-muted [&_.p-dropdown-label:not(.p-placeholder)]:!text-portal-heading [&_.p-dropdown-trigger]:!text-portal-muted'

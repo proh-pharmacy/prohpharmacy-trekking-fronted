@@ -240,16 +240,16 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
           <p className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">Business Info</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {text('businessName', 'Business name', true)} <FlatInputText label="Customer phone" placeholder="+233 24 123 4567" value={values.primaryPhoneNumber ?? ''} onChange={(event) => set('primaryPhoneNumber', formatGhanaPhoneNumber(event.target.value))} required size="sm" />
+            {text('businessName', 'Business name', true)} <FlatInputText label="Customer phone" placeholder="+233 24 123 4567" value={values.primaryPhoneNumber ?? ''} onChange={(event) => set('primaryPhoneNumber', formatGhanaPhoneNumber(event.target.value))} required size="sm" inputMode="numeric" />
             {select('customerType', 'Customer type', options(CUSTOMER_TYPES), true)} {text('tradingName', 'Trading name')}
-            <FlatInputText label="WhatsApp number" placeholder="+233 24 123 4567" value={values.whatsAppNumber ?? ''} onChange={(event) => set('whatsAppNumber', formatGhanaPhoneNumber(event.target.value))} size="sm" />
+            <FlatInputText label="WhatsApp number" placeholder="+233 24 123 4567" value={values.whatsAppNumber ?? ''} onChange={(event) => set('whatsAppNumber', formatGhanaPhoneNumber(event.target.value))} size="sm" inputMode="numeric" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Representative</p>
           <div className="h-px bg-portal-border" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {text('firstName', 'First name', true)} {text('middleName', 'Middle name')} {text('lastName', 'Last name', true)}
             <FlatInputText label="Ghana Card number" value={values.ghanaCardNumber ?? ''} onChange={(event) => set('ghanaCardNumber', formatGhanaCardNumber(event.target.value))} size="sm" placeholder="GHA-..." maxLength={30} />
-            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} <FlatInputText label="Representative phone" placeholder="+233 24 123 4567" value={values.representativePhone ?? ''} onChange={(event) => set('representativePhone', formatGhanaPhoneNumber(event.target.value))} required size="sm" />
+            {select('relationshipType', 'Relationship', options(RELATIONSHIPS), true)} <FlatInputText label="Representative phone" placeholder="+233 24 123 4567" value={values.representativePhone ?? ''} onChange={(event) => set('representativePhone', formatGhanaPhoneNumber(event.target.value))} required size="sm" inputMode="numeric" />
           </div>
           <p className="pt-2 text-[11px] font-medium uppercase tracking-wide text-portal-muted">Location</p>
           <div className="h-px bg-portal-border" />

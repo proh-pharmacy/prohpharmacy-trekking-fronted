@@ -14,22 +14,26 @@ export const InvoicePreviewPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
   const customerCode = searchParams.get('cc')?.trim() ?? '';
+  const clientGeneratedId = searchParams.get('cid')?.trim() ?? '';
   const [invoice, setInvoice] = useState<DriverInvoicePreviewResponse | null>(null);
   const [qrCode, setQrCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const previewUrl = `${window.location.origin}/invoice/preview?token=${encodeURIComponent(token)}&cc=${encodeURIComponent(customerCode)}`;
+  const identifierParam = customerCode
+    ? `cc=${encodeURIComponent(customerCode)}`
+    : `cid=${encodeURIComponent(clientGeneratedId)}`;
+  const previewUrl = `${window.location.origin}/invoice/preview?token=${encodeURIComponent(token)}&${identifierParam}`;
 
   useEffect(() => {
     let active = true;
-    if (!token || !customerCode) {
+    if (!token || (!customerCode && !clientGeneratedId)) {
       setError('This invoice link is incomplete.');
       setLoading(false);
       return () => { active = false; };
     }
     setLoading(true);
     Promise.all([
-      fieldApi.getInvoicePreview(token, customerCode),
+      fieldApi.getInvoicePreview(token, { customerCode, clientGeneratedId }),
       QRCode.toDataURL(previewUrl, { errorCorrectionLevel: 'M', margin: 1, width: 144 }),
     ]).then(([data, qr]) => {
       if (!active) return;
@@ -37,10 +41,16 @@ export const InvoicePreviewPage: React.FC = () => {
       setQrCode(qr);
       setError('');
     }).catch((loadError: unknown) => {
-      if (active) setError(getApiError(loadError)?.message || 'Invoice unavailable.');
+      if (!active) return;
+      const apiError = getApiError(loadError);
+      if (apiError?.code === '404') {
+        setError("This invoice isn't available yet — the driver's device hasn't synced this sale. Please try again later.");
+      } else {
+        setError(apiError?.message || 'Invoice unavailable.');
+      }
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [customerCode, previewUrl, token]);
+  }, [clientGeneratedId, customerCode, previewUrl, token]);
 
   const paymentMethods = useMemo(() => invoice
     ? [...new Set(invoice.stop.products.map((item) => item.paymentMethod).filter(Boolean))].join(', ') || '—'

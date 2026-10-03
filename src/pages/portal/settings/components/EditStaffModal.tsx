@@ -269,6 +269,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             onChange={(e) => { setPhoneNumber(formatGhanaPhoneNumber(e.target.value)); clearError('phoneNumber'); }}
             size="sm"
             errorMessage={errors.phoneNumber}
+            inputMode="numeric"
           />
           <FlatInputText
             label="Email Address"

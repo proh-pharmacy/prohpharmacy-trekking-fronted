@@ -329,6 +329,7 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
       vehicleName: trek.vehicleDisplayName,
       customerName: stop.customerName,
       customerCode: stop.customerCode,
+      customerClientGeneratedId: stop.customerClientGeneratedId,
       customerPhone: stop.primaryPhoneNumber,
       lines: invoiceLines,
     });
@@ -379,7 +380,7 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
       <div className="flex flex-wrap gap-2 items-center">
         {!locked && <>
-          <FlatButton size="sm" variant="ghost" className="!border-portal-accent/40 !bg-portal-accent/10 !text-portal-accent hover:!bg-portal-accent/20" onClick={() => onFieldAction('sale', stop.stopId)}>Unplanned sale</FlatButton>
+          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => onFieldAction('sale', stop.stopId)}>Add Sale</FlatButton>
         </>}
         {invoiceLines.length > 0 && (
           <FlatButton
@@ -473,12 +474,12 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           emptyDataText="No returns recorded for this stop."
           columns={[
             { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
-            { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.invoiceNumber || '—'}</span> },
+            { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.invoiceNumber || '—'}</span> },
             { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
             { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
             { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
-            { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
-            { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+            { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
+            { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
             { field: 'actions', header: 'Action', body: (item) => {
               if (item.queuedReturn || item.queuedVoid) {
                 const action = item.queuedReturn || item.queuedVoid!;
@@ -564,7 +565,7 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto } = useFieldControl(token);
+  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto, clearFailedPhotos } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
@@ -915,13 +916,13 @@ export const DriverPage: React.FC = () => {
                   <h1 className="text-sm font-semibold text-portal-text sm:text-lg">{trek.trekNumber} · Assigned Stops</h1>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] rounded overflow-hidden border border-portal-border/70 divide-x divide-portal-border/70 shadow-xs">
+                  <div className="grid grid-cols-4 gap-0 w-full sm:min-w-[420px] !rounded-none border border-portal-border divide-x divide-portal-border">
                     {/* 1. Add Stop (First item, highlighted green background) */}
                     <button
                       type="button"
                       disabled={trek.isLocked || (trek.status !== 'Scheduled' && trek.status !== 'InProgress')}
                       onClick={() => setAssignedStopRequest({ kind: 'stop', trekId: trek.trekId, sequence: nextStopSequence, nonce: Date.now() })}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-accent hover:bg-portal-accent-hover active:bg-portal-accent-hover text-white transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Add additional stop"
                     >
                       <i className="pi pi-plus text-xs font-bold" aria-hidden="true" />
@@ -939,7 +940,7 @@ export const DriverPage: React.FC = () => {
                         }
                         setReturnModalOpen(true);
                       }}
-                      className="flex h-[38px] items-center justify-center gap-1.5 bg-red-accent/10 px-2.5 text-xs font-semibold text-red-accent transition-colors hover:bg-red-accent/20 focus:outline-none focus:ring-1 focus:ring-red-accent disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-[38px] items-center justify-center gap-1.5 bg-red-accent/10 px-2.5 text-xs font-semibold !rounded-none text-red-accent transition-colors hover:bg-red-accent/20 focus:outline-none focus:ring-1 focus:ring-red-accent disabled:cursor-not-allowed disabled:opacity-40"
                       title="Record invoice return"
                     >
                       <i className="pi pi-replay text-xs" aria-hidden="true" />
@@ -951,7 +952,7 @@ export const DriverPage: React.FC = () => {
                       type="button"
                       disabled={trek.isLocked || trek.status !== 'InProgress' || !online || syncing || completingTrek}
                       onClick={() => void handleCompleteRequest()}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Complete trek"
                     >
                       <i className="pi pi-check-circle text-xs" aria-hidden="true" />
@@ -962,7 +963,7 @@ export const DriverPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDocumentsModalOpen(true)}
-                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
+                      className="flex h-[38px] items-center justify-center gap-1.5 px-2.5 text-xs font-semibold !rounded-none bg-portal-surface hover:bg-portal-hover active:bg-portal-active text-portal-text transition-colors select-none focus:outline-none focus:ring-1 focus:ring-portal-accent"
                       title="Download trek documents"
                     >
                       <i className="pi pi-file-pdf text-xs font-bold text-red-400" aria-hidden="true" />
@@ -1208,21 +1209,21 @@ export const DriverPage: React.FC = () => {
                 data={customerRows}
                 columns={[
                   { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-medium text-portal-accent">{item.businessName}</span> },
-                  { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
+                  { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
                   { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-portal-heading">{item.primaryPhoneNumber}</a> },
-                  { field: 'primaryContactName', header: 'Contact', body: (item) => item.primaryContactName || '—' },
+                  { field: 'primaryContactName', header: 'Contact', body: (item) => <span className="text-xs text-portal-text">{item.primaryContactName || '—'}</span> },
                   { field: 'location', header: 'Location', body: (item) => {
                     const latitude = item.latitude ?? item.primaryLocation?.latitude;
                     const longitude = item.longitude ?? item.primaryLocation?.longitude;
                     const accuracy = item.accuracyMetres ?? item.primaryLocation?.accuracyMetres;
                     return latitude != null && longitude != null
-                      ? <span className="text-[11px] text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
-                      : <span className="text-[11px] text-portal-muted">No GPS captured</span>;
+                      ? <span className="text-xs text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
+                      : <span className="text-xs text-portal-muted">No GPS captured</span>;
                   } },
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
-                    ? <span className={`text-[11px] ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
-                    : <span className="text-[11px] text-portal-muted">Available offline</span> },
+                    ? <span className={`text-xs ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
+                    : <span className="text-xs text-portal-muted">Available offline</span> },
                   { field: 'actions', header: 'Action', body: (item) => <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
                 heading={`Customers in ${trek.regionName}`}
@@ -1250,10 +1251,10 @@ export const DriverPage: React.FC = () => {
                     field: 'trekNumber',
                     header: 'Trek ID',
                     body: (item) => (
-                      <span className="font-medium text-portal-text">
+                      <span className="text-xs font-medium text-portal-text">
                         {item.trekNumber}
                         {item.trekId === trek.trekId && (
-                          <span className="block text-[11px] text-portal-accent">Assigned to you</span>
+                          <span className="mt-0.5 block text-[11px] text-portal-accent">Assigned to you</span>
                         )}
                       </span>
                     ),
@@ -1275,7 +1276,7 @@ export const DriverPage: React.FC = () => {
                   {
                     field: 'actions',
                     header: 'Actions',
-                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-[11px] text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-portal-hover !text-portal-heading hover:!bg-portal-active" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
+                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-xs text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-portal-hover !text-portal-heading hover:!bg-portal-active" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
                   },
                 ]}
                 heading={trekListTab === 'mine' ? 'Assigned treks' : `Treks in ${trek.regionName}`}
@@ -1467,7 +1468,12 @@ export const DriverPage: React.FC = () => {
               )}
               {photoQueue.some((photo) => photo.status !== 'uploaded') && (
                 <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-3 shadow-md">
-                  <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-portal-text">Photo Upload Queue</h2>
+                    {photoQueue.some((photo) => photo.status !== 'uploaded' && photo.reason?.startsWith('Upload failed:')) && (
+                      <FlatButton size="sm" variant="ghost" onClick={() => void clearFailedPhotos()}>Clear failed</FlatButton>
+                    )}
+                  </div>
                   {photoQueue.filter((photo) => photo.status !== 'uploaded').map((photo) => (
                     <div key={photo.photoId} className="flex flex-wrap items-center justify-between gap-2 border-t border-portal-border/40 pt-2.5 text-xs">
                       <span className="text-portal-text">{photoLabel(photo.kind)}<span className="ml-2 text-[11px] text-portal-muted">{photo.file.name}</span></span>

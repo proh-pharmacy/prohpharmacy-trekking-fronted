@@ -340,6 +340,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             onChange={(e) => setContactNumber(formatGhanaPhoneNumber(e.target.value))}
             size="sm"
             required
+            inputMode="numeric"
           />
         </div>
 

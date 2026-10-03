@@ -638,6 +638,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             size="sm"
             maxLength={30}
             required
+            inputMode="numeric"
           />
           <FlatInputText
             label="WhatsApp Number"
@@ -646,6 +647,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             onChange={(e) => setWhatsAppNumber(formatGhanaPhoneNumber(e.target.value))}
             size="sm"
             maxLength={30}
+            inputMode="numeric"
           />
         </div>
 
@@ -699,6 +701,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 size="sm"
                 maxLength={30}
                 required
+                inputMode="numeric"
               />
             </div>
 

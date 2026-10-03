@@ -1,7 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import api from '../../api-client';
 import { type FlatInputSize, getInputSizeClasses } from './inputVariants';
+
+// Stable identity per fetchFn reference so it can participate in the query key.
+// When the caller's useCallback deps change, the new ref gets a new id,
+// which naturally invalidates the cache for that query.
+const fetchFnIds = new WeakMap<object, string>();
+let nextFnId = 0;
+function getFetchFnId(fn: object): string {
+  let id = fetchFnIds.get(fn);
+  if (!id) {
+    id = 'fn_' + (++nextFnId).toString(36);
+    fetchFnIds.set(fn, id);
+  }
+  return id;
+}
 
 export interface FlatAsyncSelectProps<T = any> {
   id?: string;
@@ -44,6 +59,13 @@ export interface FlatAsyncSelectProps<T = any> {
   };
 }
 
+interface PageResult<T> {
+  data: T[];
+  totalPages: number;
+  totalCount?: number;
+  currentPage: number;
+}
+
 export function FlatAsyncSelect<T extends Record<string, any> = any>({
   id,
   label,
@@ -78,13 +100,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [items, setItems] = useState<T[]>(staticOptions || []);
   const [selectedItem, setSelectedItem] = useState<T | undefined>(initialSelectedItem);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState<number | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number }>({
     top: 0,
     left: 0,
@@ -94,11 +110,12 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const requestIdRef = useRef(0);
   const isDark = variant === 'dark';
   const effectiveSize: FlatInputSize = size || 'sm';
   const sizeConfig = getInputSizeClasses(effectiveSize);
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+
+  const useStaticOnly = Boolean(staticOptions && staticOptions.length > 0 && searchMode === 'local');
 
   // Debounce search input
   useEffect(() => {
@@ -115,98 +132,105 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
     }
   }, [initialSelectedItem]);
 
-  // Fetch page data (page 1 or subsequent pages)
-  const loadData = useCallback(
-    async (pageToLoad: number, isNewSearch = false) => {
-      if (staticOptions && staticOptions.length > 0 && searchMode === 'local') {
-        return;
-      }
+  const sourceKey = endpointUrl ?? (fetchFn ? getFetchFnId(fetchFn) : 'none');
 
-      const requestId = ++requestIdRef.current;
-      if (pageToLoad === 1) {
-        setLoading(true);
-        setItems([]);
-      } else {
-        setLoadingMore(true);
-      }
-
-      try {
-        let resultItems: T[] = [];
-        let fetchedTotalPages = 1;
-        let fetchedTotalCount: number | undefined;
-
-        if (fetchFn) {
-          const res = await fetchFn({
-            pageNumber: pageToLoad,
-            pageSize,
-            search: debouncedSearch || undefined,
-          });
-          resultItems = res.data || [];
-          fetchedTotalPages = res.totalPages || 1;
-          fetchedTotalCount = res.totalCount;
-        } else if (endpointUrl) {
-          const params: Record<string, any> = {
-            ...defaultParams,
-            pageNumber: pageToLoad,
-            pageSize,
-          };
-          if (debouncedSearch) {
-            params[searchParam] = debouncedSearch;
-          }
-
-          const res = await api.get<any>(endpointUrl, { params });
-          const payload = res.data;
-
-          if (Array.isArray(payload)) {
-            resultItems = payload;
-            fetchedTotalPages = 1;
-            fetchedTotalCount = payload.length;
-          } else if (payload && Array.isArray(payload.data)) {
-            resultItems = payload.data;
-            fetchedTotalPages = payload.totalPages || (payload.pageSize ? Math.ceil((payload.totalCount || 0) / payload.pageSize) : 1);
-            fetchedTotalCount = payload.totalCount;
-          } else {
-            resultItems = [];
-          }
-        }
-
-        if (requestId !== requestIdRef.current) return;
-        setItems((prev) => {
-          if (isNewSearch || pageToLoad === 1) {
-            return resultItems;
-          }
-          // Avoid duplicate items by optionValue
-          const existingIds = new Set(prev.map((i) => (optionValue in i ? i[optionValue] : JSON.stringify(i))));
-          const newUnique = resultItems.filter((i) => !existingIds.has(optionValue in i ? i[optionValue] : JSON.stringify(i)));
-          return [...prev, ...newUnique];
-        });
-
-        setCurrentPage(pageToLoad);
-        setTotalPages(fetchedTotalPages);
-        setTotalCount(fetchedTotalCount);
-      } catch (err) {
-        if (requestId === requestIdRef.current) console.error('[FlatAsyncSelect] Fetch error:', err);
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
-      }
-    },
-    [endpointUrl, defaultParams, fetchFn, pageSize, debouncedSearch, searchParam, searchMode, staticOptions, optionValue]
+  const queryKey = useMemo(
+    () => [
+      'flat-async-select',
+      sourceKey,
+      defaultParams ?? null,
+      pageSize,
+      searchParam,
+      debouncedSearch,
+    ],
+    [sourceKey, defaultParams, pageSize, searchParam, debouncedSearch]
   );
 
-  // Load page 1 whenever search changes or on open
-  useEffect(() => {
-    if (isOpen) {
-      loadData(1, true);
+  const infiniteQuery = useInfiniteQuery<PageResult<T>>({
+    queryKey,
+    enabled: isOpen && !useStaticOnly && (Boolean(endpointUrl) || Boolean(fetchFn)),
+    initialPageParam: 1,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    getNextPageParam: (lastPage) =>
+      lastPage.currentPage < lastPage.totalPages ? lastPage.currentPage + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      const page = pageParam as number;
+      if (fetchFn) {
+        const res = await fetchFn({
+          pageNumber: page,
+          pageSize,
+          search: debouncedSearch || undefined,
+        });
+        return {
+          data: res.data || [],
+          totalPages: res.totalPages || 1,
+          totalCount: res.totalCount,
+          currentPage: page,
+        };
+      }
+      if (endpointUrl) {
+        const params: Record<string, any> = {
+          ...defaultParams,
+          pageNumber: page,
+          pageSize,
+        };
+        if (debouncedSearch) params[searchParam] = debouncedSearch;
+        const res = await api.get<any>(endpointUrl, { params });
+        const payload = res.data;
+        if (Array.isArray(payload)) {
+          return { data: payload, totalPages: 1, totalCount: payload.length, currentPage: page };
+        }
+        if (payload && Array.isArray(payload.data)) {
+          const totalPages =
+            payload.totalPages ||
+            (payload.pageSize ? Math.ceil((payload.totalCount || 0) / payload.pageSize) : 1);
+          return {
+            data: payload.data,
+            totalPages,
+            totalCount: payload.totalCount,
+            currentPage: page,
+          };
+        }
+        return { data: [], totalPages: 1, totalCount: 0, currentPage: page };
+      }
+      return { data: [], totalPages: 1, totalCount: 0, currentPage: page };
+    },
+  });
+
+  // Flatten and dedupe pages into a single items list
+  const items = useMemo<T[]>(() => {
+    if (useStaticOnly) return staticOptions || [];
+    if (!infiniteQuery.data) return [];
+    const seen = new Set<any>();
+    const flat: T[] = [];
+    for (const page of infiniteQuery.data.pages) {
+      for (const item of page.data) {
+        const key = (optionValue as string) in item ? item[optionValue as keyof T] : JSON.stringify(item);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        flat.push(item);
+      }
     }
-  }, [debouncedSearch, isOpen, loadData]);
+    return flat;
+  }, [infiniteQuery.data, useStaticOnly, staticOptions, optionValue]);
+
+  const totalCount = useStaticOnly
+    ? staticOptions?.length
+    : infiniteQuery.data?.pages[infiniteQuery.data.pages.length - 1]?.totalCount;
+
+  // Spinner only for first-ever fetch of a key (no cache yet).
+  // Background refetches on reopen are silent — cached data stays visible.
+  const showFirstLoad = infiniteQuery.isLoading && items.length === 0;
+  const isLoadingMore = infiniteQuery.isFetchingNextPage;
 
   // Sync selectedItem if value exists and matching item is found in loaded items
   useEffect(() => {
     if (value !== undefined && value !== null) {
-      const found = items.find((item) => (optionValue in item ? item[optionValue] === value : false));
+      const found = items.find((item) =>
+        (optionValue as string) in item ? item[optionValue as keyof T] === value : false
+      );
       if (found) {
         setSelectedItem(found);
       }
@@ -286,8 +310,8 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const isNearBottom = scrollTop + clientHeight >= scrollHeight - 30;
 
-    if (isNearBottom && !loading && !loadingMore && currentPage < totalPages) {
-      loadData(currentPage + 1, false);
+    if (isNearBottom && !isLoadingMore && infiniteQuery.hasNextPage) {
+      void infiniteQuery.fetchNextPage();
     }
   };
 
@@ -360,7 +384,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
         onClick={toggleDropdown}
         className={`
           relative w-full border rounded flex items-center justify-between cursor-pointer transition-colors select-none
-          ${effectiveSize === 'sm' ? 'h-[38px] text-xs' : effectiveSize === 'lg' ? 'h-[50px] text-base' : 'h-[44px] text-sm'}
+          ${effectiveSize === 'sm' ? 'h-[42px] sm:h-[38px] text-base sm:text-xs' : effectiveSize === 'lg' ? 'h-[50px] text-base' : 'h-[44px] text-base sm:text-sm'}
           ${
             isDark
               ? 'bg-portal-canvas border-portal-border text-portal-heading hover:border-portal-border/80'
@@ -428,7 +452,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="flat-async-select-search h-[38px] min-w-0 flex-1 bg-transparent border-none outline-none text-xs text-portal-heading placeholder-portal-muted focus:ring-0"
+                className="flat-async-select-search h-[42px] sm:h-[38px] min-w-0 flex-1 bg-transparent border-none outline-none text-base sm:text-xs text-portal-heading placeholder-portal-muted focus:ring-0"
               />
               {searchTerm && (
                 <button
@@ -439,7 +463,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                   <i className="pi pi-times text-[10px]" />
                 </button>
               )}
-              {loading && <i className="pi pi-spin pi-spinner text-portal-accent text-xs shrink-0 pr-1" />}
+              {showFirstLoad && <i className="pi pi-spin pi-spinner text-portal-accent text-xs shrink-0 pr-1" />}
               {filter && (
                 <button
                   type="button"
@@ -463,7 +487,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                     type="button"
                     disabled={option.disabled}
                     onClick={() => { filter.onChange(option.value); setIsFilterOpen(false); }}
-                    className={`w-full flex items-center justify-between rounded px-2 py-2 text-left text-xs transition-colors ${option.disabled ? 'text-portal-muted/50 cursor-not-allowed' : option.value === filter.value ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.06] cursor-pointer'}`}
+                    className={`w-full flex items-center justify-between rounded px-2 py-2 text-left text-base sm:text-xs transition-colors ${option.disabled ? 'text-portal-muted/50 cursor-not-allowed' : option.value === filter.value ? 'bg-portal-accent/10 text-portal-accent' : 'text-portal-text hover:bg-white/[0.06] cursor-pointer'}`}
                   >
                     <span>{option.label}</span>
                     {option.value === filter.value && <i className="pi pi-check text-[11px]" />}
@@ -475,15 +499,15 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             {/* Scrollable Items List Container */}
             <div
               onScroll={handleListScroll}
-              className="max-h-64 overflow-y-auto custom-scrollbar p-1 divide-y divide-portal-border/20 text-xs"
+              className="max-h-64 overflow-y-auto custom-scrollbar p-1 divide-y divide-portal-border/20 text-base sm:text-xs"
             >
-              {loading && items.length === 0 ? (
+              {showFirstLoad ? (
                 <div className="py-8 flex flex-col items-center justify-center text-portal-muted gap-2">
                   <i className="pi pi-spin pi-spinner text-portal-accent text-base" />
                   <span className="text-[11px]">Loading options...</span>
                 </div>
               ) : displayedItems.length === 0 ? (
-                <div className="py-6 text-center text-portal-muted text-xs">
+                <div className="py-6 text-center text-portal-muted text-base sm:text-xs">
                   No matching records found.
                 </div>
               ) : (
@@ -525,7 +549,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
               )}
 
               {/* Bottom Infinite Scroll Loader */}
-              {loadingMore && (
+              {isLoadingMore && (
                 <div className="py-2.5 flex items-center justify-center gap-2 text-portal-muted text-[11px] font-mono">
                   <i className="pi pi-spin pi-spinner text-portal-accent text-xs" />
                   <span>Loading more...</span>
@@ -533,7 +557,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
               )}
 
               {/* Count Indicator if available */}
-              {!loading && !loadingMore && totalCount !== undefined && items.length > 0 && (
+              {!showFirstLoad && !isLoadingMore && totalCount !== undefined && items.length > 0 && (
                 <div className="py-1.5 px-2 text-[10px] text-portal-muted/60 text-right font-mono">
                   Showing {items.length} of {totalCount}
                 </div>
