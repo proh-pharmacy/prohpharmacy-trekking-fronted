@@ -1107,12 +1107,12 @@ const StopCard: React.FC<StopCardProps> = ({
                   emptyDataText="No returns recorded for this stop."
                   columns={[
                     { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
-                    { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.invoiceNumber || '—'}</span> },
+                    { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.invoiceNumber || '—'}</span> },
                     { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
                     { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
                     { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
-                    { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
-                    { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+                    { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
+                    { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
                     ...(canRecordReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> }] : []),
                   ]}
                 />

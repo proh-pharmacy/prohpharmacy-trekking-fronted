@@ -243,7 +243,7 @@ export const CustomersPage: React.FC = () => {
         header: 'Phone',
         style: { width: '140px' },
         body: (row) => (
-          <span className="text-[11px] text-portal-text font-mono">
+          <span className="text-xs text-portal-text font-mono">
             {row.primaryPhoneNumber || '—'}
           </span>
         ),

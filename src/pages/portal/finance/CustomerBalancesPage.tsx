@@ -165,7 +165,7 @@ export const CustomerBalancesPage: React.FC = () => {
         header: 'Phone',
         style: { width: '140px' },
         body: (row) => (
-          <span className="font-mono text-[11px] text-portal-text">
+          <span className="font-mono text-xs text-portal-text">
             {row.primaryPhoneNumber || '—'}
           </span>
         ),

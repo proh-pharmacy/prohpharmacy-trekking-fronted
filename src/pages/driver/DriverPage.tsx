@@ -473,12 +473,12 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           emptyDataText="No returns recorded for this stop."
           columns={[
             { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
-            { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.invoiceNumber || '—'}</span> },
+            { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.invoiceNumber || '—'}</span> },
             { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
             { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
             { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
-            { field: 'reason', header: 'Reason', body: (item) => <span className="text-[11px] text-portal-muted">{item.reason || '—'}</span> },
-            { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-[11px] text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+            { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
+            { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
             { field: 'actions', header: 'Action', body: (item) => {
               if (item.queuedReturn || item.queuedVoid) {
                 const action = item.queuedReturn || item.queuedVoid!;
@@ -1208,21 +1208,21 @@ export const DriverPage: React.FC = () => {
                 data={customerRows}
                 columns={[
                   { field: 'businessName', header: 'Customer', body: (item) => <span className="text-xs font-medium text-portal-accent">{item.businessName}</span> },
-                  { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-[11px] text-portal-muted">{item.customerCode || '—'}</span> },
+                  { field: 'customerCode', header: 'Code', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.customerCode || '—'}</span> },
                   { field: 'customerType', header: 'Type', body: (item) => <span className="text-xs text-portal-text">{item.customerType?.replace(/([a-z])([A-Z])/g, '$1 $2') || '—'}</span> },
                   { field: 'primaryPhoneNumber', header: 'Phone', body: (item) => <a href={`tel:${item.primaryPhoneNumber}`} className="text-xs text-portal-text hover:text-portal-heading">{item.primaryPhoneNumber}</a> },
-                  { field: 'primaryContactName', header: 'Contact', body: (item) => item.primaryContactName || '—' },
+                  { field: 'primaryContactName', header: 'Contact', body: (item) => <span className="text-xs text-portal-text">{item.primaryContactName || '—'}</span> },
                   { field: 'location', header: 'Location', body: (item) => {
                     const latitude = item.latitude ?? item.primaryLocation?.latitude;
                     const longitude = item.longitude ?? item.primaryLocation?.longitude;
                     const accuracy = item.accuracyMetres ?? item.primaryLocation?.accuracyMetres;
                     return latitude != null && longitude != null
-                      ? <span className="text-[11px] text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
-                      : <span className="text-[11px] text-portal-muted">No GPS captured</span>;
+                      ? <span className="text-xs text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
+                      : <span className="text-xs text-portal-muted">No GPS captured</span>;
                   } },
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
-                    ? <span className={`text-[11px] ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
-                    : <span className="text-[11px] text-portal-muted">Available offline</span> },
+                    ? <span className={`text-xs ${item.syncStatus === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={item.syncReason}>{item.syncStatus === 'conflict' ? 'Needs attention' : 'Awaiting sync'}</span>
+                    : <span className="text-xs text-portal-muted">Available offline</span> },
                   { field: 'actions', header: 'Action', body: (item) => <FlatButton size="sm" variant="ghost" onClick={() => setEditingCustomer(item)}>Edit</FlatButton> },
                 ]}
                 heading={`Customers in ${trek.regionName}`}
@@ -1250,10 +1250,10 @@ export const DriverPage: React.FC = () => {
                     field: 'trekNumber',
                     header: 'Trek ID',
                     body: (item) => (
-                      <span className="font-medium text-portal-text">
+                      <span className="text-xs font-medium text-portal-text">
                         {item.trekNumber}
                         {item.trekId === trek.trekId && (
-                          <span className="block text-[11px] text-portal-accent">Assigned to you</span>
+                          <span className="mt-0.5 block text-[11px] text-portal-accent">Assigned to you</span>
                         )}
                       </span>
                     ),
@@ -1275,7 +1275,7 @@ export const DriverPage: React.FC = () => {
                   {
                     field: 'actions',
                     header: 'Actions',
-                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-[11px] text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-portal-hover !text-portal-heading hover:!bg-portal-active" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
+                    body: (item) => item.trekId === trek.trekId || item.trekNumber === trek.trekNumber ? <span className="text-xs text-portal-muted">Current workspace</span> : <FlatButton size="sm" variant="ghost" className="!bg-portal-hover !text-portal-heading hover:!bg-portal-active" title="Switch workspace" onClick={() => setTrekToSwitch(item)}>Switch workspace</FlatButton>,
                   },
                 ]}
                 heading={trekListTab === 'mine' ? 'Assigned treks' : `Treks in ${trek.regionName}`}
