@@ -426,6 +426,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             onChange={(e) => { setPhoneNumber(formatGhanaPhoneNumber(e.target.value)); clearError('phoneNumber'); }}
             size="sm"
             errorMessage={errors.phoneNumber}
+            inputMode="numeric"
           />
         </div>
 

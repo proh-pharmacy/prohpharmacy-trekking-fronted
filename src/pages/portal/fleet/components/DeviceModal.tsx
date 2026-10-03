@@ -145,6 +145,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
               size="sm"
               maxLength={30}
+              inputMode="numeric"
             />
             <FlatInputText
               label="Traccar Device ID"
@@ -229,6 +230,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
               onChange={(e) => setPhoneNumber(formatGhanaPhoneNumber(e.target.value))}
               size="sm"
               maxLength={30}
+              inputMode="numeric"
             />
             <p className="text-[11px] text-portal-muted">
               For smartphones, leave IMEI blank — a unique ID is auto-generated. For hardware GPS trackers, enter the IMEI.
