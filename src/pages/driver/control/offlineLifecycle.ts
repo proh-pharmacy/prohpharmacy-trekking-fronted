@@ -22,7 +22,7 @@ export interface OfflineSyncResultLike {
 
 export interface OfflineServerStopLike {
   stopId: string;
-  products?: Array<{ stopProductId: string }>;
+  products?: Array<{ stopProductId: string; clientGeneratedId?: string | null }>;
   returns?: Array<{ returnId: string }>;
 }
 
@@ -103,6 +103,25 @@ export function applyOfflineSyncResults<TAction extends OfflineActionLike>(
         : {}),
       reason: result.reason,
     };
+  });
+}
+
+/** Recover sale IDs directly from the server's device UUID mapping. */
+export function reconcileUnplannedSales<TAction extends OfflineActionLike>(
+  actions: TAction[],
+  stops: OfflineServerStopLike[],
+): TAction[] {
+  const serverIds = new Map<string, string>();
+  for (const stop of stops) {
+    for (const product of stop.products ?? []) {
+      if (product.clientGeneratedId) serverIds.set(product.clientGeneratedId, product.stopProductId);
+    }
+  }
+  return actions.map((action) => {
+    if (action.type !== 'RecordUnplannedSale') return action;
+    const serverId = serverIds.get(action.clientId);
+    if (!serverId || (action.status === 'synced' && action.serverId === serverId)) return action;
+    return { ...action, status: 'synced', serverId, reason: undefined };
   });
 }
 

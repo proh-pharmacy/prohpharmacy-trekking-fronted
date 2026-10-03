@@ -8,7 +8,7 @@ import type { StockItem } from '../../../api-client/vehicleStock';
 import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek, type StopPriceOverrides } from './api';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
-import { applyOfflineSyncResults, successfulServerIds } from './offlineLifecycle';
+import { applyOfflineSyncResults, reconcileUnplannedSales, successfulServerIds } from './offlineLifecycle';
 
 const photoWorkers = new Map<string, Promise<void>>();
 
@@ -41,6 +41,20 @@ export function useFieldControl(token: string) {
   const syncingRef = useRef(false);
   const mutationRef = useRef<Promise<unknown>>(Promise.resolve());
 
+  const cacheTrek = useCallback(async (data: DriverTrek) => {
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
+      const current = await fieldStore.queue(token);
+      const next = reconcileUnplannedSales(current, data.stops);
+      if (next.some((action, index) => action !== current[index])) {
+        await fieldStore.setQueue(token, next);
+        setQueue(next);
+      }
+    });
+    await mutationRef.current;
+    await fieldStore.set(token, 'trek', data);
+    setTrek(data);
+  }, [token]);
+
   const refresh = useCallback(async (delta = false) => {
     setRefreshing(true);
     const since = delta ? await fieldStore.get<string>(token, 'lastSyncedAt') : undefined;
@@ -67,11 +81,11 @@ export function useFieldControl(token: string) {
     controlAvailableRef.current = ready; setControlAvailable(ready);
     if (results[0].status === 'fulfilled') {
       const data = results[0].value;
-      setTrek(data); await fieldStore.set(token, 'trek', data);
+      await cacheTrek(data);
     } else {
       try {
         const data = await fieldApi.getLegacyTrek(token);
-        setTrek(data); await fieldStore.set(token, 'trek', data);
+        await cacheTrek(data);
       } catch { /* The page will show the unavailable state if there is no cached trek. */ }
     }
     if (results[1].status === 'fulfilled') {
@@ -146,7 +160,7 @@ export function useFieldControl(token: string) {
     setLoading(false);
     setRefreshing(false);
     return complete;
-  }, [token]);
+  }, [token, cacheTrek]);
 
   const syncProducts = useCallback(async (all = false) => {
     setRefreshing(true);

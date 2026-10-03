@@ -55,11 +55,17 @@ function loadScript(source: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = existing || document.createElement('script');
     const handleLoad = () => {
+      script.removeEventListener('error', handleError);
       script.dataset.loaded = 'true';
       resolve();
     };
+    const handleError = () => {
+      script.removeEventListener('load', handleLoad);
+      script.remove();
+      reject(new Error('The card detector could not be loaded.'));
+    };
     script.addEventListener('load', handleLoad, { once: true });
-    script.addEventListener('error', () => reject(new Error('The card detector could not be loaded.')), { once: true });
+    script.addEventListener('error', handleError, { once: true });
     if (!existing) {
       script.src = source;
       script.async = true;
