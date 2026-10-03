@@ -333,7 +333,7 @@ export const TrekDetailPage: React.FC = () => {
     setShareOpen(false);
     try {
       await treksApi.sendEmail(trek.id, staffIds);
-      toast.success('Trek sheet and driver link resent.');
+      toast.success('Trek sheet and trekking link resent.');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to resend trek email.');
     } finally {
@@ -348,7 +348,7 @@ export const TrekDetailPage: React.FC = () => {
     try {
       const result = await treksApi.generateLink(trek.id);
       await navigator.clipboard.writeText(result.url).catch(() => { });
-      toast.success('Driver link copied to clipboard.');
+      toast.success('Trekking link copied to clipboard.');
     } catch {
       toast.error('Failed to generate link.');
     } finally {
@@ -365,7 +365,7 @@ export const TrekDetailPage: React.FC = () => {
       const opened = window.open(result.url, '_blank', 'noopener,noreferrer');
       if (!opened) window.location.assign(result.url);
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to open driver link.');
+      toast.error(err.response?.data?.detail || 'Failed to open trekking link.');
     } finally {
       setOpeningDriverLink(false);
     }
@@ -543,7 +543,7 @@ export const TrekDetailPage: React.FC = () => {
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                 >
                   <i className="pi pi-link text-portal-accent text-[11px]" />
-                  {generatingLink ? 'Generating...' : 'Copy Driver Link'}
+                  {generatingLink ? 'Generating...' : 'Copy Trekking Link'}
                 </button>
                 <button
                   type="button"
@@ -552,7 +552,7 @@ export const TrekDetailPage: React.FC = () => {
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-portal-text hover:bg-portal-hover hover:text-portal-heading transition-colors disabled:opacity-50"
                 >
                   <i className="pi pi-external-link text-portal-accent text-[11px]" />
-                  {openingDriverLink ? 'Opening...' : 'Open Driver Link'}
+                  {openingDriverLink ? 'Opening...' : 'Open Trekking Link'}
                 </button>
                 <div className="border-t border-portal-border/60 mx-2" />
                 {trek.status === 'InProgress' && (
