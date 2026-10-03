@@ -334,6 +334,11 @@ export function IdCardScannerModal({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-6 text-center">
             <i className="pi pi-exclamation-triangle text-2xl text-amber-400" />
             <p className="max-w-sm text-sm text-white">{error}</p>
+            {error.toLowerCase().includes('card detector') && !navigator.onLine && (
+              <p className="max-w-sm text-xs text-white/70">
+                Connect to the internet so the app can finish downloading the scanner, then accept the "Reload &amp; update" prompt before reopening this screen.
+              </p>
+            )}
             <FlatButton size="sm" variant="outline" label="Close" onClick={onClose} />
           </div>
         )}
