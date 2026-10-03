@@ -19,6 +19,7 @@ export const InvoicePreviewPage: React.FC = () => {
   const [qrCode, setQrCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pendingSync, setPendingSync] = useState(false);
   const identifierParam = customerCode
     ? `cc=${encodeURIComponent(customerCode)}`
     : `cid=${encodeURIComponent(clientGeneratedId)}`;
@@ -28,6 +29,7 @@ export const InvoicePreviewPage: React.FC = () => {
     let active = true;
     if (!token || (!customerCode && !clientGeneratedId)) {
       setError('This invoice link is incomplete.');
+      setPendingSync(false);
       setLoading(false);
       return () => { active = false; };
     }
@@ -40,13 +42,16 @@ export const InvoicePreviewPage: React.FC = () => {
       setInvoice(data);
       setQrCode(qr);
       setError('');
+      setPendingSync(false);
     }).catch((loadError: unknown) => {
       if (!active) return;
       const apiError = getApiError(loadError);
       if (apiError?.code === '404') {
-        setError("This invoice isn't available yet — the driver's device hasn't synced this sale. Please try again later.");
+        setError('Oops! We could not find this invoice at the moment.');
+        setPendingSync(true);
       } else {
         setError(apiError?.message || 'Invoice unavailable.');
+        setPendingSync(false);
       }
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -61,7 +66,30 @@ export const InvoicePreviewPage: React.FC = () => {
   }
 
   if (!invoice) {
-    return <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-5"><div className="w-full max-w-sm rounded border border-portal-border bg-portal-surface p-6 text-center text-xs text-red-accent">{error || 'Invoice unavailable.'}</div></div>;
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-6">
+        <div className="w-full max-w-sm space-y-2 text-center">
+          <p className="text-xs text-portal-text">{error || 'Invoice unavailable.'}</p>
+          {pendingSync && (
+            <p className="text-[11px] text-portal-muted">
+              If your sale is very recent, we may still be processing it — please try again in a few minutes.
+            </p>
+          )}
+          <p className="pt-2 text-[11px] text-portal-muted">
+            Need help? Visit{' '}
+            <a
+              href="https://prohpharmacy.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-portal-accent hover:underline"
+            >
+              prohpharmacy.com
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const issuedAt = invoice.stop.invoice?.issuedAt || invoice.stop.products[0]?.deliveredAt;
