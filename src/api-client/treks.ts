@@ -248,6 +248,7 @@ export interface DriverReturn {
 export interface DriverStop {
   stopId: string;
   customerAccountId?: string;
+  customerClientGeneratedId?: string | null;
   invoiceId?: string | null;
   invoiceNumber?: string | null;
   sequence: number;

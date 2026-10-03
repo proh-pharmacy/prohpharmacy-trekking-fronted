@@ -120,6 +120,7 @@ export interface DriverInvoicePreviewResponse {
     customer: {
       id: string;
       customerCode: string;
+      clientGeneratedId: string | null;
       businessName: string;
       tradingName: string | null;
       primaryPhoneNumber: string | null;
@@ -541,9 +542,16 @@ export const fieldApi = {
     });
     return response.data;
   },
-  getInvoicePreview: async (token: string, customerCode: string): Promise<DriverInvoicePreviewResponse> => {
+  getInvoicePreview: async (
+    token: string,
+    identifier: { customerCode?: string | null; clientGeneratedId?: string | null },
+  ): Promise<DriverInvoicePreviewResponse> => {
+    const params = identifier.customerCode
+      ? { customerCode: identifier.customerCode }
+      : { clientGeneratedId: identifier.clientGeneratedId };
     const response = await publicApi.get<DriverInvoicePreviewResponse>(
-      path(token, `/stops/by-customer/${encodeURIComponent(customerCode)}`),
+      path(token, '/stops/by-customer'),
+      { params },
     );
     return response.data;
   },

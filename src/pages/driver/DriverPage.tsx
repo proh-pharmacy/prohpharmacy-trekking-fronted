@@ -329,6 +329,7 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
       vehicleName: trek.vehicleDisplayName,
       customerName: stop.customerName,
       customerCode: stop.customerCode,
+      customerClientGeneratedId: stop.customerClientGeneratedId,
       customerPhone: stop.primaryPhoneNumber,
       lines: invoiceLines,
     });

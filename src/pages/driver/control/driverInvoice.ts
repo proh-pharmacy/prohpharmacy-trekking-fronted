@@ -20,6 +20,7 @@ interface DriverInvoiceInput {
   vehicleName: string;
   customerName: string;
   customerCode: string;
+  customerClientGeneratedId?: string | null;
   customerPhone?: string | null;
   lines: DriverInvoiceLine[];
 }
@@ -45,7 +46,10 @@ export async function openDriverInvoice(input: DriverInvoiceInput): Promise<void
   invoiceWindow.document.write('<!doctype html><html><head><title>Preparing invoice...</title></head><body></body></html>');
 
   try {
-    const previewUrl = `${window.location.origin}/invoice/preview?token=${encodeURIComponent(input.token)}&cc=${encodeURIComponent(input.customerCode)}`;
+    const identifierParam = input.customerCode
+      ? `cc=${encodeURIComponent(input.customerCode)}`
+      : `cid=${encodeURIComponent(input.customerClientGeneratedId ?? '')}`;
+    const previewUrl = `${window.location.origin}/invoice/preview?token=${encodeURIComponent(input.token)}&${identifierParam}`;
     const qrCode = await QRCode.toDataURL(previewUrl, { errorCorrectionLevel: 'M', margin: 1, width: 144 });
     const total = input.lines.reduce((sum, line) => sum
       + line.basicQuantity * line.basicUnitPrice
