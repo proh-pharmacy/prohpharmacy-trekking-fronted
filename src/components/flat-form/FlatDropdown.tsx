@@ -12,6 +12,7 @@ export interface FlatDropdownProps extends Omit<DropdownProps, 'value' | 'onChan
   variant?: 'default' | 'dark' | 'white';
   size?: FlatInputSize;
   inputSize?: FlatInputSize;
+  background?: 'canvas' | 'surface';
 }
 
 export const FlatDropdown: React.FC<FlatDropdownProps> = ({
@@ -24,11 +25,13 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
   variant = 'dark',
   size = 'sm',
   inputSize,
+  background = 'canvas',
   className = '',
   id,
   required,
   placeholder = 'Select an option',
   panelClassName = '',
+  showClear = false,
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
@@ -53,14 +56,19 @@ export const FlatDropdown: React.FC<FlatDropdownProps> = ({
       <Dropdown
         id={inputId}
         value={value}
+        showClear={showClear && value !== null && value !== undefined && value !== ''}
         onChange={(e: DropdownChangeEvent) => onChange?.(e.value)}
         placeholder={placeholder}
+        dropdownIcon="pi pi-chevron-down text-[11px]"
+        clearIcon="pi pi-times"
+        collapseIcon="pi pi-chevron-up text-[11px] text-portal-accent"
         className={`
-          w-full border rounded transition-colors p-dropdown-${effectiveSize}
+          flat-dropdown w-full border rounded transition-colors p-dropdown-${effectiveSize}
+          [&_.p-dropdown-label]:!bg-transparent [&_.p-dropdown-trigger]:!bg-transparent [&_.p-dropdown-trigger]:!border-0
           ${effectiveSize === 'sm' ? '!h-[42px] sm:!h-[38px] text-base sm:text-xs' : effectiveSize === 'lg' ? '!h-[50px] text-base' : '!h-[44px] text-base sm:text-sm'}
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-portal-heading hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label.p-placeholder]:!text-portal-muted [&_.p-dropdown-label:not(.p-placeholder)]:!text-portal-heading [&_.p-dropdown-trigger]:!text-portal-muted'
+              ? `${background === 'surface' ? '!bg-portal-surface' : '!bg-portal-canvas'} !border-portal-border !text-portal-heading hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 [&_.p-dropdown-label.p-placeholder]:!text-portal-muted [&_.p-dropdown-label:not(.p-placeholder)]:!text-portal-heading [&_.p-dropdown-trigger]:!text-portal-muted`
               : 'bg-white border-slate-300 text-slate-900 hover:border-slate-400 focus:border-primary-green'
           }
           ${errorMessage ? '!border-red-500' : ''}

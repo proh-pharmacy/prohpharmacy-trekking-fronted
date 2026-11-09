@@ -8,8 +8,8 @@ const formatDateTime = (value: string) => new Date(value).toLocaleString('en-GB'
 });
 
 const quantityText = (item: SaleInvoice['lineItems'][number]) => [
-  Number(item.packagingQtyDelivered ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQtyDelivered} ${item.packagingUnitName}` : '',
-  Number(item.basicQtyDelivered ?? 0) > 0 ? `${item.basicQtyDelivered} ${item.basicUnitName}` : '',
+  Number(item.packagingQuantity ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQuantity} ${item.packagingUnitName}` : '',
+  Number(item.basicQuantity ?? 0) > 0 ? `${item.basicQuantity} ${item.basicUnitName}` : '',
 ].filter(Boolean).join(' · ') || '—';
 
 export const InvoicePrintPage: React.FC = () => {
@@ -36,7 +36,7 @@ export const InvoicePrintPage: React.FC = () => {
     return <div className="flex min-h-dvh items-center justify-center bg-invoice-backdrop p-5"><div className="w-full max-w-sm border border-portal-border bg-portal-surface p-6 text-center text-xs text-red-accent">{error || 'Invoice unavailable.'}</div></div>;
   }
 
-  const paymentMethods = [...new Set(invoice.lineItems.map((item) => item.paymentMethod).filter(Boolean))].join(', ') || '—';
+  const paymentMethods = [...new Set((invoice.payments ?? []).map((item) => item.paymentMethod).filter(Boolean))].join(', ') || '—';
   const lines = invoice.lineItems.map((item, index) => ({
     key: `${item.productId}-${index}`,
     productName: item.productName,

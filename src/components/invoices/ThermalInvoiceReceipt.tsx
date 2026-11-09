@@ -1,6 +1,31 @@
 import { forwardRef } from 'react';
-import { fmtGhs } from '../../lib/utils';
-import { cn } from '../../lib/utils';
+import { fmtGhs, cn } from '../../lib/utils';
+
+const formatIssuedAt = (value: string) => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime()) || !/^\d{4}-\d{2}-\d{2}T/.test(value.trim())) return value;
+  return parsed.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatTrekDate = (value: string) => {
+  if (!value) return '—';
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return value;
+  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
 
 export interface ThermalInvoiceLine {
   key: string;
@@ -51,7 +76,7 @@ export const ThermalInvoiceReceipt = forwardRef<HTMLElement, ThermalInvoiceRecei
       {qrCode && <img src={qrCode} alt="Invoice QR code" className="mx-auto mb-[2mm] h-[25mm] w-[25mm]" />}
       <h1 className="m-0 text-[15px] font-bold leading-tight">ProH Pharmacy</h1>
       {subtitle && <p className="mt-[1mm] text-[10px] leading-snug">{subtitle}</p>}
-      <p className="mt-[1mm] text-[10px] leading-snug">{issuedAt}</p>
+      <p className="mt-[1mm] text-[10px] leading-snug">{formatIssuedAt(issuedAt)}</p>
     </header>
 
     <div className="my-[3mm] border-y border-dashed border-main-text py-[2mm] text-center text-xs font-bold">
@@ -61,7 +86,7 @@ export const ThermalInvoiceReceipt = forwardRef<HTMLElement, ThermalInvoiceRecei
     <section className="space-y-[0.7mm] py-[1mm] leading-snug">
       <div className="flex justify-between gap-[3mm]"><span className="text-muted-text">Customer</span><strong className="max-w-[65%] break-words text-right">{customerName}</strong></div>
       <div className="flex justify-between gap-[3mm]"><span className="text-muted-text">Trek</span><strong className="max-w-[65%] text-right">{trekNumber}</strong></div>
-      <div className="flex justify-between gap-[3mm]"><span className="text-muted-text">Trek date</span><strong className="max-w-[65%] text-right">{trekDate}</strong></div>
+      <div className="flex justify-between gap-[3mm]"><span className="text-muted-text">Trek date</span><strong className="max-w-[65%] text-right">{formatTrekDate(trekDate)}</strong></div>
     </section>
 
     <div className="mt-[2mm] grid grid-cols-[minmax(0,1fr)_23%_25%] gap-x-[2mm] border-b border-dashed border-main-text py-[2mm] font-bold">
@@ -83,7 +108,7 @@ export const ThermalInvoiceReceipt = forwardRef<HTMLElement, ThermalInvoiceRecei
       <div className="mt-[1mm] flex justify-between border-t border-dashed border-main-text pt-[1.5mm] text-[13px] font-bold"><span>Balance</span><strong>{fmtGhs(balance)}</strong></div>
     </section>
 
-    <div className="border-t border-dashed border-main-text py-[2mm] leading-snug">Payment method: <strong>{paymentMethods || '—'}</strong></div>
+    {paymentMethods && <div className="border-t border-dashed border-main-text py-[2mm] leading-snug">Payment methods: <strong>{paymentMethods}</strong></div>}
     <p className="mt-[3mm] border-t border-dashed border-main-text pt-[2.5mm] text-center text-[10px]">Thank you for your purchase!</p>
     {qrCaption && <p className="mt-[1mm] text-center text-[8px] text-muted-text">{qrCaption}</p>}
   </article>

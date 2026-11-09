@@ -163,7 +163,7 @@ export const CollectionsReportPage: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0 bg-portal-surface border border-portal-border/60 p-3">
               <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Transactions</p>
-          <p className="text-xs font-semibold text-portal-text truncate">{data.totalTransactions.toLocaleString()}</p>
+              <p className="text-xs font-semibold text-portal-text truncate">{data.totalTransactions.toLocaleString()}</p>
             </div>
           </div>
 

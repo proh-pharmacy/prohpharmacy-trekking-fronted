@@ -25,6 +25,7 @@ const actionTitles: Record<QueuedAction['type'], string> = {
   AddWalkInStop: 'Additional stop',
   RecordDelivery: 'Delivery',
   RecordUnplannedSale: 'Unplanned sale',
+  RecordInvoicePayment: 'Invoice payment',
   RecordReturn: 'Product return',
   VoidReturn: 'Return cancellation',
 };
@@ -44,6 +45,7 @@ function actionDetail(action: QueuedAction, queue: QueuedAction[], trek: DriverT
   if (action.type === 'RecordDelivery') {
     return trek.stops.flatMap((stop) => stop.products).find((product) => product.stopProductId === payload.stopProductId)?.productName || 'Trek product';
   }
+  if (action.type === 'RecordInvoicePayment') return `${Number(payload.amount).toFixed(2)} GHS · ${String(payload.paymentMethod)}`;
   if (action.type === 'RecordUnplannedSale' || action.type === 'RecordReturn') {
     return products.find((product) => product.id === payload.productId)?.name || 'Product details';
   }

@@ -723,6 +723,30 @@ input:disabled {
   font-size: 0.75rem !important;
 }
 
+.flat-dropdown.p-dropdown .p-dropdown-trigger .p-dropdown-trigger-icon {
+  font-size: 11px !important;
+}
+
+.flat-dropdown.p-dropdown .p-dropdown-clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px !important;
+  line-height: 1;
+  top: 50%;
+  right: 2rem;
+  margin-top: 0;
+  transform: translateY(-50%);
+  color: var(--color-red-accent);
+  cursor: pointer;
+}
+
+.flat-dropdown.p-dropdown .p-dropdown-clear-icon:hover {
+  color: var(--color-red-accent-hover);
+}
+
 .p-multiselect,
 .p-multiselect.p-multiselect-sm {
   min-height: 38px !important;
@@ -1079,6 +1103,13 @@ div.p-icon-field {
 .p-autocomplete-input:focus {
   border-color: var(--color-portal-accent) !important;
   background-color: var(--color-portal-canvas) !important;
+}
+
+/* Keep trek particulars distinct from the expanded row in both themes. */
+.trek-particulars-form .trek-form-control,
+.trek-particulars-form .trek-form-control:focus,
+.trek-particulars-form .trek-form-control .p-inputtext {
+  background-color: var(--color-portal-surface) !important;
 }
 
 /* Dropdown & MultiSelect Main Containers */
@@ -1590,6 +1621,51 @@ div.p-icon-field {
 .flat-data-table .p-datatable .p-datatable-tbody > tr:nth-child(odd),
 .flat-data-table-mobile-list > .flat-data-table-mobile-row:nth-child(odd) {
   background: color-mix(in srgb, var(--color-portal-hover) 50%, var(--color-portal-surface)) !important;
+}
+
+/* Stop invoice rows need a clearer stripe because each row is taller than a table row. */
+.stop-invoice-row-alternate {
+  background: var(--color-portal-canvas) !important;
+  background: color-mix(in srgb, var(--color-portal-canvas) 50%, var(--color-portal-surface)) !important;
+}
+
+/* Expanded stops use a tapered route marker ending at a destination point. */
+.stop-invoice-journey-marker {
+  position: absolute;
+  inset-block: 0.375rem;
+  left: 0;
+  width: 0.25rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% calc(100% - 2rem), color-mix(in srgb, var(--color-portal-accent) 44%, transparent) 0 0.075rem, transparent 0.085rem),
+    radial-gradient(circle at 50% calc(100% - 1.6rem), color-mix(in srgb, var(--color-portal-accent) 36%, transparent) 0 0.065rem, transparent 0.075rem),
+    radial-gradient(circle at 50% calc(100% - 1.2rem), color-mix(in srgb, var(--color-portal-accent) 28%, transparent) 0 0.055rem, transparent 0.065rem),
+    radial-gradient(circle at 50% calc(100% - 0.8rem), color-mix(in srgb, var(--color-portal-accent) 20%, transparent) 0 0.045rem, transparent 0.055rem);
+}
+
+.stop-invoice-journey-marker::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 2.3rem;
+  background: linear-gradient(
+    to bottom,
+    var(--color-portal-accent) 0%,
+    color-mix(in srgb, var(--color-portal-accent) 72%, transparent) 48%,
+    color-mix(in srgb, var(--color-portal-accent) 28%, transparent) 100%
+  );
+  clip-path: polygon(0 0, 100% 0, 62% 100%, 38% 100%);
+}
+
+.stop-invoice-journey-marker::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--color-portal-accent);
+  transform: translateX(-50%);
 }
 
 .p-datatable .p-datatable-tbody > tr > td {

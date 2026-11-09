@@ -151,6 +151,16 @@ api.interceptors.request.use(
       }
     }
 
+    // Let the browser set the multipart boundary for file uploads. The Axios
+    // instance has a JSON default, which must not be sent with FormData.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.headers) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else {
+        delete config.headers['Content-Type'];
+      }
+    }
+
     // Attach in-memory access token (fallback to localStorage if present)
     const token = getAccessToken();
     if (token && config.headers) {

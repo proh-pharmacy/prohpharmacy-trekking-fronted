@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { InvoicePayments } from '../../../components/invoices/InvoicePayments';
 import { useParams, useNavigate } from 'react-router-dom';
 import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type TrekStockLoad, type TrekStockCheckItem, type TrekStockWarning, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { FlatDataTable, resetTableData } from '../../../components/data-table';
-import { EditTrekModal } from './components/EditTrekModal';
+import { VehicleInventory } from '../fleet/VehicleStockPage';
 import { AddStopModal } from './components/AddStopModal';
 import { TrekDocumentsModal } from './components/TrekDocumentsModal';
 import toast from 'react-hot-toast';
@@ -26,14 +27,14 @@ const STATUS_LABELS: Record<TrekStatus, string> = {
 };
 
 const NEXT_STATUSES: Partial<Record<TrekStatus, TrekStatus[]>> = {
-  Draft: ['Scheduled', 'Cancelled'],
+  Draft: ['Cancelled', 'Scheduled'],
   Scheduled: ['Cancelled'],
   InProgress: ['Completed'],
 };
 
 const NEXT_LABELS: Partial<Record<TrekStatus, string>> = {
-  Scheduled: 'Mark Scheduled', InProgress: 'Start Trek',
-  Completed: 'Mark Completed', Cancelled: 'Cancel Trek',
+  Scheduled: 'Schedule Trek', InProgress: 'Start Trek',
+  Completed: 'Complete Trek', Cancelled: 'Cancel Trek',
 };
 
 const PAYMENT_OPTIONS = [
@@ -90,9 +91,6 @@ const formatStockUnits = (
 interface DeliveryRow {
   basicQtyDelivered: string;
   packagingQtyDelivered: string;
-  paymentMethod: string;
-  amtPaid: string;
-  balance: string;
   notes: string;
 }
 
@@ -112,9 +110,6 @@ function initDeliveryRows(trek: Trek): Record<string, DeliveryRow> {
       rows[p.stopProductId] = {
         basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
         packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
-        paymentMethod: p.paymentMethod ?? '',
-        amtPaid: p.amtPaid != null ? String(p.amtPaid) : '',
-        balance: p.balance != null ? String(p.balance) : '',
         notes: p.notes ?? '',
       };
     });
@@ -127,7 +122,6 @@ export const TrekDetailPage: React.FC = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const canEditTrek = hasAnyPermission('Treks.Edit', 'Treks.Manage');
   const canManageStops = hasAnyPermission('TrekStops.Add', 'TrekStops.Edit', 'Treks.Edit', 'Treks.Manage');
   const canRecordDelivery = hasAnyPermission('TrekDeliveries.Record', 'Visits.Record');
   const canRecordReturns = hasAnyPermission('TrekReturns.Record', 'Visits.Record');
@@ -151,7 +145,8 @@ export const TrekDetailPage: React.FC = () => {
   const [documentsVisible, setDocumentsVisible] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
-  const [editVisible, setEditVisible] = useState(false);
+  const [planningTab, setPlanningTab] = useState<'stops' | 'inventory'>('stops');
+  const [inventoryOpened, setInventoryOpened] = useState(false);
   const [addStopVisible, setAddStopVisible] = useState(false);
   const [editingStop, setEditingStop] = useState<TrekStop | null>(null);
   const [removingStop, setRemovingStop] = useState<TrekStop | null>(null);
@@ -222,10 +217,6 @@ export const TrekDetailPage: React.FC = () => {
       toast.error(`Enter valid delivered quantities for "${product.productName}".`);
       return false;
     }
-    if (!row.paymentMethod) {
-      toast.error(`Payment method is required for "${product.productName}".`);
-      return false;
-    }
 
     setRecordingProduct(product.stopProductId);
     try {
@@ -234,10 +225,6 @@ export const TrekDetailPage: React.FC = () => {
           stopProductId: product.stopProductId,
           basicQtyDelivered: basic ?? undefined,
           packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined,
-          paymentMethod: row.paymentMethod as PaymentMethod,
-          ...(row.amtPaid !== '' && row.amtPaid != null
-            ? { amtPaid: parseNumericInput(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseNumericInput(row.amtPaid)) }
-            : {}),
           notes: row.notes || undefined,
         }],
       });
@@ -246,7 +233,8 @@ export const TrekDetailPage: React.FC = () => {
       await loadTrek(true);
       return true;
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to save delivery.');
+      toast.error(err.response?.data?.message || err.response?.data?.detail || 'Failed to save delivery.');
+      if (err.response?.status === 409) await loadTrek(true);
       return false;
     } finally {
       setRecordingProduct(null);
@@ -300,6 +288,10 @@ export const TrekDetailPage: React.FC = () => {
 
   const handleStatusRequest = async (status: TrekStatus) => {
     if (!trek) return;
+    if (status === 'Cancelled' && trek.stops.some(stop => Number(stop.invoicePaid) > 0 || stop.products.some(product => product.deliveredAt || product.basicQtyDelivered != null || product.packagingQtyDelivered != null))) {
+      toast.error('A trek with payments or recorded deliveries cannot be cancelled.');
+      return;
+    }
     setCheckingStatus(status);
     try {
       const result = await treksApi.checkStockLoads(trek.id, stockCheckItems(trek, status));
@@ -483,11 +475,6 @@ export const TrekDetailPage: React.FC = () => {
 
         {/* Right: edit + share + status actions */}
         <div className="flex items-center gap-2 flex-wrap">
-          {!isLocked && canEditTrek && (
-            <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setEditVisible(true)}>
-              Edit
-            </FlatButton>
-          )}
 
           {!isLocked && canManagePricing && trek.syncRequired && (
             <div className="relative inline-flex">
@@ -570,21 +557,31 @@ export const TrekDetailPage: React.FC = () => {
             )}
           </div>}
 
-          {nextStatuses.filter((s) =>
-            s === 'InProgress' ? hasAnyPermission('Treks.Start', 'Treks.ChangeStatus', 'Treks.Manage') :
-            s === 'Completed' ? hasAnyPermission('Treks.Complete', 'Treks.ChangeStatus', 'Treks.Manage') :
-            hasAnyPermission('Treks.Cancel', 'Treks.ChangeStatus', 'Treks.Manage')
-          ).map((s) => (
-            <FlatButton
-              key={s}
-              variant={s === 'Cancelled' ? 'danger-outline' : s === 'Completed' ? 'primary' : 'outline'}
-              size="sm"
-              label={checkingStatus === s ? 'Checking...' : changingStatus === s ? 'Updating...' : (NEXT_LABELS[s] ?? s)}
-              onClick={() => handleStatusRequest(s)}
-              loading={checkingStatus === s || changingStatus === s}
-              disabled={!!checkingStatus || !!changingStatus}
-            />
-          ))}
+          {(() => {
+            const visibleNextStatuses = nextStatuses.filter((s) =>
+              s === 'InProgress' ? hasAnyPermission('Treks.Start', 'Treks.ChangeStatus', 'Treks.Manage') :
+                s === 'Completed' ? hasAnyPermission('Treks.Complete', 'Treks.ChangeStatus', 'Treks.Manage') :
+                  hasAnyPermission('Treks.Cancel', 'Treks.ChangeStatus', 'Treks.Manage')
+            );
+            if (visibleNextStatuses.length === 0) return null;
+            return (
+              <>
+                <span aria-hidden="true" className="hidden sm:inline-block h-5 w-px bg-portal-border mx-0.5" />
+                {visibleNextStatuses.map((s) => (
+                  <FlatButton
+                    key={s}
+                    variant={s === 'Cancelled' ? 'danger-outline' : 'primary'}
+                    size="sm"
+                    leftIcon={s === 'Cancelled' ? undefined : 'pi pi-check-circle'}
+                    label={checkingStatus === s ? 'Checking...' : changingStatus === s ? 'Updating...' : (NEXT_LABELS[s] ?? s)}
+                    onClick={() => handleStatusRequest(s)}
+                    loading={checkingStatus === s || changingStatus === s}
+                    disabled={!!checkingStatus || !!changingStatus}
+                  />
+                ))}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -609,69 +606,73 @@ export const TrekDetailPage: React.FC = () => {
         <p className="text-[11px] text-portal-muted italic border-l-2 border-portal-border pl-3">{trek.notes}</p>
       )}
 
-      <StockReadinessPanel
-        loads={stockLoads}
-        loading={stockReadinessLoading}
-        hasError={stockReadinessError}
-        onRetry={loadStockReadiness}
-      />
+      <p className="text-xs text-portal-muted"><i className="pi pi-info-circle mr-2" />Add customer stops below to automatically generate customer invoices.</p>
+      <div role="tablist" aria-label="Trek planning" className="flex gap-6 border-b border-portal-border">
+        {(['stops', 'inventory'] as const).map((tab) => <button key={tab} id={`planning-tab-${tab}`} type="button" role="tab" aria-selected={planningTab === tab} aria-controls={`planning-panel-${tab}`}
+          className={`pb-3 text-xs font-semibold border-b-2 ${planningTab === tab ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted'}`}
+          onClick={() => { setPlanningTab(tab); if (tab === 'inventory') setInventoryOpened(true); }}>{tab === 'stops' ? 'Stops' : 'Vehicle Inventory'}</button>)}
+      </div>
+      <div id="planning-panel-inventory" role="tabpanel" aria-labelledby="planning-tab-inventory" hidden={planningTab !== 'inventory'}>
+        {inventoryOpened && <VehicleInventory key={trek.vehicleId} vehicleId={trek.vehicleId} embedded onChanged={() => { void loadStockReadiness(); }} />}
+      </div>
+      <div id="planning-panel-stops" role="tabpanel" aria-labelledby="planning-tab-stops" hidden={planningTab !== 'stops'} className="space-y-5">
+        <StockReadinessPanel
+          loads={stockLoads}
+          loading={stockReadinessLoading}
+          hasError={stockReadinessError}
+          onRetry={loadStockReadiness}
+        />
 
-      {/* ── Stops ── */}
-      <div className="bg-portal-surface border border-portal-border/60 rounded">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-portal-border/60">
-          <span className="text-sm font-bold text-white">
-            Stops
-            <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
-          </span>
-          {!isStructureLocked && canManageStops && (
-            <FlatButton variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
-              Add Stop
-            </FlatButton>
+        {/* ── Stops ── */}
+        <div className="bg-portal-surface border border-portal-border/60 rounded">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-portal-border/60">
+            <span className="text-sm font-bold text-white">
+              Stops
+              <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
+            </span>
+            {!isStructureLocked && canManageStops && (
+              <FlatButton variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
+                Add Stop
+              </FlatButton>
+            )}
+          </div>
+
+          {sortedStops.length === 0 ? (
+            <div className="py-12 text-center text-portal-muted text-xs border-dashed border border-portal-border rounded m-4">
+              No stops yet. Add the first customer stop to begin planning this trek.
+            </div>
+          ) : (
+            <div className="divide-y divide-portal-border/40">
+              {sortedStops.map((stop) => (
+                <StopCard
+                  key={stop.stopId}
+                  stop={stop}
+                  showInvoicePayments={trek.status !== 'Draft' && trek.status !== 'Cancelled'}
+                  onInvoiceChanged={() => loadTrek(true)}
+                  isLocked={isStructureLocked}
+                  isDeliveryLocked={isDeliveryLocked}
+                  deliveryRows={deliveryRows}
+                  updateRow={updateRow}
+                  onRecordProduct={handleRecordProduct}
+                  onRecordReturn={handleRecordReturn}
+                  onVoidReturn={handleVoidReturn}
+                  recordingProduct={recordingProduct}
+                  onEdit={() => setEditingStop(stop)}
+                  onRemove={() => setRemovingStop(stop)}
+                  canManageStops={canManageStops}
+                  canRecordDelivery={canRecordDelivery}
+                  canRecordReturns={canRecordReturns}
+                />
+              ))}
+            </div>
           )}
         </div>
 
-        {sortedStops.length === 0 ? (
-          <div className="py-12 text-center text-portal-muted text-xs border-dashed border border-portal-border rounded m-4">
-            No stops yet. Add the first customer stop to begin planning this trek.
-          </div>
-        ) : (
-          <div className="divide-y divide-portal-border/40">
-            {sortedStops.map((stop) => (
-          <StopCard
-                key={stop.stopId}
-                stop={stop}
-                isLocked={isStructureLocked}
-                isDeliveryLocked={isDeliveryLocked}
-                deliveryRows={deliveryRows}
-                updateRow={updateRow}
-            onRecordProduct={handleRecordProduct}
-            onRecordReturn={handleRecordReturn}
-            onVoidReturn={handleVoidReturn}
-                recordingProduct={recordingProduct}
-                onEdit={() => setEditingStop(stop)}
-                onRemove={() => setRemovingStop(stop)}
-                canManageStops={canManageStops}
-                canRecordDelivery={canRecordDelivery}
-                canRecordReturns={canRecordReturns}
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Modals ── */}
       <TrekDocumentsModal visible={documentsVisible} onHide={() => setDocumentsVisible(false)} trek={trek} />
 
-      <EditTrekModal
-        visible={editVisible}
-        onHide={() => setEditVisible(false)}
-        trek={trek}
-        onSuccess={(updated) => {
-          setTrek(updated);
-          setDeliveryRows(initDeliveryRows(updated));
-          void loadStockReadiness();
-        }}
-      />
 
       <AddStopModal
         visible={addStopVisible && !isStructureLocked}
@@ -943,7 +944,9 @@ const StockReadinessPanel: React.FC<{
 
 // ── Stop card ──────────────────────────────────────────────────────────
 interface StopCardProps {
+  onInvoiceChanged: () => Promise<void>;
   stop: TrekStop;
+  showInvoicePayments: boolean;
   isLocked: boolean;
   isDeliveryLocked: boolean;
   deliveryRows: Record<string, DeliveryRow>;
@@ -970,7 +973,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = ({
-  stop, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canRecordReturns,
+  stop, showInvoicePayments, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canRecordReturns, onInvoiceChanged,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
@@ -993,7 +996,7 @@ const StopCard: React.FC<StopCardProps> = ({
   }));
   const returnTotal = selectedReturnProduct
     ? parseNumericInput(returnBasicQty) * Number(selectedReturnProduct.basicUnitPrice || 0)
-      + parseNumericInput(returnPackagingQty) * Number(selectedReturnProduct.packagingUnitPrice || 0)
+    + parseNumericInput(returnPackagingQty) * Number(selectedReturnProduct.packagingUnitPrice || 0)
     : 0;
   const resetReturnForm = () => {
     setReturnProductId(''); setReturnBasicQty(''); setReturnPackagingQty('');
@@ -1027,15 +1030,16 @@ const StopCard: React.FC<StopCardProps> = ({
               title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
               <i className="pi pi-pencil text-xs" />
             </button>
-            <button type="button" onClick={onRemove}
+            {!stop.invoiceId && <button type="button" onClick={onRemove}
               className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
               title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
               <i className="pi pi-trash text-xs" />
-            </button>
+            </button>}
           </div>
         )}
       </div>
 
+      {showInvoicePayments && <InvoicePayments summary={stop} customerName={stop.customerName} onChanged={onInvoiceChanged} />}
       {stop.products.length > 0 && (
         <div
           aria-hidden={expanded}
@@ -1071,14 +1075,14 @@ const StopCard: React.FC<StopCardProps> = ({
 
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="min-h-0 overflow-hidden">
-      <div className="mt-4 space-y-4">
-      <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
-        <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
-      </div>
-      {/* Info grid */}
-      {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
+          <div className="mt-4 space-y-4">
+            <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
+              <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
+              <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
+              <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
+            </div>
+            {/* Info grid */}
+            {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
               <div>
                 <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
                 <InfoRow label="Region" value={stop.regionName} />
@@ -1131,7 +1135,6 @@ const StopCard: React.FC<StopCardProps> = ({
                     { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
                     { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
                     { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
-                    { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.displayRow ?? {}).paymentMethod)?.label || '—'}</span> },
                     { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
                     ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> }] : []),
                   ]}
@@ -1144,11 +1147,9 @@ const StopCard: React.FC<StopCardProps> = ({
 
       {editingProduct && (() => {
         const editingRow = deliveryRows[editingProduct.stopProductId] ?? {
-          basicQtyDelivered: '', packagingQtyDelivered: '', paymentMethod: '', amtPaid: '', balance: '', notes: '',
+          basicQtyDelivered: '', packagingQtyDelivered: '', notes: '',
         };
         const deliveredAmount = calculateDeliveredAmount(editingProduct, editingRow);
-        const paid = editingRow.amtPaid === '' ? null : Number(editingRow.amtPaid);
-        const balance = paid == null || !Number.isFinite(paid) ? 0 : Math.max(0, deliveredAmount - paid);
         const plannedAmount = Number(editingProduct.amountDue ?? (Number(editingProduct.plannedBasicQuantity || 0) * Number(editingProduct.basicUnitPrice || 0) + Number(editingProduct.plannedPackagingQuantity || 0) * Number(editingProduct.packagingUnitPrice || 0)));
         const savingProduct = recordingProduct === editingProduct.stopProductId;
         return (
@@ -1156,7 +1157,7 @@ const StopCard: React.FC<StopCardProps> = ({
             visible
             onHide={() => setEditingProduct(null)}
             title={`Record ${editingProduct.productName}`}
-            subtitle="Delivery, payment and notes"
+            subtitle="Delivered quantities and notes"
             size="md"
             footer={(
               <div className="flex items-center justify-end gap-2">
@@ -1173,15 +1174,11 @@ const StopCard: React.FC<StopCardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FlatInputNumber id={`${editingProduct.stopProductId}-basic-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.basicQtyDelivered)} onChange={(value) => updateRow(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => updateRow(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={isDeliveryLocked} />
                 {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.packagingQtyDelivered)} onChange={(value) => updateRow(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => updateRow(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={isDeliveryLocked} />}
-                <FlatDropdown id={`${editingProduct.stopProductId}-payment-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={editingRow.paymentMethod} onChange={(value) => updateRow(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={isDeliveryLocked} size="sm" />
-                <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(editingRow.amtPaid)} onChange={(value) => updateRow(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={isDeliveryLocked} />
               </div>
               <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2">
                 <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(deliveredAmount)}</span></div>
-                <div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(balance)}</span></div>
               </div>
               <FlatInputText id={`${editingProduct.stopProductId}-notes-modal`} label="Delivery note" value={editingRow.notes} onChange={(event) => updateRow(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
-              <p className="text-[11px] text-portal-muted">Leave amount paid empty when the customer pays the full calculated total.</p>
             </div>
           </FlatModal>
         );

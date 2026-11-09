@@ -6,6 +6,7 @@ import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
 import type { StockItem } from '../../../api-client/vehicleStock';
 import { fieldApi, validateCustomerPhoto, type ActionType, type FieldCustomer, type FieldDistrict, type QueuedAction, type QueuedPhoto, type RegionTrek, type StopPriceOverrides } from './api';
+import { goodsOnly, hasLegacyCollection } from '../../../components/invoices/paymentRules';
 import { fieldStore } from './store';
 import { addCachedLocation, applyCustomerUpdate, mergeCachedCustomer, registrationDetails, removeCachedLocation, restoreCachedLocation, updateCachedLocation } from './customerCache';
 import { applyOfflineSyncResults, reconcileUnplannedSales, successfulServerIds } from './offlineLifecycle';
@@ -389,7 +390,7 @@ export function useFieldControl(token: string) {
           setQueue(next);
         });
         await mutationRef.current;
-        if ((responseDetail as { code?: string } | undefined)?.code === '409') await refresh(true);
+        if ((responseDetail as { code?: string } | undefined)?.code === '409' || (error as { response?: { status?: number } }).response?.status === 409) await refresh(true);
         setError(syncReason);
       } finally {
         try {
@@ -492,6 +493,7 @@ export function useFieldControl(token: string) {
   }, [processPhotoQueue]);
 
   const enqueue = useCallback(async (type: ActionType, payload: Record<string, unknown>, photos: CustomerPhotos = {}) => {
+    if (hasLegacyCollection({ type, payload })) throw new Error('Record payment separately from goods.');
     Object.values(photos).filter(Boolean).forEach(file => validateCustomerPhoto(file!));
     let action: QueuedAction = { type, clientId: crypto.randomUUID(), occurredAt: new Date().toISOString(), payload, status: 'pending' };
     mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
@@ -518,7 +520,7 @@ export function useFieldControl(token: string) {
       // its latest unsynced save, unless an earlier save is being uploaded.
       const next = type === 'RecordDelivery' && !syncingRef.current
         ? [...current.filter((item) => !(item.type === 'RecordDelivery'
-          && item.status !== 'synced'
+          && item.status !== 'synced' && !item.legacyPaymentReview
           && item.payload.stopProductId === payload.stopProductId)), action]
         : [...current.filter(item => item.clientId !== action.clientId), action];
       const storedPhotos = await fieldStore.updatePhotos(token, existing => {
@@ -596,7 +598,7 @@ export function useFieldControl(token: string) {
 
   const retry = useCallback(async (clientId: string) => {
     mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
-      const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId
+      const next = (await fieldStore.queue(token)).map((action) => action.clientId === clientId && !action.legacyPaymentReview
         ? { ...action, status: 'pending' as const, reason: undefined }
         : action);
       await fieldStore.setQueue(token, next);
@@ -606,10 +608,39 @@ export function useFieldControl(token: string) {
     void sync();
   }, [token, sync]);
 
+  const reconcileLegacy = useCallback(async (clientId: string) => {
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
+      const current = await fieldStore.queue(token);
+      const next = current.map(action => action.clientId === clientId && action.legacyPaymentReview
+        ? { ...action, legacyCollection: { ...action.payload }, payload: goodsOnly(action.payload), legacyPaymentReview: false,
+          status: 'pending' as const, reason: undefined } : action);
+      await fieldStore.setQueue(token, next); setQueue(next);
+    });
+    await mutationRef.current;
+    void sync();
+  }, [token, sync]);
+
+  const resolvePaymentConflict = useCallback(async (clientId: string) => {
+    mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
+      const current = await fieldStore.queue(token);
+      const next = current.map(action => action.clientId === clientId
+        && action.type === 'RecordInvoicePayment' && action.status === 'conflict'
+        ? { ...action, status: 'synced' as const, paymentConflictResolved: true }
+        : action);
+      await fieldStore.setQueue(token, next);
+      setQueue(next);
+    });
+    await mutationRef.current;
+  }, [token]);
+
   const remove = useCallback(async (clientId: string) => {
     mutationRef.current = mutationRef.current.catch(() => {}).then(async () => {
       const current = await fieldStore.queue(token);
       const target = current.find((action) => action.clientId === clientId);
+      if (target?.type === 'RecordInvoicePayment' || target?.legacyPaymentReview) {
+        setError('Payments and legacy collections must be reconciled, not removed.');
+        return;
+      }
       const removedIds = new Set([clientId]);
       let foundDependent = true;
       while (foundDependent) {
@@ -622,6 +653,10 @@ export function useFieldControl(token: string) {
             foundDependent = true;
           }
         }
+      }
+      if (current.some(action => removedIds.has(action.clientId) && (action.type === 'RecordInvoicePayment' || action.legacyPaymentReview))) {
+        setError('This action has a dependent collection. Reconcile the payment before removing its parent.');
+        return;
       }
       const next = current.filter((action) => !removedIds.has(action.clientId));
       await fieldStore.setQueue(token, next); setQueue(next);
@@ -677,5 +712,5 @@ export function useFieldControl(token: string) {
     setPhotoQueue(next);
   }, [token]);
 
-  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto, clearFailedPhotos };
+  return { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos: uploadingPhotoCount > 0, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, uploadCustomerPremisesPhoto, uploadCustomerPortrait, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, reconcileLegacy, resolvePaymentConflict, remove, removePhoto, retryPhoto, clearFailedPhotos };
 }

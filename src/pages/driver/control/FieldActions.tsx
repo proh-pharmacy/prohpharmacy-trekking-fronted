@@ -14,7 +14,6 @@ export interface FieldActionRequest { kind: FieldActionKind; trekId?: string; st
 type Values = Record<string, string>;
 const CUSTOMER_TYPES = ['RetailPharmacy', 'WholesalePharmacy', 'OTCMedicineSeller', 'Clinic', 'Hospital', 'ChemicalShop', 'LicensedHealthFacility', 'Other'];
 const RELATIONSHIPS = ['Owner', 'Proprietor', 'Director', 'Manager', 'PrimaryContact', 'CreditResponsiblePerson', 'Guarantor', 'Other'];
-const PAYMENTS = ['Cash', 'MobileMoney', 'Cheque', 'BankTransfer'];
 const options = (values: string[]) => values.map((value) => ({ label: value.replace(/([a-z])([A-Z])/g, '$1 $2'), value }));
 
 interface Props {
@@ -134,10 +133,6 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     ? (parseNumericInput(values.basicQty) * resolvedBasicUnitPrice)
       + (parseNumericInput(values.packagingQty) * resolvedPackagingUnitPrice)
     : 0;
-  const saleAmountPaid = values.amount?.trim() ? parseNumericInput(values.amount) : null;
-  const saleBalance = saleAmountPaid == null || !Number.isFinite(saleAmountPaid)
-    ? 0
-    : Math.max(0, calculatedSaleAmount - saleAmountPaid);
   const selectedStop = values.stopId ?? '';
   const close = () => { [premisesPreview, portraitPreview].forEach((preview) => { if (preview) URL.revokeObjectURL(preview); }); setKind(null); setValues({}); setProductScope('vehicle'); setGpsStatus('idle'); setCustomerGps(null); setPremisesPhoto(null); setPortraitPhoto(null); setPremisesPreview(null); setPortraitPreview(null); onClose?.(); };
   const changeProductScope = async (scope: 'vehicle' | 'all') => {
@@ -206,8 +201,6 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
           ...(selectedProduct?.packagingUnitId && { packagingUnitPrice: resolvedPackagingUnitPrice }),
           basicQtyDelivered: parseNumericInput(values.basicQty),
           ...(values.packagingQty && { packagingQtyDelivered: parseNumericInput(values.packagingQty) }),
-          ...(values.paymentMethod && { paymentMethod: values.paymentMethod }),
-          ...((values.amount ?? '').trim() ? { amtPaid: saleAmountPaid, balance: saleBalance } : {}),
           ...(values.notes && { notes: values.notes.trim() }) });
       }
       toast.success('Saved on this device. It will sync when connected.');
@@ -320,9 +313,6 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
           {number('basicQty', `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
           {selectedProduct?.packagingUnitName && number('packagingQty', `Packaging qty delivered (${selectedProduct.packagingUnitName})`)}
           {selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
-          {select('paymentMethod', 'Payment method', options(PAYMENTS))}
-          {number('amount', 'Amount paid')}
-          <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(saleBalance)}</span></div>
           {text('notes', 'Notes')}
         </>}
       </div>

@@ -69,6 +69,49 @@ export interface ImportProductsResult {
   skippedNames: string[];
 }
 
+export interface ProductMatchCandidate {
+  productId: string;
+  name: string;
+  similarityScore: number;
+  basicUnitId?: string | null;
+  basicUnitName?: string | null;
+  packagingUnitId?: string | null;
+  packagingUnitName?: string | null;
+}
+
+export interface ProductMatchRow {
+  page?: number | null;
+  worksheet?: string | null;
+  row?: number | null;
+  extractedName: string | null;
+  quantityText: string | null;
+  basicQtyText?: string | null;
+  packagingQtyText?: string | null;
+  unitText?: string | null;
+  quantity: number | null;
+  basicQty: number | null;
+  packagingQty: number | null;
+  ocrConfidence?: number | null;
+  matchStatus: 'Exact' | 'Suggested' | 'Ambiguous' | 'Unmatched' | string;
+  suggestedProductId?: string | null;
+  candidates: ProductMatchCandidate[];
+  requiresReview: boolean;
+  warnings: string[];
+}
+
+export interface ProductMatchFileResult {
+  fileIndex: number;
+  fileName: string;
+  status: 'Processed' | 'Partial' | 'Failed' | string;
+  errors: { code?: string; message: string; page?: number | null }[];
+  rows: ProductMatchRow[];
+}
+
+export interface ProductMatchResult {
+  summary: Record<string, number>;
+  files: ProductMatchFileResult[];
+}
+
 export const productsApi = {
   // Units endpoints
   getUnits: async (params?: {
@@ -150,6 +193,16 @@ export const productsApi = {
     formData.append('allowUpdate', String(payload.allowUpdate ?? false));
     const res = await apiClient.post<ImportProductsResult>('/products/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  matchFiles: async (files: File[], excelMappings?: unknown[]): Promise<ProductMatchResult> => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    if (excelMappings?.length) formData.append('excelMappings', JSON.stringify(excelMappings));
+    const res = await apiClient.post<ProductMatchResult>('/products/match-files', formData, {
+      timeout: 180000,
     });
     return res.data;
   },

@@ -1,4 +1,5 @@
 import apiClient, { publicApi } from './api';
+import type { StopInvoiceSummary } from './invoices';
 
 export type TrekStatus = 'Draft' | 'Scheduled' | 'InProgress' | 'Completed' | 'Cancelled';
 export type PaymentMethod = 'Cash' | 'MobileMoney' | 'Credit' | 'Cheque' | 'BankTransfer';
@@ -23,7 +24,7 @@ export interface TrekStopProduct {
   deliveredAt?: string | null;
 }
 
-export interface TrekStop {
+export interface TrekStop extends StopInvoiceSummary {
   stopId: string;
   invoiceId?: string | null;
   invoiceNumber?: string | null;
@@ -106,9 +107,6 @@ export interface RecordDeliveryPayload {
     stopProductId: string;
     basicQtyDelivered?: number;
     packagingQtyDelivered?: number;
-    paymentMethod?: PaymentMethod;
-    amtPaid?: number;
-    balance?: number;
     notes?: string;
   }[];
 }
@@ -245,7 +243,7 @@ export interface DriverReturn {
   invoiceNumber: string | null;
 }
 
-export interface DriverStop {
+export interface DriverStop extends StopInvoiceSummary {
   stopId: string;
   customerAccountId?: string;
   customerClientGeneratedId?: string | null;

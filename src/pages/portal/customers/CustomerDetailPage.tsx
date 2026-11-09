@@ -611,6 +611,7 @@ export const CustomerDetailPage: React.FC = () => {
 
           {addType === 'Credit' && (
             <div>
+              <p className="mb-3 text-[11px] text-portal-orange">Manual credits do not settle invoices or issue receipts. To collect an invoice payment, open the invoice and use Collect payment.</p>
               <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
                 Payment Method <span className="text-portal-muted font-normal normal-case">(optional)</span>
               </label>

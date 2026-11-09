@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import ReactCrop, { type Crop, type PercentCrop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { FlatConfirmDialog, FlatModal } from '../../../../components/overlay';
 import { resetTableData } from '../../../../components/data-table';
 import {
@@ -13,6 +15,8 @@ import {
   getApiError,
   vehicleStockApi,
   type Product,
+  productsApi,
+  type ProductMatchRow,
   type StockLineItem,
 } from '../../../../api-client';
 
@@ -37,6 +41,46 @@ interface StagedItem {
   beforeBasic: number;
   beforePackaging: number;
 }
+
+interface ReviewItem {
+  id: string;
+  source: ProductMatchRow;
+  productId: string;
+  productName: string;
+  basicUnitName: string | null;
+  packagingUnitName: string | null;
+  basicQty: number | null;
+  packagingQty: number | null;
+}
+
+interface ReviewValidationError {
+  id: string;
+  field: 'productId' | 'basicQty' | 'packagingQty';
+  message: string;
+}
+
+const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElement): Promise<File> => {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = Math.max(1, Math.round(crop.width * scaleX));
+  canvas.height = Math.max(1, Math.round(crop.height * scaleY));
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not prepare the cropped image.');
+  context.drawImage(image, crop.x * scaleX, crop.y * scaleY, crop.width * scaleX, crop.height * scaleY, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.92));
+  if (!blob) throw new Error('Could not create the cropped image.');
+  return new File([blob], file.name, { type: blob.type });
+};
+
+const matchIndicator = (row: ProductMatchRow) => {
+  const score = row.candidates?.[0]?.similarityScore;
+  if (row.matchStatus === 'Unmatched') return { score: null, color: 'text-red-accent' };
+  if (score == null) return { score: null, color: 'text-portal-muted' };
+  if (score >= 95) return { score, color: 'text-portal-accent' };
+  if (score >= 85) return { score, color: 'text-portal-orange' };
+  return { score, color: 'text-red-accent' };
+};
 
 interface VehicleStockModalProps {
   visible: boolean;
@@ -72,6 +116,18 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [excludeTracked, setExcludeTracked] = useState(false);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[] | null>(null);
+  const [reviewValidationError, setReviewValidationError] = useState<ReviewValidationError | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropUrl, setCropUrl] = useState('');
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropIndex, setCropIndex] = useState(0);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
+  const cropImageRef = useRef<HTMLImageElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // form state
   const [productId, setProductId] = useState('');
@@ -84,9 +140,15 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [balanceLoading, setBalanceLoading] = useState(false);
 
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [pendingReviewRemoveId, setPendingReviewRemoveId] = useState<string | null>(null);
+  const [resetReviewPending, setResetReviewPending] = useState(false);
   const pendingRemoveItem = useMemo(
     () => items.find((i) => i.productId === pendingRemoveId) || null,
     [items, pendingRemoveId],
+  );
+  const pendingReviewRemoveItem = useMemo(
+    () => reviewItems?.find((item) => item.id === pendingReviewRemoveId) || null,
+    [reviewItems, pendingReviewRemoveId],
   );
 
   const hasPackaging = !!productUnits.packaging;
@@ -111,6 +173,16 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   useEffect(() => {
     if (visible) {
       setItems([]);
+      setReviewItems(null);
+      setReviewValidationError(null);
+      setPendingRemoveId(null);
+      setPendingReviewRemoveId(null);
+      setResetReviewPending(false);
+      setUploadErrors([]);
+      setCropFile(null);
+      setCropQueue([]);
+      setCropIndex(0);
+      setCropUrl('');
       setReasonSelection('');
       setReason('');
       setSubmitting(false);
@@ -266,6 +338,177 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     })));
   };
 
+  const processUploadFiles = async (files: File[]) => {
+    setUploading(true);
+    try {
+      const result = await productsApi.matchFiles(files);
+      const rows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
+        const candidate = row.candidates?.[0];
+        return {
+          id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
+          source: row,
+          productId: row.suggestedProductId || '',
+          productName: candidate?.name || row.extractedName || '',
+          basicUnitName: candidate?.basicUnitName || null,
+          packagingUnitName: candidate?.packagingUnitName || null,
+          basicQty: row.basicQty,
+          packagingQty: row.packagingQty,
+        };
+      }));
+      setUploadErrors(result.files.flatMap((file) => file.errors.map((error) => `${file.fileName}: ${error.message}`)));
+      if (!rows.length) {
+        toast.error('No product rows were extracted from the selected files.');
+        return;
+      }
+      setReviewItems(rows);
+      setFormOpen(false);
+      const failed = result.files.filter((file) => file.status !== 'Processed');
+      if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
+    } catch (err: unknown) {
+      const apiError = getApiError(err);
+      toast.error(apiError?.message || 'Could not process the selected documents.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const beginCrop = (files: File[], index: number) => {
+    const file = files[index];
+    if (!file) {
+      void processUploadFiles(files);
+      return;
+    }
+    setCropQueue(files);
+    setCropIndex(index);
+    setCropFile(file);
+    setCropUrl(URL.createObjectURL(file));
+    setCrop(undefined);
+    setCompletedCrop(null);
+  };
+
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+    const allowed = /\.(xlsx|pdf|jpe?g|png)$/i;
+    const invalid = files.find((file) => !allowed.test(file.name));
+    if (invalid) {
+      toast.error(`${invalid.name} is not a supported document.`);
+      return;
+    }
+    const firstImage = files.findIndex((file) => file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name));
+    if (firstImage >= 0) {
+      beginCrop(files, firstImage);
+    } else {
+      void processUploadFiles(files);
+    }
+  };
+
+  const handleCropConfirm = async () => {
+    if (!cropFile || !completedCrop || !cropImageRef.current) return;
+    setUploading(true);
+    try {
+      const cropped = await cropImageFile(cropFile, completedCrop, cropImageRef.current);
+      const nextFiles = [...cropQueue];
+      nextFiles[cropIndex] = cropped;
+      URL.revokeObjectURL(cropUrl);
+      const nextImageIndex = nextFiles.findIndex((file, index) => index > cropIndex && (file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name)));
+      if (nextImageIndex >= 0) {
+        setUploading(false);
+        beginCrop(nextFiles, nextImageIndex);
+      } else {
+        setCropFile(null);
+        setCropUrl('');
+        setCropQueue([]);
+        await processUploadFiles(nextFiles);
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Could not crop the image.');
+      setUploading(false);
+    }
+  };
+
+  const updateReviewItem = (id: string, patch: Partial<ReviewItem>) => {
+    setReviewItems((current) => current?.map((item) => item.id === id ? { ...item, ...patch } : item) || null);
+    setReviewValidationError((current) => (
+      current?.id === id && Object.prototype.hasOwnProperty.call(patch, current.field) ? null : current
+    ));
+  };
+
+  const showReviewValidationError = (
+    item: ReviewItem,
+    index: number,
+    field: ReviewValidationError['field'],
+    message: string,
+  ) => {
+    setReviewValidationError({ id: item.id, field, message });
+    const productLabel = item.source.extractedName || item.productName || 'manually added product';
+    toast.error(`Row ${index + 1} — ${productLabel}: ${message}`);
+    requestAnimationFrame(() => {
+      document.getElementById(`stock-review-row-${item.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const appendReviewItem = () => {
+    setReviewItems((current) => [
+      ...(current || []),
+      {
+        id: `manual-${crypto.randomUUID()}`,
+        source: {
+          page: null,
+          worksheet: null,
+          row: null,
+          extractedName: null,
+          quantityText: null,
+          basicQtyText: null,
+          packagingQtyText: null,
+          unitText: null,
+          quantity: null,
+          basicQty: null,
+          packagingQty: null,
+          ocrConfidence: null,
+          matchStatus: 'Manual',
+          suggestedProductId: null,
+          candidates: [],
+          requiresReview: true,
+          warnings: [],
+        },
+        productId: '',
+        productName: '',
+        basicUnitName: null,
+        packagingUnitName: null,
+        basicQty: null,
+        packagingQty: null,
+      },
+    ]);
+  };
+
+  const submitReview = async () => {
+    if (!reviewItems?.length || submitting) return;
+    const invalidIndex = reviewItems.findIndex((item) => !item.productId || item.basicQty == null || item.basicQty <= 0 || (item.packagingQty ?? 0) < 0);
+    if (invalidIndex >= 0) {
+      const invalid = reviewItems[invalidIndex];
+      if (!invalid.productId) {
+        showReviewValidationError(invalid, invalidIndex, 'productId', 'Select a matched product.');
+      } else if (invalid.basicQty == null) {
+        showReviewValidationError(invalid, invalidIndex, 'basicQty', 'Enter the basic quantity.');
+      } else if (invalid.basicQty <= 0) {
+        showReviewValidationError(invalid, invalidIndex, 'basicQty', 'Basic quantity must be greater than 0.');
+      } else {
+        showReviewValidationError(invalid, invalidIndex, 'packagingQty', 'Packaging quantity cannot be negative.');
+      }
+      return;
+    }
+    const productIds = reviewItems.map((item) => item.productId);
+    if (new Set(productIds).size !== productIds.length) {
+      const duplicateIndex = productIds.findIndex((productId, index) => productIds.indexOf(productId) !== index);
+      showReviewValidationError(reviewItems[duplicateIndex], duplicateIndex, 'productId', 'This product is already selected in another row.');
+      return;
+    }
+    setReviewValidationError(null);
+    await submit(reviewItems.map((item) => ({ productId: item.productId, basicQty: item.basicQty as number, packagingQty: item.packagingQty ?? 0 })));
+  };
+
   const submit = async (payload: StockLineItem[]) => {
     setSubmitting(true);
     try {
@@ -290,7 +533,21 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     }
   };
 
-  const footer = isLocked
+  const footer = cropFile
+    ? (
+      <div className="flex items-center justify-end gap-3 w-full">
+        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={uploading} />
+        <FlatButton variant="primary" label={uploading ? 'Preparing...' : 'Use cropped image'} icon="pi pi-check" onClick={() => void handleCropConfirm()} loading={uploading} disabled={!completedCrop || uploading} />
+      </div>
+    )
+    : reviewItems
+    ? (
+      <div className="flex items-center justify-end gap-3 w-full">
+        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
+        <FlatButton variant="primary" label={submitting ? 'Loading...' : 'Confirm stock'} icon="pi pi-check" onClick={submitReview} loading={submitting} disabled={submitting || reviewItems.length === 0} />
+      </div>
+    )
+    : isLocked
     ? (
       <div
         className={`flex items-center justify-end gap-3 w-full transition-opacity ${
@@ -503,33 +760,165 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   return (
     <FlatModal
       visible={visible}
-      onHide={submitting ? () => {} : onHide}
+      onHide={submitting || uploading || !!cropFile ? () => {} : onHide}
       title={title}
-      size="lg"
+      size="xl"
       footer={footer}
     >
       <div className="relative min-h-[380px] py-3">
-        {isLocked ? (
+        {!isLocked && !isRemove && (
+          <input ref={fileInputRef} type="file" multiple accept=".xlsx,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUpload} />
+        )}
+        {cropFile ? (
+          <div className="flex min-h-[440px] flex-col gap-3">
+            <div>
+              <p className="text-xs font-semibold text-portal-text">Crop document image</p>
+              <p className="mt-1 text-[11px] text-portal-muted">Keep the product rows and quantities inside the crop area before matching.</p>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-portal-border/60 bg-portal-canvas p-3">
+              <ReactCrop crop={crop} onChange={(_, percent: PercentCrop) => setCrop(percent)} onComplete={(pixel) => setCompletedCrop(pixel)} keepSelection minWidth={48}>
+                <img
+                  ref={cropImageRef}
+                  src={cropUrl}
+                  alt="Document crop preview"
+                  onLoad={(event) => {
+                    const image = event.currentTarget;
+                    setCrop({ unit: '%', x: 5, y: 5, width: 90, height: 90 });
+                    setCompletedCrop({ unit: 'px', x: image.width * 0.05, y: image.height * 0.05, width: image.width * 0.9, height: image.height * 0.9 });
+                    cropImageRef.current = image;
+                  }}
+                  className="block max-h-[52vh] max-w-full"
+                />
+              </ReactCrop>
+            </div>
+            <p className="text-[11px] text-portal-muted">{cropIndex + 1} of {cropQueue.length} image{cropQueue.length === 1 ? '' : 's'}</p>
+          </div>
+        ) : isLocked ? (
           productForm
         ) : (
           <>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] uppercase tracking-wide text-portal-muted">
-                  Products ({items.length})
-                </span>
-                <FlatButton
-                  size="sm"
-                  variant="outline"
-                  leftIcon="pi pi-plus"
-                  onClick={() => { resetForm(); setFormOpen(true); }}
-                  disabled={formOpen}
-                >
-                  Add new item
-                </FlatButton>
-              </div>
+              {!reviewItems && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wide text-portal-muted">
+                    Products ({items.length})
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {!isRemove && (
+                      <FlatButton size="sm" variant="outline" leftIcon="pi pi-upload" onClick={() => fileInputRef.current?.click()} loading={uploading} disabled={formOpen || uploading}>Upload</FlatButton>
+                    )}
+                    <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" onClick={() => { resetForm(); setFormOpen(true); }} disabled={formOpen || uploading}>Add item</FlatButton>
+                  </div>
+                </div>
+              )}
 
-              {items.length === 0 ? (
+              {reviewItems ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review extracted rows ({reviewItems.length})</span>
+                    <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetReviewPending(true)} disabled={uploading || submitting} />
+                  </div>
+                  {uploadErrors.length > 0 && (
+                    <div className="rounded border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-400">
+                      {uploadErrors.map((error) => <div key={error}>{error}</div>)}
+                    </div>
+                  )}
+                  <div className="overflow-x-auto rounded border border-portal-border/60">
+                    <table className="w-full min-w-[770px] text-xs">
+                      <thead className="bg-portal-canvas/40 text-portal-muted"><tr>
+                        <th className="w-[42px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">#</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Extracted Name</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Matched Product</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Basic qty</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Pack qty</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Confidence</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Action</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-portal-border/40">
+                        {reviewItems.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-portal-muted">
+                              No extracted rows remain. Choose other files to continue.
+                            </td>
+                          </tr>
+                        )}
+                        {reviewItems.map((item, index) => (
+                          <tr
+                            key={item.id}
+                            id={`stock-review-row-${item.id}`}
+                            className={`align-top transition-colors ${reviewValidationError?.id === item.id ? 'bg-red-accent/5' : ''}`}
+                          >
+                            <td className="w-[42px] px-3 py-2 font-mono text-[11px] text-portal-muted">{index + 1}</td>
+                            <td className="px-3 py-2 text-portal-text">
+                              {item.source.matchStatus === 'Manual' ? (
+                                <span className="text-[11px] text-portal-muted">Added manually</span>
+                              ) : item.source.extractedName ? (
+                                <abbr
+                                  title={item.source.extractedName}
+                                  className="block max-w-[150px] cursor-help truncate no-underline"
+                                >
+                                  {item.source.extractedName}
+                                </abbr>
+                              ) : '—'}
+                            </td>
+                            <td className="w-[260px] px-3 py-2">
+                              <FlatAsyncSelect<Product> size="sm" placeholder="Select product" value={item.productId} initialSelectedItem={item.source.candidates?.find((candidate) => candidate.productId === item.productId) as Product | undefined} endpointUrl="/products" defaultParams={{ isActive: true }} pageSize={10} searchParam="search" optionValue="id" optionLabel={(p) => p.name} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'productId' ? reviewValidationError.message : undefined} onChange={(value, product) => updateReviewItem(item.id, { productId: (value as string) || '', productName: product?.name || '', basicUnitName: product?.basicUnitName || null, packagingUnitName: product?.packagingUnitName || null })} />
+                            </td>
+                            <td className="w-[110px] px-3 py-2"><FlatInputNumber size="sm" min={0} value={item.basicQty} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'basicQty' ? reviewValidationError.message : undefined} onChange={(value) => updateReviewItem(item.id, { basicQty: value })} /></td>
+                            <td className="w-[110px] px-3 py-2"><FlatInputNumber size="sm" min={0} value={item.packagingQty} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'packagingQty' ? reviewValidationError.message : undefined} onChange={(value) => updateReviewItem(item.id, { packagingQty: value })} /></td>
+                            <td className="w-[90px] px-3 py-2">
+                              {(() => {
+                                const indicator = matchIndicator(item.source);
+                                const isUnmatched = item.source.matchStatus === 'Unmatched';
+                                const isManual = item.source.matchStatus === 'Manual';
+                                const details = [
+                                  isManual ? 'Manually added product row' : null,
+                                  item.source.page != null ? `Page ${item.source.page}` : null,
+                                  item.source.row != null ? `Row ${item.source.row}` : null,
+                                  item.source.ocrConfidence != null ? `OCR confidence: ${Math.round(item.source.ocrConfidence * 100)}%` : null,
+                                  ...(item.source.warnings || []),
+                                ].filter(Boolean).join('\n');
+                                return (
+                                  <div className="group relative inline-flex cursor-help" title={details || 'No additional review information.'}>
+                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                      <span className={`text-[11px] font-semibold ${indicator.color}`}>
+                                        {isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setPendingReviewRemoveId(item.id)}
+                                disabled={submitting}
+                                className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-red-accent transition-colors hover:text-red-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                aria-label={`Remove extracted row for ${item.productName || item.source.extractedName || 'unmatched product'}`}
+                              >
+                                <i className="pi pi-trash text-[10px]" aria-hidden="true" />
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex justify-end">
+                    <FlatButton
+                      size="sm"
+                      variant="outline"
+                      leftIcon="pi pi-plus"
+                      onClick={appendReviewItem}
+                      disabled={submitting || uploading}
+                    >
+                      Add product row
+                    </FlatButton>
+                  </div>
+                </div>
+              ) : items.length === 0 ? (
                 <div className="rounded border border-dashed border-portal-border/60 bg-portal-canvas/40 py-8 text-center text-xs text-portal-muted">
                   No products added yet.
                 </div>
@@ -616,6 +1005,44 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
             setItems((prev) => prev.filter((i) => i.productId !== pendingRemoveId));
           }
           setPendingRemoveId(null);
+        }}
+      />
+      <FlatConfirmDialog
+        visible={!!pendingReviewRemoveItem}
+        onHide={() => setPendingReviewRemoveId(null)}
+        title="Remove extracted row"
+        message={
+          pendingReviewRemoveItem
+            ? `Remove "${pendingReviewRemoveItem.productName || pendingReviewRemoveItem.source.extractedName || 'Unmatched product'}" from the extracted rows?`
+            : ''
+        }
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => {
+          if (pendingReviewRemoveId) {
+            setReviewItems((current) => current?.filter((item) => item.id !== pendingReviewRemoveId) || null);
+            setReviewValidationError((current) => current?.id === pendingReviewRemoveId ? null : current);
+          }
+          setPendingReviewRemoveId(null);
+        }}
+      />
+      <FlatConfirmDialog
+        visible={resetReviewPending}
+        onHide={() => setResetReviewPending(false)}
+        title="Reset extracted rows"
+        message="Discard the extracted rows and your review changes? You will return to the initial Add Stock view."
+        confirmLabel="Reset"
+        variant="danger"
+        onConfirm={() => {
+          setReviewItems(null);
+          setReviewValidationError(null);
+          setItems([]);
+          setUploadErrors([]);
+          setPendingReviewRemoveId(null);
+          setFormOpen(false);
+          resetForm();
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          setResetReviewPending(false);
         }}
       />
     </FlatModal>

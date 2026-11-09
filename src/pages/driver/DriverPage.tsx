@@ -3,7 +3,7 @@ import { registrationDetails, applyCustomerUpdate } from './control/customerCach
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../components/flat-form';
+import { FlatButton, FlatInputNumber, FlatInputText } from '../../components/flat-form';
 import {
   treksApi,
   type DriverTrek,
@@ -25,7 +25,9 @@ import { DriverDashboard } from './control/DriverDashboard';
 import { DriverTrekReportView } from './control/DriverTrekReportView';
 import { DriverDocumentsModal } from './control/DriverDocumentsModal';
 import { DriverReturnModal } from './control/DriverReturnModal';
-import { openDriverInvoice, type DriverInvoiceLine } from './control/driverInvoice';
+import { InvoicePayments } from '../../components/invoices/InvoicePayments';
+import { invoiceStatusLabel } from '../../components/invoices/paymentRules';
+import { offlineInvoice } from './control/offlineInvoice';
 import { OfflineMapControl } from './control/OfflineMapControl';
 import { useDeviceStatus } from './control/useDeviceStatus';
 import { fieldApi, type FieldCustomer, type QueuedAction, type RegionTrek } from './control/api';
@@ -37,9 +39,6 @@ import { fmtGhs, parseNumericInput } from '../../lib/utils';
 type DeliveryRow = {
   basicQtyDelivered: string;
   packagingQtyDelivered: string;
-  paymentMethod: string;
-  amtPaid: string;
-  balance: string;
   notes: string;
 };
 
@@ -104,14 +103,6 @@ function customerForModal(customer: FieldCustomer, districts: { id: string; name
   };
 }
 
-const PAYMENT_OPTIONS = [
-  { label: '—', value: '' },
-  { label: 'Cash',             value: 'Cash' },
-  { label: 'Mobile Money',     value: 'MobileMoney' },
-  { label: 'Cheque',           value: 'Cheque' },
-  { label: 'Bank Transfer',    value: 'BankTransfer' },
-];
-
 const STATUS_STYLES: Record<string, string> = {
   Draft:      'text-portal-muted',
   Scheduled:  'text-blue-400',
@@ -153,9 +144,6 @@ function deliveryRowFromProduct(p: DriverStopProduct): DeliveryRow {
   return {
     basicQtyDelivered: p.basicQtyDelivered != null ? String(p.basicQtyDelivered) : '',
     packagingQtyDelivered: p.packagingQtyDelivered != null ? String(p.packagingQtyDelivered) : '',
-    paymentMethod: p.paymentMethod ?? '',
-    amtPaid: p.amtPaid != null ? String(p.amtPaid) : '',
-    balance: p.balance != null ? String(p.balance) : '',
     notes: p.notes ?? '',
   };
 }
@@ -183,6 +171,14 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 // ── Stop card ─────────────────────────────────────────────────────────────────
 
 interface StopCardProps {
+  alternate?: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  customer?: FieldCustomer;
+  onEditCustomer: (customer: FieldCustomer) => void;
+  queue: QueuedAction[];
+  enqueuePayment: (type: 'RecordInvoicePayment', payload: Record<string, unknown>) => Promise<string>;
+  onInvoiceChanged: () => Promise<unknown>;
   trek: DriverTrek;
   token: string;
   stop: DriverStop;
@@ -204,8 +200,7 @@ interface StopCardProps {
   syncing: boolean;
 }
 
-const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing }) => {
-  const [expanded, setExpanded] = useState(Boolean(queuedStop));
+const StopCard: React.FC<StopCardProps> = ({ alternate = false, expanded, onToggle, customer, onEditCustomer, trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing, queue, enqueuePayment, onInvoiceChanged }) => {
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
   const [returnToRemove, setReturnToRemove] = useState<{ stopId: string; returnId: string; productName: string } | null>(null);
@@ -222,8 +217,6 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
       ...deliveryRowFromProduct(product),
       ...(payload.basicQtyDelivered != null ? { basicQtyDelivered: String(payload.basicQtyDelivered) } : {}),
       ...(payload.packagingQtyDelivered != null ? { packagingQtyDelivered: String(payload.packagingQtyDelivered) } : {}),
-      ...(payload.paymentMethod != null ? { paymentMethod: String(payload.paymentMethod) } : {}),
-      ...(payload.amtPaid != null ? { amtPaid: String(payload.amtPaid) } : { amtPaid: '' }),
       ...(payload.notes != null ? { notes: String(payload.notes) } : {}),
     };
   };
@@ -243,7 +236,6 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
         plannedPackagingQuantity: null,
         basicQtyDelivered: Number(action.payload.basicQtyDelivered ?? 0),
         packagingQtyDelivered: action.payload.packagingQtyDelivered == null ? null : Number(action.payload.packagingQtyDelivered),
-        paymentMethod: (action.payload.paymentMethod as PaymentMethod) || null,
         isUnplanned: true,
         queuedSale: action,
       };
@@ -277,95 +269,113 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
       };
     }),
   ].sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
-  const invoiceLines: DriverInvoiceLine[] = [
-    ...stop.products.flatMap((product) => {
-      const pending = pendingDeliveryFor(product).at(-1);
-      const row = pending ? {
-        basicQtyDelivered: String(pending.payload.basicQtyDelivered ?? ''),
-        packagingQtyDelivered: String(pending.payload.packagingQtyDelivered ?? ''),
-        paymentMethod: String(pending.payload.paymentMethod ?? ''),
-        amtPaid: String(pending.payload.amtPaid ?? ''),
-      } : deliveryRowFromProduct(product);
-      const basicQuantity = parseNumericInput(row.basicQtyDelivered);
-      const packagingQuantity = parseNumericInput(row.packagingQtyDelivered);
-      if (basicQuantity <= 0 && packagingQuantity <= 0) return [];
-      return [{
-        productName: product.productName,
-        basicQuantity,
-        basicUnitName: product.basicUnitName || 'units',
-        basicUnitPrice: Number(product.basicUnitPrice || 0),
-        packagingQuantity,
-        packagingUnitName: product.packagingUnitName,
-        packagingUnitPrice: product.packagingUnitPrice,
-        amountPaid: parseNumericInput(row.amtPaid),
-        paymentMethod: row.paymentMethod || null,
-      }];
-    }),
-    ...queuedSales.flatMap((action) => {
-      const product = products.find((item) => item.id === action.payload.productId);
-      const basicQuantity = Number(action.payload.basicQtyDelivered ?? 0);
-      const packagingQuantity = Number(action.payload.packagingQtyDelivered ?? 0);
-      if (basicQuantity <= 0 && packagingQuantity <= 0) return [];
-      return [{
-        productName: product?.name || 'Product',
-        basicQuantity,
-        basicUnitName: product?.basicUnitName || 'units',
-        basicUnitPrice: Number(action.payload.basicUnitPrice ?? product?.basicUnitPrice ?? 0),
-        packagingQuantity,
-        packagingUnitName: product?.packagingUnitName || null,
-        packagingUnitPrice: action.payload.packagingUnitPrice == null ? product?.packagingUnitPrice ?? null : Number(action.payload.packagingUnitPrice),
-        amountPaid: Number(action.payload.amtPaid ?? 0),
-        paymentMethod: action.payload.paymentMethod ? String(action.payload.paymentMethod) : null,
-      }];
-    }),
-  ];
-
-  const generateInvoice = async () => {
-    await openDriverInvoice({
-      token,
-      invoiceNumber: stop.invoiceNumber,
-      trekNumber: trek.trekNumber,
-      scheduledDate: trek.scheduledDate,
-      vehicleName: trek.vehicleDisplayName,
-      customerName: stop.customerName,
-      customerCode: stop.customerCode,
-      customerClientGeneratedId: stop.customerClientGeneratedId,
-      customerPhone: stop.primaryPhoneNumber,
-      lines: invoiceLines,
-    });
+  const localInvoice = offlineInvoice(trek, stop, products, queuedSales, queuedDeliveries);
+  const paymentStopId = queuedStop ? queuedStop.serverId || undefined : stop.stopId;
+  const paymentStopClientId = queuedStop?.clientId;
+  const paymentActionsForStop = queue.filter((action) => action.type === 'RecordInvoicePayment' && (
+    (stop.invoiceId && (action.payload.invoiceId === stop.invoiceId || action.invoiceId === stop.invoiceId))
+    || (paymentStopId && action.payload.stopId === paymentStopId)
+    || (paymentStopClientId && action.payload.stopClientId === paymentStopClientId)
+  ));
+  const recordedPaid = Number(localInvoice.totalPaid || 0);
+  const queuedPaid = paymentActionsForStop
+    .filter((action) => action.status !== 'synced' || recordedPaid === 0)
+    .reduce((total, action) => total + Number(action.payload.amount || 0), 0);
+  const invoiceHasPayment = recordedPaid > 0 || paymentActionsForStop.length > 0;
+  const effectiveBalance = Math.max(0, Number(localInvoice.balance || 0) - queuedPaid);
+  const invoiceFullyPaid = localInvoice.status === 'Paid' || (invoiceHasPayment && effectiveBalance === 0);
+  const openProductEditor = (product: DriverStopProduct) => {
+    if (invoiceHasPayment) {
+      const current = rows[product.stopProductId];
+      if (!current?.basicQtyDelivered) {
+        onRowChange(product.stopProductId, 'basicQtyDelivered', String(product.basicQtyDelivered ?? product.plannedBasicQuantity ?? 0));
+      }
+      if (product.packagingUnitName && !current?.packagingQtyDelivered) {
+        onRowChange(product.stopProductId, 'packagingQtyDelivered', String(product.packagingQtyDelivered ?? product.plannedPackagingQuantity ?? 0));
+      }
+    }
+    setEditingProduct(product);
   };
+  const invoiceStatusTone = localInvoice.status === 'Paid'
+    ? 'text-portal-accent'
+    : localInvoice.status === 'Voided'
+      ? 'text-red-accent'
+      : localInvoice.status === 'PartiallyPaid' || localInvoice.status === 'Issued'
+        ? 'text-portal-orange'
+        : 'text-portal-muted';
+  const navigationLatitude = customer?.primaryLocation?.latitude ?? customer?.latitude ?? stop.latitude ?? null;
+  const navigationLongitude = customer?.primaryLocation?.longitude ?? customer?.longitude ?? stop.longitude ?? null;
+  const navigationAccuracy = customer?.primaryLocation?.accuracyMetres ?? customer?.accuracyMetres ?? stop.accuracyMetres ?? null;
+  const hasCapturedGps = navigationLatitude != null && navigationLongitude != null
+    && !(navigationLatitude === 0 && navigationLongitude === 0 && (navigationAccuracy === 0 || navigationAccuracy == null));
+  const navigationDestination = hasCapturedGps
+    ? `${navigationLatitude},${navigationLongitude}`
+    : null;
 
   return (
-    <div className="px-4 sm:px-5 py-3">
+    <div className={`relative border-l-4 border-l-transparent px-4 py-3 shadow-none transition-colors sm:px-5 ${alternate ? 'stop-invoice-row-alternate' : 'bg-portal-surface'}`}>
+      {expanded && <span className="stop-invoice-journey-marker" aria-hidden="true" />}
       {/* Header */}
       <div className="flex items-center justify-between gap-3 min-w-0">
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-controls={`stop-details-${stop.stopId}`}
-          onClick={() => setExpanded((current) => !current)}
-          className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-accent"
-        >
-          <span className="shrink-0 text-[11px] font-bold text-portal-muted">
+        <div className="relative flex min-h-[52px] min-w-0 flex-1 cursor-pointer items-start gap-2.5 py-1 text-left">
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={`stop-details-${stop.stopId}`}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${stop.customerName}`}
+            onClick={onToggle}
+            className="absolute inset-0 z-0 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-accent"
+          />
+          <span className="pointer-events-none relative z-10 mt-0.5 shrink-0 text-[11px] font-bold text-portal-muted">
             {stop.sequence}.
           </span>
-          <span className="min-w-0 truncate text-[13px] font-medium text-portal-text sm:text-sm">{stop.customerName}</span>
-          {queuedStop && <span className={`shrink-0 text-[11px] ${queuedStop.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={queuedStop.reason}>{queuedStop.status === 'conflict' ? 'Needs review' : queuedStop.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>}
-          {pendingActionCount > 0 && <span className="shrink-0 text-[11px] text-portal-muted">{pendingActionCount} pending</span>}
-          <span className="w-px h-3.5 bg-portal-border shrink-0" />
-          <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
-          {isRecorded && (
-            <>
-              <span className="hidden w-px h-3.5 bg-portal-border shrink-0 sm:inline" />
-                <span className="shrink-0 text-[11px] text-portal-muted flex items-center gap-1">
-                <i className="pi pi-check text-[10px]" />
-                <span>Recorded</span>
+          <div className="pointer-events-none relative z-10 min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+              <span className="min-w-0 truncate text-[13px] font-medium text-portal-text sm:text-sm">{stop.customerName}</span>
+              <span className="hidden font-mono text-[11px] text-portal-muted sm:inline">{stop.customerCode}</span>
+              {queuedStop && <span className={`shrink-0 text-[11px] ${queuedStop.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`} title={queuedStop.reason}>{queuedStop.status === 'conflict' ? 'Needs review' : queuedStop.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>}
+              {pendingActionCount > 0 && <span className="shrink-0 text-[11px] text-portal-muted">{pendingActionCount} pending</span>}
+              {isRecorded && <span className="flex shrink-0 items-center gap-1 text-[11px] text-portal-muted"><i className="pi pi-check text-[10px]" /><span>Recorded</span></span>}
+              {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-left text-[10px] text-portal-muted sm:text-[11px]">
+              <span className="font-mono text-portal-accent">{localInvoice.invoiceNumber || 'Invoice awaiting sync'}</span>
+              <span className={`inline-flex items-center gap-1.5 font-medium ${invoiceStatusTone}`}>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+                {invoiceStatusLabel(localInvoice.status)}
               </span>
-            </>
-          )}
-          {stop.isWalkIn && <span className="hidden shrink-0 text-[11px] text-portal-muted md:inline">Additional stop</span>}
-          <i className={`pi pi-chevron-down ml-auto shrink-0 text-xs text-portal-muted transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </button>
+              <span>Total {fmtGhs(localInvoice.totalAmount)}</span>
+              <span>Paid {fmtGhs(localInvoice.totalPaid)}</span>
+              <span>Balance {fmtGhs(localInvoice.balance)}</span>
+            </div>
+          </div>
+          <div className="pointer-events-none relative z-20 ml-auto flex shrink-0 items-center gap-2 self-center">
+            {navigationDestination && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navigationDestination)}&travelmode=driving`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[11px] font-semibold text-portal-accent hover:text-portal-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-accent"
+                aria-label={`Navigate to ${stop.customerName} with Google Maps`}
+              >
+                <i className="pi pi-directions text-[10px]" aria-hidden="true" />
+                Navigate
+              </a>
+            )}
+            {!navigationDestination && customer && (
+              <button
+                type="button"
+                onClick={() => onEditCustomer(customer)}
+                className="pointer-events-auto inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[11px] font-semibold text-red-accent hover:text-red-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-accent"
+                aria-label={`Provide missing customer details for ${stop.customerName}`}
+              >
+                <i className="pi pi-exclamation-triangle text-[10px]" aria-hidden="true" />
+                Provide Missing Details
+              </button>
+            )}
+            <i className={`pi pi-chevron-down text-xs transition-transform duration-300 motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </div>
+        </div>
         {queuedStop && queuedStop.status !== 'synced' && <button type="button" className="shrink-0 text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(queuedStop.clientId)}>Cancel stop</button>}
         {stop.primaryPhoneNumber && <a href={`tel:${stop.primaryPhoneNumber}`} aria-label={`Call ${stop.customerName}`} className="flex h-10 w-10 shrink-0 items-center justify-center text-portal-muted hover:text-portal-heading focus-visible:outline focus-visible:outline-2 focus-visible:outline-portal-accent"><i className="pi pi-phone text-sm" aria-hidden="true" /></a>}
       </div>
@@ -380,20 +390,26 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
       <div className="flex flex-wrap gap-2 items-center">
         {!locked && <>
-          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => onFieldAction('sale', stop.stopId)}>Add Sale</FlatButton>
+          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" disabled={invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Add product to invoice'} onClick={() => onFieldAction('sale', stop.stopId)}>Add Product to Invoice</FlatButton>
         </>}
-        {invoiceLines.length > 0 && (
-          <FlatButton
-            size="sm"
-            variant="ghost"
-            leftIcon="pi pi-file"
-            className="!text-red-accent hover:!text-red-accent-light"
-            onClick={() => void generateInvoice().catch((error) => toast.error(error instanceof Error ? error.message : 'Could not generate invoice.'))}
-          >
-            Invoice
-          </FlatButton>
-        )}
+        <InvoicePayments summary={stop} token={token} customerName={stop.customerName}
+          stopId={queuedStop ? queuedStop.serverId || undefined : stop.stopId} stopClientId={queuedStop?.clientId}
+          queue={queue} enqueue={enqueuePayment} offlineInvoice={localInvoice}
+          disabled={trek.status === 'Cancelled'} goodsPending={queuedSales.length > 0 || queuedDeliveries.length > 0 || !!queuedStop}
+          onChanged={onInvoiceChanged} showSummary={false} />
       </div>
+      {invoiceFullyPaid && (
+        <p className="flex items-center gap-1.5 text-[11px] text-portal-muted">
+          <i className="pi pi-lock text-[10px]" aria-hidden="true" />
+          This invoice is fully paid. Products and quantities are locked; use Returns for corrections.
+        </p>
+      )}
+      {invoiceHasPayment && !invoiceFullyPaid && (
+        <p className="flex items-center gap-1.5 text-[11px] text-portal-muted">
+          <i className="pi pi-info-circle text-[10px]" aria-hidden="true" />
+          This invoice is partially paid. You can add products or increase quantities, but existing quantities cannot be reduced.
+        </p>
+      )}
       <div className="flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
         <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
         <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
@@ -446,19 +462,18 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
             { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
             { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
             { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
-            { field: 'paymentMethod', header: 'Payment', body: (product) => <span className="text-xs text-portal-text">{PAYMENT_OPTIONS.find((option) => option.value === (product.queuedSale ? product.paymentMethod : (product.displayRow ?? displayRowFor(product)).paymentMethod))?.label || '—'}</span> },
             { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : product.displayRow ?? displayRowFor(product)))}</span> },
-            { field: 'actions', header: 'Record', body: (product) => {
-              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : product.queuedSale.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>{product.queuedSale.status !== 'synced' && <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button>}</div>;
+            { field: 'actions', header: 'Action', body: (product) => {
+              if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : product.queuedSale.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>{product.queuedSale.status !== 'synced' && <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked || invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Cancel product'} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button>}</div>;
               const pending = pendingDeliveryFor(product);
               return pending.length ? (
                 <div className="flex flex-col items-start gap-1">
                   <span className={`text-[11px] ${pending.some((action) => action.status === 'conflict') ? 'text-red-accent' : 'text-portal-accent'}`}>
                     {pending.some((action) => action.status === 'conflict') ? 'Needs review' : 'Awaiting sync'}
                   </span>
-                  <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing} onClick={() => void onCancelQueuedDelivery(product, pending)}>Cancel</button>
+                  <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Cancel delivery change'} onClick={() => void onCancelQueuedDelivery(product, pending)}>Cancel</button>
                 </div>
-              ) : <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title={product.isUnplanned ? 'Edit unplanned sale' : 'Record delivery'} aria-label={`${product.isUnplanned ? 'Edit' : 'Record'} ${product.productName} delivery`} disabled={locked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button>;
+              ) : <FlatButton type="button" size="xs" variant="outline" leftIcon="pi pi-pencil" className="!border-portal-accent/30 !bg-portal-accent/10 !text-portal-accent hover:!border-portal-accent/50 hover:!bg-portal-accent/20" title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : product.isUnplanned ? 'Edit unplanned sale' : 'Record delivery'} aria-label={`${product.isUnplanned ? 'Edit' : 'Record'} ${product.productName} delivery`} disabled={locked || invoiceFullyPaid} onClick={() => openProductEditor(product)}>Record</FlatButton>;
             } },
           ]}
         />
@@ -495,21 +510,27 @@ const StopCard: React.FC<StopCardProps> = ({ trek, token, stop, rows, locked, on
       </div>
 
       {editingProduct && (() => {
-        const row = rows[editingProduct.stopProductId] ?? { basicQtyDelivered: '', packagingQtyDelivered: '', paymentMethod: '', amtPaid: '', balance: '', notes: '' };
+        const row = rows[editingProduct.stopProductId] ?? { basicQtyDelivered: '', packagingQtyDelivered: '', notes: '' };
         const calculatedTotal = calculateDeliveredAmount(editingProduct, row);
-        const paid = row.amtPaid === '' ? null : parseNumericInput(row.amtPaid);
-        const balance = paid == null || !Number.isFinite(paid) ? 0 : Math.max(0, calculatedTotal - paid);
         const saving = recordingProduct === editingProduct.stopProductId;
-        return <FlatModal visible onHide={() => setEditingProduct(null)} title={`Record ${editingProduct.productName}`} subtitle="Delivery, payment and notes" size="md" footer={<div className="flex items-center justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => setEditingProduct(null)}>Cancel</FlatButton><FlatButton size="sm" loading={saving} disabled={saving || locked} onClick={async () => { const saved = await onRecordProduct(editingProduct); if (saved) setEditingProduct(null); }}>Save changes</FlatButton></div>}>
+        const minimumBasic = Number(editingProduct.basicQtyDelivered ?? editingProduct.plannedBasicQuantity ?? 0);
+        const minimumPackaging = Number(editingProduct.packagingQtyDelivered ?? editingProduct.plannedPackagingQuantity ?? 0);
+        const saveProduct = async () => {
+          if (invoiceHasPayment && (parseNumericInput(row.basicQtyDelivered) < minimumBasic || parseNumericInput(row.packagingQtyDelivered) < minimumPackaging)) {
+            toast.error('A partially paid invoice can only keep or increase existing quantities. Use Returns for reductions.');
+            return;
+          }
+          const saved = await onRecordProduct(editingProduct);
+          if (saved) setEditingProduct(null);
+        };
+        return <FlatModal visible onHide={() => setEditingProduct(null)} title={`Record ${editingProduct.productName}`} subtitle="Delivered quantities and notes" size="md" footer={<div className="flex items-center justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => setEditingProduct(null)}>Cancel</FlatButton><FlatButton size="sm" loading={saving} disabled={saving || locked || invoiceFullyPaid} onClick={() => void saveProduct()}>Save changes</FlatButton></div>}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Planned</span><span className="text-xs text-portal-text">{editingProduct.packagingUnitName && Number(editingProduct.plannedPackagingQuantity || 0) > 0 ? `${editingProduct.plannedPackagingQuantity} ${editingProduct.packagingUnitName} · ` : ''}{editingProduct.plannedBasicQuantity} {editingProduct.basicUnitName || 'basic units'}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Due</span><span className="text-xs text-portal-accent">{fmtGhs(Number(editingProduct.amountDue ?? 0))}</span></div></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FlatInputNumber id={`${editingProduct.stopProductId}-basic-driver-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />
-              {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked} />}
-              <FlatDropdown id={`${editingProduct.stopProductId}-payment-driver-modal`} label="Payment method" options={PAYMENT_OPTIONS} value={row.paymentMethod} onChange={(value) => onRowChange(editingProduct.stopProductId, 'paymentMethod', value ?? '')} disabled={locked} size="sm" />
-              <FlatInputNumber id={`${editingProduct.stopProductId}-amt-paid-driver-modal`} label="Amount paid (optional)" min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.amtPaid)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'amtPaid', numberRowValue(value))} disabled={locked} />
+              <FlatInputNumber id={`${editingProduct.stopProductId}-basic-driver-modal`} label={`${editingProduct.basicUnitName || 'Basic'} delivered`} min={invoiceHasPayment ? minimumBasic : 0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.basicQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'basicQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked || invoiceFullyPaid} />
+              {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={invoiceHasPayment ? minimumPackaging : 0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked || invoiceFullyPaid} />}
             </div>
-            <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedTotal)}</span></div><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Balance</span><span className="text-sm font-semibold text-portal-text">{fmtGhs(balance)}</span></div></div>
+            <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedTotal)}</span></div></div>
             <FlatInputText id={`${editingProduct.stopProductId}-notes-driver-modal`} label="Delivery note" value={row.notes} onChange={(event) => onRowChange(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
           </div>
         </FlatModal>;
@@ -565,10 +586,11 @@ export const DriverPage: React.FC = () => {
     return `/treks/driver${section ? `/${section}` : ''}?${params.toString()}`;
   };
 
-  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, remove, removePhoto, retryPhoto, clearFailedPhotos } = useFieldControl(token);
+  const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, reconcileLegacy, resolvePaymentConflict, remove, removePhoto, retryPhoto, clearFailedPhotos } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
+  const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [assignedStopRequest, setAssignedStopRequest] = useState<FieldActionRequest | null>(null);
   const [customerRequest, setCustomerRequest] = useState<FieldActionRequest | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<FieldCustomer | null>(null);
@@ -587,6 +609,7 @@ export const DriverPage: React.FC = () => {
   const [stockWarningVisible, setStockWarningVisible] = useState(false);
   const [stockWarningAction, setStockWarningAction] = useState<'start' | 'complete' | null>(null);
   const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
+  useEffect(() => { setExpandedStopId(null); }, [trek?.trekId]);
   const switchTrek = async (trekId: string): Promise<boolean> => {
     if (!navigator.onLine) { toast.error('Online required to switch.'); return false; }
     try {
@@ -766,9 +789,8 @@ export const DriverPage: React.FC = () => {
     const packaging = !row.packagingQtyDelivered ? null : parseNumericInput(row.packagingQtyDelivered);
     if (basic === null && packaging === null) { toast.error(`Enter a delivered quantity for "${product.productName}".`); return false; }
     if ((basic !== null && (!Number.isFinite(basic) || basic < 0)) || (packaging !== null && (!product.packagingUnitName || !Number.isFinite(packaging) || packaging < 0))) { toast.error(`Enter valid delivered quantities for "${product.productName}".`); return false; }
-    if (!row.paymentMethod) { toast.error(`Payment method is required for "${product.productName}".`); return false; }
     setRecordingProduct(product.stopProductId);
-    const payload = { stopProductId: product.stopProductId, basicQtyDelivered: basic ?? undefined, packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined, paymentMethod: row.paymentMethod as PaymentMethod, ...(row.amtPaid !== '' && row.amtPaid != null ? { amtPaid: parseNumericInput(row.amtPaid), balance: Math.max(0, calculateDeliveredAmount(product, row) - parseNumericInput(row.amtPaid)) } : {}), notes: row.notes || undefined };
+    const payload = { stopProductId: product.stopProductId, basicQtyDelivered: basic ?? undefined, packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined, notes: row.notes || undefined };
     try {
       if (!controlAvailable) {
         if (!online) { toast.error('Connect to record this delivery.'); return false; }
@@ -859,6 +881,46 @@ export const DriverPage: React.FC = () => {
       return { ...customer, syncStatus: actions.some(action => action.status === 'conflict') || reasons ? 'conflict' : 'pending', syncReason: reasons };
     }),
   ];
+  const resolveStopCustomer = (stop: DriverStop): FieldCustomer | undefined => {
+    const matched = customers.find((customer) =>
+      (stop.customerAccountId && customer.id === stop.customerAccountId)
+      || (stop.customerClientGeneratedId && (customer.clientGeneratedId === stop.customerClientGeneratedId || customer.id === stop.customerClientGeneratedId))
+      || (stop.customerCode && customer.customerCode === stop.customerCode));
+    if (matched) return matched;
+
+    const customerId = stop.customerAccountId || stop.customerClientGeneratedId;
+    if (!customerId) return undefined;
+    const district = districts.find((item) => item.name === stop.districtName);
+    const hasLocationDetails = Boolean(stop.districtName || stop.primaryLocationStreet || stop.primaryLocationLandmark
+      || stop.latitude != null || stop.longitude != null);
+    return {
+      id: customerId,
+      clientGeneratedId: stop.customerClientGeneratedId || undefined,
+      customerCode: stop.customerCode,
+      businessName: stop.customerName,
+      primaryPhoneNumber: stop.primaryPhoneNumber || '',
+      customerType: stop.customerType || 'Other',
+      registrationStatus: 'Active',
+      regionId: district?.regionId || districts[0]?.regionId || null,
+      regionName: stop.regionName || trek.regionName,
+      primaryContactName: stop.primaryContactName || undefined,
+      primaryContactPhone: stop.primaryContactPhone || undefined,
+      primaryLocation: hasLocationDetails ? {
+        id: '',
+        locationType: 'BusinessPremises',
+        regionId: district?.regionId || districts[0]?.regionId || null,
+        regionName: stop.regionName || trek.regionName,
+        districtId: district?.id || null,
+        districtName: stop.districtName || null,
+        streetAddress: stop.primaryLocationStreet || null,
+        landmarkAndDirections: stop.primaryLocationLandmark || null,
+        latitude: stop.latitude ?? null,
+        longitude: stop.longitude ?? null,
+        accuracyMetres: stop.accuracyMetres ?? null,
+        isPrimary: true,
+      } : null,
+    };
+  };
   const nextStopSequence = Math.max(0, ...sortedStops.map((stop) => stop.sequence), ...queuedStops.map((action) => Number(action.payload.sequence) || 0)) + 1;
   const visibleTreks = regionTreks.length ? regionTreks : [{ trekId: trek.trekId, trekNumber: trek.trekNumber, scheduledDate: trek.scheduledDate,
     status: trek.status, driverName: trek.driverName, salesStaffName: trek.salesStaffName, regionName: trek.regionName, stopsCount: trek.stops.length }];
@@ -887,6 +949,70 @@ export const DriverPage: React.FC = () => {
     localStorage.removeItem('portalSession');
     setSessionRemembered(false);
     navigate('/login', { replace: true });
+  };
+
+  const saveDriverCustomer = async (payload: Record<string, unknown>, photos: Parameters<typeof enqueue>[2]) => {
+    if (!editingCustomer) return;
+    const { districtId, streetAddress, landmarkAndDirections, gps, ...customerFields } = payload;
+    const localRegistration = queue.find(action => action.type === 'RegisterCustomer' && action.clientId === editingCustomer.id && action.status !== 'synced');
+    const { customerId: _customerId, ...fields } = customerFields;
+    void _customerId;
+    await enqueue('UpdateCustomer', {
+      ...fields,
+      ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }),
+    }, photos);
+    const currentLocation = editingCustomer.primaryLocation;
+    const locationChanges: Record<string, unknown> = {};
+    if (typeof districtId === 'string' && districtId !== (currentLocation?.districtId || '')) locationChanges.districtId = districtId;
+    if (typeof streetAddress === 'string' && streetAddress !== (currentLocation?.streetAddress || '')) locationChanges.streetAddress = streetAddress;
+    if (typeof landmarkAndDirections === 'string' && landmarkAndDirections !== (currentLocation?.landmarkAndDirections || '')) locationChanges.landmarkAndDirections = landmarkAndDirections;
+    if (gps && typeof gps === 'object') {
+      const fix = gps as { latitude?: number; longitude?: number; accuracyMetres?: number };
+      if (fix.latitude !== currentLocation?.latitude || fix.longitude !== currentLocation?.longitude || fix.accuracyMetres !== currentLocation?.accuracyMetres) locationChanges.gps = fix;
+    }
+    if (Object.keys(locationChanges).length) {
+      await enqueue(currentLocation?.id ? 'UpdateCustomerLocation' : 'AddCustomerLocation', {
+        ...(currentLocation?.id ? { locationId: currentLocation.id } : { ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }), isPrimary: true }),
+        ...locationChanges,
+      });
+    }
+    toast.success('Customer update saved on this device.');
+  };
+
+  const saveDriverCustomerLocation = async (payload: Record<string, unknown>) => {
+    if (!locationCustomer) return;
+    if (editingLocation) {
+      const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
+      const added = queue.find((action) => action.type === 'AddCustomerLocation' && action.clientId === editingLocation.id);
+      const reference = added?.status === 'pending' ? { locationClientId: added.clientId }
+        : { locationId: added?.serverId || editingLocation.id };
+      await enqueue('UpdateCustomerLocation', {
+        ...reference,
+        ...locationFields,
+        ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
+          ? { gps: { latitude, longitude, accuracyMetres } } : {}),
+      });
+      resetTableData();
+      toast.success('Location update saved on this device.');
+      return;
+    }
+    if (!online) {
+      const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
+      await enqueue('AddCustomerLocation', {
+        ...(locationCustomer.clientGeneratedId && !locationCustomer.id ? { customerClientId: locationCustomer.clientGeneratedId } : { customerId: locationCustomer.id }),
+        ...locationFields,
+        ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
+          ? { gps: { latitude, longitude, accuracyMetres } } : {}),
+      });
+      resetTableData();
+      toast.success('Location saved on this device. It will sync when connected.');
+      return;
+    }
+    const savedLocation = await fieldApi.addCustomerLocation(token, locationCustomer.id, payload);
+    await rememberCustomerLocation(locationCustomer.id, savedLocation as Record<string, unknown>);
+    resetTableData();
+    await refresh(true);
+    toast.success('Additional location added.');
   };
 
   return (
@@ -1013,7 +1139,7 @@ export const DriverPage: React.FC = () => {
               <div id="assigned-stops" className="bg-portal-surface border border-portal-border/60 rounded overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
                   <span className="text-sm font-semibold text-portal-text">
-                    Stops Ledger <span className="text-portal-muted font-normal text-xs ml-1">({sortedStops.length + queuedStops.length})</span>
+                    Stop Invoices <span className="text-portal-muted font-normal text-xs ml-1">({sortedStops.length + queuedStops.length})</span>
                   </span>
                   <span className="text-xs text-portal-accent font-medium">
                     {sortedStops.filter(isStopRecorded).length} recorded
@@ -1024,11 +1150,17 @@ export const DriverPage: React.FC = () => {
                   <p className="text-xs text-portal-muted text-center py-10">No stops on this trek.</p>
                 ) : (
                   <div className="divide-y divide-portal-border/40">
-                    {sortedStops.map((stop) => (
+                    {sortedStops.map((stop, index) => (
                       <StopCard
                         key={stop.stopId}
+                        alternate={index % 2 === 0}
+                        expanded={expandedStopId === stop.stopId}
+                        onToggle={() => setExpandedStopId((current) => current === stop.stopId ? null : stop.stopId)}
+                        customer={resolveStopCustomer(stop)}
+                        onEditCustomer={setEditingCustomer}
                         trek={trek}
                         token={token}
+                        queue={queue} enqueuePayment={enqueue} onInvoiceChanged={() => refresh(true)}
                         stop={stop}
                         rows={deliveryRows}
                         locked={trek.isLocked}
@@ -1060,7 +1192,7 @@ export const DriverPage: React.FC = () => {
                         syncing={syncing}
                       />
                     ))}
-                    {queuedStops.map((action) => {
+                    {queuedStops.map((action, index) => {
                       const customer = customers.find((item) => item.id === action.payload.customerId);
                       const queuedCustomer = queue.find((item) => item.type === 'RegisterCustomer' && item.clientId === action.payload.customerClientId);
                       const queuedSales = visibleActionsForStop(
@@ -1075,6 +1207,8 @@ export const DriverPage: React.FC = () => {
                       );
                       const stop: DriverStop = {
                         stopId: action.clientId,
+                        customerAccountId: customer?.id || (action.payload.customerId as string | undefined),
+                        invoiceId: action.invoiceId,
                         sequence: Number(action.payload.sequence) || 0,
                         customerName: customer?.businessName || String(queuedCustomer?.payload.businessName || 'Additional stop customer'),
                         customerCode: customer?.customerCode || '',
@@ -1093,8 +1227,14 @@ export const DriverPage: React.FC = () => {
                       };
                       return <StopCard
                         key={action.clientId}
+                        alternate={(sortedStops.length + index) % 2 === 0}
+                        expanded={expandedStopId === action.clientId}
+                        onToggle={() => setExpandedStopId((current) => current === action.clientId ? null : action.clientId)}
+                        customer={resolveStopCustomer(stop)}
+                        onEditCustomer={setEditingCustomer}
                         trek={trek}
                         token={token}
+                        queue={queue} enqueuePayment={enqueue} onInvoiceChanged={() => refresh(true)}
                         stop={stop}
                         rows={deliveryRows}
                         locked={trek.isLocked || action.status === 'conflict'}
@@ -1130,32 +1270,7 @@ export const DriverPage: React.FC = () => {
                 onEditLocation={(location) => { setEditingLocation(location); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
                 pendingLocationIds={queue.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending')
                   .map((action) => String(action.payload.locationId || action.payload.locationClientId || ''))}
-                driverMode={{ districts, pendingPhotos: Object.fromEntries(photoQueue.filter(photo => photo.status !== 'uploaded' && photoCustomerReference(photo, queue) === editingCustomer.id).map(photo => [photo.kind, photo.file])), region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName }, onSubmit: async (payload, photos) => {
-                  const { districtId, streetAddress, landmarkAndDirections, gps, ...customerFields } = payload;
-                  const localRegistration = queue.find(action => action.type === 'RegisterCustomer' && action.clientId === editingCustomer.id && action.status !== 'synced');
-                  const { customerId: _customerId, ...fields } = customerFields;
-                  void _customerId;
-                  await enqueue('UpdateCustomer', {
-                    ...fields,
-                    ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }),
-                  }, photos);
-                  const currentLocation = editingCustomer.primaryLocation;
-                  const locationChanges: Record<string, unknown> = {};
-                  if (typeof districtId === 'string' && districtId !== (currentLocation?.districtId || '')) locationChanges.districtId = districtId;
-                  if (typeof streetAddress === 'string' && streetAddress !== (currentLocation?.streetAddress || '')) locationChanges.streetAddress = streetAddress;
-                  if (typeof landmarkAndDirections === 'string' && landmarkAndDirections !== (currentLocation?.landmarkAndDirections || '')) locationChanges.landmarkAndDirections = landmarkAndDirections;
-                  if (gps && typeof gps === 'object') {
-                    const fix = gps as { latitude?: number; longitude?: number; accuracyMetres?: number };
-                    if (fix.latitude !== currentLocation?.latitude || fix.longitude !== currentLocation?.longitude || fix.accuracyMetres !== currentLocation?.accuracyMetres) locationChanges.gps = fix;
-                  }
-                  if (Object.keys(locationChanges).length) {
-                    await enqueue(currentLocation?.id ? 'UpdateCustomerLocation' : 'AddCustomerLocation', {
-                      ...(currentLocation?.id ? { locationId: currentLocation.id } : { ...(localRegistration ? { customerClientId: localRegistration.clientId } : { customerId: editingCustomer.id }), isPrimary: true }),
-                      ...locationChanges,
-                    });
-                  }
-                  toast.success('Customer update saved on this device.');
-                }}}
+                driverMode={{ districts, pendingPhotos: Object.fromEntries(photoQueue.filter(photo => photo.status !== 'uploaded' && photoCustomerReference(photo, queue) === editingCustomer.id).map(photo => [photo.kind, photo.file])), region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName }, onSubmit: saveDriverCustomer }}
               />}
               {locationCustomer && <CustomerLocationModal
                 visible
@@ -1169,40 +1284,7 @@ export const DriverPage: React.FC = () => {
                 regionLocked
                 driverEdit={Boolean(editingLocation)}
                 online={online}
-                onSubmit={async (payload) => {
-                  if (editingLocation) {
-                    const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
-                    const added = queue.find((action) => action.type === 'AddCustomerLocation' && action.clientId === editingLocation.id);
-                    const reference = added?.status === 'pending' ? { locationClientId: added.clientId }
-                      : { locationId: added?.serverId || editingLocation.id };
-                    await enqueue('UpdateCustomerLocation', {
-                      ...reference,
-                      ...locationFields,
-                      ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
-                        ? { gps: { latitude, longitude, accuracyMetres } } : {}),
-                    });
-                    resetTableData();
-                    toast.success('Location update saved on this device.');
-                    return;
-                  }
-                  if (!online) {
-                    const { latitude, longitude, accuracyMetres, ...locationFields } = payload;
-                    await enqueue('AddCustomerLocation', {
-                      ...(locationCustomer.clientGeneratedId && !locationCustomer.id ? { customerClientId: locationCustomer.clientGeneratedId } : { customerId: locationCustomer.id }),
-                      ...locationFields,
-                      ...(typeof latitude === 'number' && typeof longitude === 'number' && typeof accuracyMetres === 'number'
-                        ? { gps: { latitude, longitude, accuracyMetres } } : {}),
-                    });
-                    resetTableData();
-                    toast.success('Location saved on this device. It will sync when connected.');
-                    return;
-                  }
-                  const savedLocation = await fieldApi.addCustomerLocation(token, locationCustomer.id, payload);
-                  await rememberCustomerLocation(locationCustomer.id, savedLocation as Record<string, unknown>);
-                  resetTableData();
-                  await refresh(true);
-                  toast.success('Additional location added.');
-                }}
+                onSubmit={saveDriverCustomerLocation}
               />}
               <FieldActions
                 trek={trek}
@@ -1233,8 +1315,30 @@ export const DriverPage: React.FC = () => {
                     const longitude = item.longitude ?? item.primaryLocation?.longitude;
                     const accuracy = item.accuracyMetres ?? item.primaryLocation?.accuracyMetres;
                     return latitude != null && longitude != null
-                      ? <span className="text-xs text-portal-muted" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
-                      : <span className="text-xs text-portal-muted">No GPS captured</span>;
+                      ? <div className="flex flex-col items-start gap-1">
+                          <span className="text-[10px] font-normal text-portal-muted/70" title={`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}>GPS captured{accuracy != null ? ` · ±${Math.round(accuracy)} m` : ''}</span>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${latitude},${longitude}`)}&travelmode=driving`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-portal-accent hover:text-portal-accent-hover"
+                            aria-label={`Navigate to ${item.businessName} with Google Maps`}
+                          >
+                            <i className="pi pi-directions text-[11px]" aria-hidden="true" />
+                            Navigate with Google Maps
+                          </a>
+                        </div>
+                      : <div className="flex flex-col items-start gap-1">
+                          <span className="text-[10px] font-normal text-portal-muted/70">No GPS captured</span>
+                          <button
+                            type="button"
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-portal-accent hover:text-portal-accent-hover"
+                            onClick={() => setEditingCustomer(item)}
+                          >
+                            <i className="pi pi-map-marker text-[11px]" aria-hidden="true" />
+                            Capture location
+                          </button>
+                        </div>;
                   } },
                   { field: 'syncStatus', header: 'Status', body: (item) => item.syncStatus
                     ? item.syncStatus === 'conflict' || item.syncReason
@@ -1449,17 +1553,25 @@ export const DriverPage: React.FC = () => {
                               ? 'Ready to sync'
                               : 'Waiting for connection'}
                           </span>
-                          {action.status === 'conflict' && (
+                          {action.legacyPaymentReview && <FlatButton size="sm" variant="outline" onClick={() => {
+                            if (window.confirm(`Review saved collection: ${String(action.payload.amtPaid ?? 'unspecified amount')} ${String(action.payload.paymentMethod ?? '')}. Check invoice payment history and verify the money actually collected. Release ONLY the goods for sync? The original details will remain saved for reconciliation; record any verified missing collection separately.`)) void reconcileLegacy(action.clientId);
+                          }}>Review legacy collection</FlatButton>}
+                          {action.status === 'conflict' && !action.legacyPaymentReview && (
                             <>
                               <FlatButton size="sm" variant="ghost" onClick={() => void retry(action.clientId)}>
                                 Retry
                               </FlatButton>
-                              <FlatButton size="sm" variant="ghost" onClick={() => void remove(action.clientId)}>
+                              {action.type === 'RecordInvoicePayment' && <FlatButton size="sm" variant="ghost" onClick={() => {
+                                if (window.confirm('Confirm that this rejected payment does not appear in the invoice payment history. Resolve it so a corrected payment can be entered?')) void resolvePaymentConflict(action.clientId);
+                              }}>
+                                Resolve rejected payment
+                              </FlatButton>}
+                              {action.type !== 'RecordInvoicePayment' && <FlatButton size="sm" variant="ghost" onClick={() => void remove(action.clientId)}>
                                 Dismiss
-                              </FlatButton>
+                              </FlatButton>}
                             </>
                           )}
-                          {action.status === 'pending' && (
+                          {action.status === 'pending' && action.type !== 'RecordInvoicePayment' && (
                             <FlatButton size="sm" variant="ghost" onClick={() => void remove(action.clientId)}>
                               Remove
                             </FlatButton>
@@ -1484,6 +1596,13 @@ export const DriverPage: React.FC = () => {
                     ))}
                 </div>
               )}
+              {queue.some(action => action.legacyCollection) && <div className="bg-portal-surface p-4 space-y-3 text-xs text-portal-text">
+                <h2 className="font-semibold">Legacy collection review history</h2>
+                <p className="text-portal-muted">These original collection details were retained when goods were released. Verify the invoice history before recording any missing payment separately.</p>
+                {queue.filter(action => action.legacyCollection).map(action => <div key={action.clientId}>
+                  <span className="font-mono text-[11px]">{action.clientId}</span> · {String(action.legacyCollection?.amtPaid ?? 'Amount unspecified')} · {String(action.legacyCollection?.paymentMethod ?? 'Method unspecified')}
+                </div>)}
+              </div>}
               {photoQueue.some((photo) => photo.status !== 'uploaded') && (
                 <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-3 shadow-md">
                   <div className="flex items-center justify-between gap-2">
@@ -1504,6 +1623,35 @@ export const DriverPage: React.FC = () => {
           )}
         />
       </div>
+      {view === 'assigned' && editingCustomer && <CustomerModal
+        visible
+        onHide={() => setEditingCustomer(null)}
+        customer={editingCustomerModal}
+        onAddLocation={() => { setEditingLocation(null); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
+        onEditLocation={(location) => { setEditingLocation(location); setLocationCustomer(editingCustomer); setEditingCustomer(null); }}
+        pendingLocationIds={queue.filter((action) => action.type === 'UpdateCustomerLocation' && action.status === 'pending')
+          .map((action) => String(action.payload.locationId || action.payload.locationClientId || ''))}
+        driverMode={{
+          districts,
+          pendingPhotos: Object.fromEntries(photoQueue.filter(photo => photo.status !== 'uploaded' && photoCustomerReference(photo, queue) === editingCustomer.id).map(photo => [photo.kind, photo.file])),
+          region: { id: districts[0]?.regionId || '', name: editingCustomer.regionName || trek.regionName },
+          onSubmit: saveDriverCustomer,
+        }}
+      />}
+      {view === 'assigned' && locationCustomer && <CustomerLocationModal
+        visible
+        onHide={() => { setLocationCustomer(null); setEditingLocation(null); }}
+        customerName={locationCustomer.businessName}
+        location={editingLocation}
+        region={{ id: '', name: locationCustomer.regionName || trek.regionName }}
+        districts={districts}
+        districtRequired={false}
+        includeRegion={false}
+        regionLocked
+        driverEdit={Boolean(editingLocation)}
+        online={online}
+        onSubmit={saveDriverCustomerLocation}
+      />}
       <FlatModal
         visible={customerSyncIssue !== null}
         onHide={() => setCustomerSyncIssue(null)}
@@ -1630,7 +1778,7 @@ export const DriverPage: React.FC = () => {
         }
       >
         <p className="text-sm text-portal-text">
-          This will sync any pending field actions, post the final ledger entries, and lock the trek. You cannot add stops, deliveries, sales, or returns afterwards.
+          This will sync any pending field actions, finalise stock and lock deliveries. You cannot add stops, deliveries, sales, or returns afterwards.
         </p>
         {pendingCount > 0 && <p className="mt-3 text-xs text-portal-muted">{pendingCount} pending item{pendingCount === 1 ? '' : 's'} will be synced first.</p>}
       </FlatModal>
