@@ -72,6 +72,10 @@ export interface PaginatedDataResponse<TData> {
 }
 
 export interface FlatDataTableProps<TData> {
+  dataKey?: string;
+  expandedRowKeys?: Record<string, boolean>;
+  rowExpansionTemplate?: (row: TData) => React.ReactNode;
+  controlsDisabled?: boolean;
   columns: ColumnDef<TData>[];
   data?: TData[];
   dataSourceUrl?: string;
@@ -158,6 +162,10 @@ const extractFiltersFromUrl = (
 // --- Main FlatDataTable Component ---
 
 export function FlatDataTable<TData extends Record<string, any>>({
+  dataKey,
+  expandedRowKeys,
+  rowExpansionTemplate,
+  controlsDisabled = false,
   columns,
   data: staticData,
   dataSourceUrl,
@@ -834,7 +842,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
       {/* 3. Flat Toolbar (Search + Extended Filters Toggle + View Action) */}
       {((enableTableFilter && filterablePlaceholder) || extendedFilter?.enable) && (
-        <div className="bg-portal-surface border border-portal-border/60 rounded p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div inert={controlsDisabled} aria-disabled={controlsDisabled} className="bg-portal-surface border border-portal-border/60 rounded p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="flex items-center gap-3 flex-1">
             {filterablePlaceholder && (
@@ -909,7 +917,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
       {/* 4. Extended Filters Panel */}
       {extendedFilter?.enable && isFilterVisible && (
-        <div className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-4">
+        <div inert={controlsDisabled} aria-disabled={controlsDisabled} className="bg-portal-surface border border-portal-border/60 rounded p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-portal-border/40 pb-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-portal-heading">
               Filter Parameters
@@ -940,6 +948,9 @@ export function FlatDataTable<TData extends Record<string, any>>({
         {/* Desktop View */}
         <div className={cn(isMobile ? 'hidden' : 'block')}>
           <PrimeDataTable
+            dataKey={dataKey}
+            expandedRows={isMobile ? undefined : expandedRowKeys}
+            rowExpansionTemplate={rowExpansionTemplate}
             value={tableDataList}
             loading={isBusy}
             responsiveLayout="scroll"
@@ -1039,7 +1050,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
             <div className="flat-data-table-mobile-list divide-y divide-portal-border/40">
               {tableDataList.map((item, rowIdx) => (
                 <div
-                  key={rowIdx}
+                  key={dataKey ? item[dataKey] : rowIdx}
                   className="flat-data-table-mobile-row p-3 space-y-3"
                 >
                   {columns.map((col) => (
@@ -1053,6 +1064,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
                       </div>
                     </div>
                   ))}
+                  {isMobile && dataKey && expandedRowKeys?.[String(item[dataKey])] && rowExpansionTemplate?.(item)}
                 </div>
               ))}
             </div>
@@ -1061,7 +1073,7 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
         {/* 6. Flat Pagination Bar */}
         {enablePaginator && totalCount > 0 && (
-          <div className="flat-data-table-pagination p-3 border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div inert={controlsDisabled} aria-disabled={controlsDisabled} className="flat-data-table-pagination p-3 border-t border-portal-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             {/* Info */}
             <div className="font-mono text-portal-muted">
               Page <span className="font-bold text-portal-heading">{currentPage}</span> of{' '}

@@ -12,6 +12,7 @@ export interface FlatDatePickerProps extends Omit<CalendarProps, 'value' | 'onCh
   variant?: 'default' | 'dark' | 'white';
   size?: FlatInputSize;
   inputSize?: FlatInputSize;
+  background?: 'canvas' | 'surface';
 }
 
 export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
@@ -24,6 +25,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
   variant = 'dark',
   size,
   inputSize,
+  background = 'canvas',
   className = '',
   inputClassName = '',
   id,
@@ -66,7 +68,7 @@ export const FlatDatePicker: React.FC<FlatDatePickerProps> = ({
           ${sizeConfig.input}
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none'
+              ? `${background === 'surface' ? '!bg-portal-surface focus:!bg-portal-surface' : '!bg-portal-canvas'} !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none`
               : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none'
           }
           ${errorMessage ? '!border-red-500' : ''}

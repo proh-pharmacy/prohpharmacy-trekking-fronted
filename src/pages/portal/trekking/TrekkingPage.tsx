@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import { FlatButton } from '../../../components/flat-form';
-import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
+import { FlatConfirmDialog } from '../../../components/overlay';
 import { type Trek, type TrekStatus, organisationApi, treksApi } from '../../../api-client';
-import { CreateTrekModal } from './components/CreateTrekModal';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../../hooks/usePermissions';
 
@@ -35,8 +34,6 @@ export const TrekkingPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
   const canCreateTrek = hasAnyPermission('Treks.Create', 'Treks.Manage');
   const canDeleteTrek = hasAnyPermission('Treks.Delete', 'Treks.Manage');
-  const [createVisible, setCreateVisible] = useState(false);
-  const [createdTrek, setCreatedTrek] = useState<Trek | null>(null);
   const [trekToDelete, setTrekToDelete] = useState<Trek | null>(null);
   const [deletingTrek, setDeletingTrek] = useState(false);
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
@@ -114,6 +111,12 @@ export const TrekkingPage: React.FC = () => {
     if (!trekToDelete || (trekToDelete.status !== 'Draft' && trekToDelete.status !== 'Scheduled')) return;
     setDeletingTrek(true);
     try {
+      const detail = await treksApi.getTrek(trekToDelete.id);
+      if (detail.stops.some(stop => stop.invoiceId)) {
+        toast.error('This trek has invoices and cannot be deleted. Cancel it if no goods or payments have been recorded.');
+        setTrekToDelete(null);
+        return;
+      }
       await treksApi.deleteTrek(trekToDelete.id);
       resetTableData();
       setTrekToDelete(null);
@@ -216,7 +219,7 @@ export const TrekkingPage: React.FC = () => {
         heading="Trekking"
         hasAction={canCreateTrek}
         actionName="New Trek"
-        onAction={() => setCreateVisible(true)}
+        onAction={() => navigate('/portal/trekking/new')}
         filterable="search"
         filterablePlaceholder="Search by trek number or driver..."
         enableTableFilter
@@ -255,11 +258,6 @@ export const TrekkingPage: React.FC = () => {
         }}
       />
 
-      <CreateTrekModal
-        visible={createVisible}
-        onHide={() => setCreateVisible(false)}
-        onSuccess={setCreatedTrek}
-      />
 
       <FlatConfirmDialog
         visible={!!trekToDelete}
@@ -269,40 +267,13 @@ export const TrekkingPage: React.FC = () => {
         title="Delete Trek"
         message={
           <span>
-            Delete <span className="font-mono text-red-accent">{trekToDelete?.trekNumber}</span>? This permanently removes the trek and its planned stops and products.
+            Delete <span className="font-mono text-red-accent">{trekToDelete?.trekNumber}</span>? Only treks without invoices can be permanently deleted.
           </span>
         }
         confirmLabel="Delete Trek"
         variant="danger"
       />
 
-      <FlatModal
-        visible={!!createdTrek}
-        onHide={() => setCreatedTrek(null)}
-        title="Trek Created"
-        size="sm"
-        footer={
-          <div className="flex w-full items-center justify-end gap-3">
-            <FlatButton variant="outline" size="sm" onClick={() => setCreatedTrek(null)}>Close</FlatButton>
-            <FlatButton
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                if (!createdTrek) return;
-                const trekId = createdTrek.id;
-                setCreatedTrek(null);
-                navigate(`/portal/trekking/${trekId}`);
-              }}
-            >
-              View Trek
-            </FlatButton>
-          </div>
-        }
-      >
-        <p className="text-sm text-portal-text">
-          <span className="font-mono text-portal-accent">{createdTrek?.trekNumber}</span> is saved as a draft. View it to add stops and products.
-        </p>
-      </FlatModal>
     </div>
   );
 };

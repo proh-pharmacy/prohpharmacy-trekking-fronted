@@ -65,6 +65,7 @@ const ProductsPage = lazy(() =>
 const ProductPricingRulesPage = lazy(() =>
   import('./pages/portal/pricing-rules').then((m) => ({ default: m.ProductPricingRulesPage }))
 );
+const CreateTrekPage = lazy(() => import('./pages/portal/trekking/CreateTrekPage'));
 const TrekkingPage = lazy(() =>
   import('./pages/portal/trekking').then((m) => ({ default: m.TrekkingPage }))
 );
@@ -129,6 +130,9 @@ const DriverPage = lazy(() =>
 );
 const InvoicePreviewPage = lazy(() =>
   import('./pages/driver/InvoicePreviewPage').then((m) => ({ default: m.InvoicePreviewPage }))
+);
+const ReceiptPreviewPage = lazy(() =>
+  import('./pages/driver/ReceiptPreviewPage').then((m) => ({ default: m.ReceiptPreviewPage }))
 );
 
 // ── chunk-preview (dev showcases) ─────────────────────────────────────
@@ -197,6 +201,7 @@ export default function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="traccar" element={<PermissionGuard permissions={['TrackingDevices.View', 'TrackingDevices.Manage', 'Tracking.ViewAll']}><TraccarPage /></PermissionGuard>} />
                   <Route path="trekking" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekkingPage /></PermissionGuard>} />
+                  <Route path="trekking/new" element={<PermissionGuard permissions={['Treks.Create', 'Treks.Manage']}><CreateTrekPage /></PermissionGuard>} />
                   <Route path="trekking/:trekId" element={<PermissionGuard permissions={['Treks.ViewAll', 'Treks.View']}><TrekDetailPage /></PermissionGuard>} />
                   <Route path="tracking" element={<PermissionGuard permissions={['Tracking.ViewAll', 'Tracking.ViewBranch', 'Tracking.View']}><TrackingPage /></PermissionGuard>} />
                   <Route path="customer-pins" element={<PermissionGuard permissions={['Customers.View', 'Customers.Register', 'CustomerKyc.View']}><CustomerPinsPage /></PermissionGuard>} />
@@ -228,6 +233,7 @@ export default function App() {
                 <Route path="/treks/driver" element={<DriverPage />} />
                 <Route path="/treks/driver/:section" element={<DriverPage />} />
                 <Route path="/invoice/preview" element={<InvoicePreviewPage />} />
+                <Route path="/receipt/preview" element={<ReceiptPreviewPage />} />
 
                 {/* ── Dev showcases ── */}
                 <Route path="/table" element={<DataTableShowcase />} />

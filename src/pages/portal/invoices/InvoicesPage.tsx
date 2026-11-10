@@ -61,6 +61,7 @@ const normalizeInvoice = (value: any): SaleInvoice => ({
   totalPaid: Number(value?.totalPaid ?? 0),
   balance: Number(value?.balance ?? 0),
   lineItems: Array.isArray(value?.lineItems) ? value.lineItems : [],
+  payments: Array.isArray(value?.payments) ? value.payments : [],
 });
 
 export const InvoicesPage: React.FC = () => {

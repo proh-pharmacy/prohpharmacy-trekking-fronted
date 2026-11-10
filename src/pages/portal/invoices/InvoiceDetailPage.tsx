@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { invoicesApi, type SaleInvoice } from '../../../api-client';
 import { FlatButton } from '../../../components/flat-form';
 import { fmtGhs } from '../../../lib/utils';
+import { InvoicePayments } from '../../../components/invoices/InvoicePayments';
 
 const STATUS_STYLES: Record<string, string> = {
   Issued: 'text-portal-muted',
@@ -17,8 +18,8 @@ const formatDateTime = (value: string) => new Date(value).toLocaleString('en-GB'
 });
 
 const quantityText = (item: SaleInvoice['lineItems'][number]) => [
-  Number(item.packagingQtyDelivered ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQtyDelivered} ${item.packagingUnitName}` : '',
-  Number(item.basicQtyDelivered ?? 0) > 0 ? `${item.basicQtyDelivered} ${item.basicUnitName}` : '',
+  Number(item.packagingQuantity ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQuantity} ${item.packagingUnitName}` : '',
+  Number(item.basicQuantity ?? 0) > 0 ? `${item.basicQuantity} ${item.basicUnitName}` : '',
 ].filter(Boolean).join(' · ') || '—';
 
 export const InvoiceDetailPage: React.FC = () => {
@@ -63,6 +64,7 @@ export const InvoiceDetailPage: React.FC = () => {
         <FlatButton size="sm" variant="outline" leftIcon="pi pi-print" onClick={openPrintPreview}>Print invoice</FlatButton>
       </div>
 
+      <InvoicePayments summary={{ invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, invoiceStatus: invoice.status, invoiceTotal: invoice.totalAmount, invoicePaid: invoice.totalPaid, invoiceBalance: invoice.balance }} customerName={invoice.customerName} onChanged={async () => setInvoice(await invoicesApi.getInvoice(invoiceNumber))} />
       <article className="overflow-hidden border border-portal-border/60 bg-portal-surface">
         <header className="flex flex-col gap-3 border-b border-portal-border/60 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-6">
           <div>
@@ -70,7 +72,7 @@ export const InvoiceDetailPage: React.FC = () => {
             <h1 className="mt-1 font-mono text-lg font-bold text-portal-heading">{invoice.invoiceNumber || 'Invoice'}</h1>
             <p className="mt-1 text-[11px] text-portal-muted">{formatDateTime(invoice.issuedAt)}</p>
           </div>
-          <span className={`text-xs font-semibold ${STATUS_STYLES[invoice.status] ?? 'text-portal-muted'}`}>{invoice.status === 'PartiallyPaid' ? 'Partially paid' : invoice.status}</span>
+          <span className={`text-xs font-semibold ${STATUS_STYLES[invoice.status] ?? 'text-portal-muted'}`}>{invoice.status === 'Issued' ? 'Awaiting payment' : invoice.status === 'PartiallyPaid' ? 'Partially paid' : invoice.status}</span>
         </header>
 
         <section className="grid gap-6 border-b border-portal-border/60 p-4 sm:grid-cols-2 sm:p-6">
@@ -110,7 +112,6 @@ export const InvoiceDetailPage: React.FC = () => {
               <tr className="text-left text-[10px] uppercase tracking-wider text-portal-muted">
                 <th className="px-4 py-3 font-medium sm:px-6">Product</th>
                 <th className="px-4 py-3 text-center font-medium">Quantity</th>
-                <th className="px-4 py-3 text-right font-medium">Paid</th>
                 <th className="px-4 py-3 text-right font-medium sm:px-6">Line total</th>
               </tr>
             </thead>
@@ -119,13 +120,12 @@ export const InvoiceDetailPage: React.FC = () => {
                 <tr key={`${item.productId}-${index}`} className="border-t border-portal-border/40">
                   <td className="px-4 py-3 sm:px-6"><p className="text-xs font-semibold text-portal-text">{item.productName}</p>{item.isUnplanned && <p className="mt-0.5 text-[10px] text-portal-orange">Unplanned sale</p>}</td>
                   <td className="px-4 py-3 text-center text-[11px] text-portal-text">{quantityText(item)}</td>
-                  <td className="px-4 py-3 text-right text-[11px] text-portal-accent">{fmtGhs(item.amtPaid)}</td>
                   <td className="px-4 py-3 text-right text-xs font-semibold text-portal-text sm:px-6">{fmtGhs(item.lineTotal)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {invoice.lineItems.length === 0 && <p className="p-8 text-center text-xs text-portal-muted">No delivered line items were returned for this invoice.</p>}
+          {invoice.lineItems.length === 0 && <p className="p-8 text-center text-xs text-portal-muted">No line items were returned for this invoice.</p>}
         </section>
       </article>
     </div>

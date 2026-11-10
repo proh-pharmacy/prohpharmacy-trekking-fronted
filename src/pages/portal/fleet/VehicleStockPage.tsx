@@ -302,13 +302,26 @@ const StockLedgerTable: React.FC<StockLedgerTableProps> = ({ vehicleId, onExport
 
 export const VehicleStockPage: React.FC = () => {
   const { vehicleId = '' } = useParams<{ vehicleId: string }>();
+  return <VehicleInventory vehicleId={vehicleId} />;
+};
+
+export const VehicleInventory: React.FC<{
+  vehicleId: string;
+  embedded?: boolean;
+  headerTitle?: string;
+  headerSubtitle?: string;
+  onChanged?: () => void;
+  onReviewReadyChange?: (ready: boolean) => void;
+}> = ({ vehicleId, embedded = false, headerTitle, headerSubtitle, onChanged, onReviewReadyChange }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get('tab');
+  const [localTab, setLocalTab] = useState<StockTab>('stock');
+  const rawTab = embedded ? localTab : searchParams.get('tab');
   const activeTab: StockTab = rawTab === 'history' ? 'history' : 'stock';
   const { hasAnyPermission } = usePermissions();
   const canManage = hasAnyPermission('Vehicles.Manage', 'Vehicles.Edit');
 
   const handleTabChange = (tab: StockTab) => {
+    if (embedded) { setLocalTab(tab); return; }
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     setSearchParams(next, { replace: true });
@@ -336,6 +349,12 @@ export const VehicleStockPage: React.FC = () => {
   const [snapshotExportVisible, setSnapshotExportVisible] = useState(false);
   const [resetVisible, setResetVisible] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ item: StockItem; top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    onReviewReadyChange?.(!vehicleLoading && !stockLoading && !vehicleError && !stockError
+      && !!vehicle && vehicle.operationalStatus === 'Active' && !!vehicle.currentStaffId
+      && !mode && !resetVisible && !rowMenu && !exportVisible && !snapshotExportVisible && !trendVisible);
+  }, [onReviewReadyChange, vehicleLoading, stockLoading, vehicleError, stockError, vehicle, mode, resetVisible, rowMenu, exportVisible, snapshotExportVisible, trendVisible]);
 
   useEffect(() => {
     if (!rowMenu) return;
@@ -465,9 +484,8 @@ export const VehicleStockPage: React.FC = () => {
                 const menuWidth = 192;
                 setRowMenu({ item: row, top: rect.bottom + 4, left: Math.max(8, rect.right - menuWidth) });
               }}
-              className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${
-                isActive ? 'bg-portal-hover text-portal-heading' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
-              }`}
+              className={`w-7 h-7 inline-flex items-center justify-center rounded transition cursor-pointer ${isActive ? 'bg-portal-hover text-portal-heading' : 'text-portal-muted hover:text-portal-heading hover:bg-portal-hover'
+                }`}
             >
               <i className="pi pi-ellipsis-v text-xs" />
             </button>
@@ -484,91 +502,146 @@ export const VehicleStockPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      {(vehicleError || stockError) && <FlatButton size="sm" variant="outline" onClick={() => { void loadVehicle(); void loadStock(); void loadSummary(); }}>Retry loading inventory</FlatButton>}
       {vehicleError && (
         <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
           {vehicleError}
         </div>
       )}
 
-      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
+      {!embedded && <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
         <button
           type="button"
           onClick={() => handleTabChange('stock')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'stock'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${activeTab === 'stock'
+            ? 'border-portal-accent text-portal-heading font-bold'
+            : 'border-transparent text-portal-muted hover:text-portal-heading'
+            }`}
         >
           <span>Stock</span>
         </button>
         <button
           type="button"
           onClick={() => handleTabChange('history')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'history'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
+          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${activeTab === 'history'
+            ? 'border-portal-accent text-portal-heading font-bold'
+            : 'border-transparent text-portal-muted hover:text-portal-heading'
+            }`}
         >
           <span>History</span>
         </button>
-      </div>
+      </div>}
 
-        {activeTab === 'stock' && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
-            {canManage && (
-              <>
-                <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
-                <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
-              </>
-            )}
+      {activeTab === 'stock' && (
+        headerTitle ? (
+          <div className="border border-portal-border bg-portal-surface rounded overflow-hidden">
+            {/* Classic Desktop Title & Command Bar */}
+            <div className="bg-portal-surface border-b border-portal-border px-4 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold uppercase tracking-wider text-portal-heading truncate">
+                  {headerTitle}
+                </h1>
+                {headerSubtitle && (
+                  <p className="text-xs text-portal-muted mt-0.5">{headerSubtitle}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
+                {canManage && (
+                  <>
+                    <span aria-hidden="true" className="hidden sm:inline-block h-5 w-px bg-portal-border mx-0.5" />
+                    <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
+                    <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Flush 1px-Divided Desktop KPI Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-portal-border bg-portal-surface">
+              <div className="px-4 py-3.5 min-w-0 col-span-2 lg:col-span-1 flex flex-col justify-between">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Vehicle</p>
+                <p className="text-sm font-semibold text-portal-heading truncate leading-snug" title={vehicleLabel}>
+                  {vehicleLabel}
+                </p>
+              </div>
+              <div className="px-4 py-3.5 min-w-0 flex flex-col justify-between">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Products Tracked</p>
+                <p className="font-mono text-base font-bold text-portal-heading tabular-nums leading-none truncate">
+                  {(summary?.trackedProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="px-4 py-3.5 min-w-0 border-l border-portal-border lg:border-l-0 flex flex-col justify-between">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">In Stock</p>
+                <p className="font-mono text-base font-bold text-portal-accent tabular-nums leading-none truncate">
+                  {(summary?.inStockProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="px-4 py-3.5 min-w-0 col-span-2 lg:col-span-1 flex flex-col justify-between">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Out of Stock</p>
+                <p className={`font-mono text-base font-bold tabular-nums leading-none truncate ${(summary?.outOfStockProductCount ?? 0) > 0 ? 'text-portal-orange' : 'text-portal-muted'}`}>
+                  {(summary?.outOfStockProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
+              {canManage && (
+                <>
+                  <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
+                  <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
+                </>
+              )}
+            </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="flex-[2] min-w-[220px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Vehicle</p>
-          <p className="text-xs font-semibold text-portal-text truncate" title={vehicleLabel}>
-            {vehicleLabel}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Products Tracked</p>
-          <p className="text-xs font-semibold text-portal-text truncate">
-            {(summary?.trackedProductCount ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">In Stock</p>
-          <p className="text-xs font-semibold text-portal-accent truncate">
-            {(summary?.inStockProductCount ?? 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Out of Stock</p>
-          <p className={`text-xs font-semibold truncate ${(summary?.outOfStockProductCount ?? 0) > 0 ? 'text-amber-400' : 'text-portal-text'}`}>
-            {(summary?.outOfStockProductCount ?? 0).toLocaleString()}
-          </p>
-        </div>
-      </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-[2] min-w-[220px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Vehicle</p>
+                <p className="text-xs font-semibold text-portal-text truncate" title={vehicleLabel}>
+                  {vehicleLabel}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Products Tracked</p>
+                <p className="text-xs font-semibold text-portal-text truncate">
+                  {(summary?.trackedProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">In Stock</p>
+                <p className="text-xs font-semibold text-portal-accent truncate">
+                  {(summary?.inStockProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[110px] bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+                <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Out of Stock</p>
+                <p className={`text-xs font-semibold truncate ${(summary?.outOfStockProductCount ?? 0) > 0 ? 'text-amber-400' : 'text-portal-text'}`}>
+                  {(summary?.outOfStockProductCount ?? 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </>
+        )
+      )}
 
       {activeTab === 'stock' ? (
-      <FlatDataTable<StockItem>
-        data={stock}
-        columns={columns}
-        enablePaginator
-        initialPageSize={20}
-        filterablePlaceholder="Search products..."
-        emptyDataText={
-          stockError
-            ? `Failed to load stock: ${stockError}`
-            : stockLoading
-              ? 'Loading stock...'
-              : 'No stock items yet. Use "Add Stock" to load products onto this vehicle.'
-        }
-      />
+        <FlatDataTable<StockItem>
+          data={stock}
+          columns={columns}
+          enablePaginator
+          initialPageSize={20}
+          filterablePlaceholder="Search products..."
+          emptyDataText={
+            stockError
+              ? `Failed to load stock: ${stockError}`
+              : stockLoading
+                ? 'Loading stock...'
+                : 'No stock items yet. Use "Add Stock" to load products onto this vehicle.'
+          }
+        />
       ) : (
         <StockLedgerTable
           vehicleId={vehicleId}
@@ -596,7 +669,7 @@ export const VehicleStockPage: React.FC = () => {
         vehicleId={vehicleId}
         vehicleName={vehicleLabel}
         onHide={() => setResetVisible(false)}
-        onComplete={async () => { await Promise.all([loadStock(), loadSummary()]); }}
+        onComplete={async () => { onChanged?.(); await Promise.all([loadStock(), loadSummary()]); }}
       />
 
       <VehicleStockTrendOverlay
@@ -614,7 +687,7 @@ export const VehicleStockPage: React.FC = () => {
           vehicleName={vehicle.displayName}
           lockedProduct={lockedProduct}
           onHide={() => { setMode(null); setLockedProduct(null); }}
-          onComplete={() => { loadStock(); loadSummary(); }}
+          onComplete={() => { onChanged?.(); loadStock(); loadSummary(); }}
         />
       )}
 

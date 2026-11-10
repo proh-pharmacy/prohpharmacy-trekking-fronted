@@ -12,6 +12,8 @@ export interface OfflineActionLike {
 }
 
 export interface OfflineSyncResultLike {
+  invoiceId?: string | null;
+  receiptNumber?: string | null;
   clientId: string;
   type: string;
   status: 'Created' | 'AlreadySynced' | 'Conflict';
@@ -90,13 +92,16 @@ export function applyOfflineSyncResults<TAction extends OfflineActionLike>(
 
   return actions.map((action) => {
     const result = byId.get(action.clientId);
-    const payload = reconcilePayload(action.payload, dependencyIds);
+    // Payment references are durable idempotency details, including stopClientId.
+    const payload = action.type === 'RecordInvoicePayment' ? action.payload : reconcilePayload(action.payload, dependencyIds);
     if (!result) return payload === action.payload ? action : { ...action, payload };
     return {
       ...action,
       payload,
       status: result.status === 'Conflict' ? 'conflict' : 'synced',
       serverId: result.serverId,
+      ...(result.invoiceId ? { invoiceId: result.invoiceId } : {}),
+      ...(result.receiptNumber ? { receiptNumber: result.receiptNumber } : {}),
       syncResult: result.status,
       ...(action.type === 'RegisterCustomer' && result.personId !== undefined
         ? { personId: result.personId }
@@ -119,6 +124,8 @@ export function reconcileUnplannedSales<TAction extends OfflineActionLike>(
   }
   return actions.map((action) => {
     if (action.type !== 'RecordUnplannedSale') return action;
+    // A product UUID proves goods synced, not that its legacy collection was paid.
+    if (['amtPaid', 'balance', 'paymentMethod'].some(key => action.payload[key] != null)) return action;
     const serverId = serverIds.get(action.clientId);
     if (!serverId || (action.status === 'synced' && action.serverId === serverId)) return action;
     return { ...action, status: 'synced', serverId, reason: undefined };

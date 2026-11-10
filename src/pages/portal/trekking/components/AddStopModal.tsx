@@ -273,7 +273,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
     if (customerAccountId && unavailableCustomerIds.has(customerAccountId)) {
       errs.customerAccountId = 'This customer is already a stop on the trek.';
     }
-    if (shouldSendProducts && validProducts.length === 0) {
+    if (stop && shouldSendProducts && validProducts.length === 0) {
       errs.products = 'Add at least one product.';
     } else if (shouldSendProducts && new Set(validProducts.map((p) => p.productId)).size !== validProducts.length) {
       errs.products = 'Each product can only be added once.';
@@ -362,6 +362,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
             <FlatAsyncSelect<Customer>
               key={stop ? `edit:${stop.stopId}` : `${trekRegionId}:${districtId}`}
               label="Customer"
+              disabled={!!stop?.invoiceId}
               required
               placeholder="Search by name, code, or phone..."
               value={customerAccountId}
@@ -407,14 +408,14 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
 
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">
-                Products ({products.length}) <span className="text-red-400">*</span>
+                Products ({products.length}) <span className="font-normal normal-case tracking-normal">(Optional)</span>
               </span>
               <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" label="Add new item" onClick={openNewProductEntry} />
             </div>
 
             {products.length === 0 ? (
               <div className="rounded border border-dashed border-portal-border/60 bg-portal-canvas/40 py-8 text-center text-xs text-portal-muted">
-                No products added yet.
+                No initial products. You can add products to this stop later.
               </div>
             ) : (
               <div className="overflow-hidden rounded border border-portal-border/60">

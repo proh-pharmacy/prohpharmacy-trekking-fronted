@@ -11,6 +11,7 @@ export interface FlatTextareaProps extends Omit<InputTextareaProps, 'value' | 'v
   variant?: 'default' | 'dark' | 'white';
   size?: FlatInputSize;
   inputSize?: FlatInputSize;
+  background?: 'canvas' | 'surface';
 }
 
 const getTextareaSizeClasses = (size: FlatInputSize): string => {
@@ -34,6 +35,7 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
   variant = 'dark',
   size,
   inputSize,
+  background = 'canvas',
   className = '',
   id,
   required,
@@ -70,7 +72,7 @@ export const FlatTextarea: React.FC<FlatTextareaProps> = ({
           ${textareaSizeClasses}
           ${
             isDark
-              ? '!bg-portal-canvas !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:!bg-portal-canvas focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed'
+              ? `${background === 'surface' ? '!bg-portal-surface focus:!bg-portal-surface' : '!bg-portal-canvas focus:!bg-portal-canvas'} !border-portal-border !text-portal-heading placeholder:!text-portal-muted hover:!border-portal-border/80 focus:!border-portal-accent focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed`
               : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 hover:border-slate-400 focus:border-primary-green focus:ring-0 focus:outline-none disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed'
           }
           ${errorMessage ? '!border-red-500' : ''}

@@ -1,4 +1,5 @@
 import type { QueuedAction, QueuedPhoto } from './api';
+import { goodsOnly, hasLegacyCollection } from '../../../components/invoices/paymentRules';
 
 type Key = 'trek' | 'driverReport' | 'vehicleStock' | 'products' | 'productSeedVersion' | 'stopPriceOverrides' | 'customers' | 'customerSeedVersion' | 'districts' | 'regionTreks' | 'assignedTreks' | 'lastSyncedAt' | 'device' | 'lastFix' | 'phoneAddress' | 'weather';
 const DB_NAME = 'proh-field-control';
@@ -153,7 +154,13 @@ export const fieldStore = {
   updatePhotos,
   get: <T>(token: string, part: Key) => read<T>(key(token, part)),
   set: (token: string, part: Key, value: unknown) => write(key(token, part), value),
-  queue: async (token: string) => (await read<QueuedAction[]>(key(token, 'queue'))) ?? [],
+  queue: async (token: string): Promise<QueuedAction[]> => ((await read<QueuedAction[]>(key(token, 'queue'))) ?? []).map(action =>
+    action.status !== 'synced' && hasLegacyCollection(action)
+      ? { ...action, status: 'conflict', legacyPaymentReview: true,
+        reason: 'Legacy collection requires review. Verify the invoice payment history and actual money collected before releasing goods and recording a separate payment.' }
+      : action.status !== 'synced' && ['RecordDelivery', 'RecordUnplannedSale'].includes(action.type)
+        && ['amtPaid', 'balance', 'paymentMethod'].some(field => field in action.payload)
+        ? { ...action, payload: goodsOnly(action.payload) } : action),
   setQueue: (token: string, actions: QueuedAction[]) => write(key(token, 'queue'), actions),
   photoQueue: async (token: string) => hydratePhotos(await read<unknown[]>(key(token, 'photoQueue'))),
   setPhotoQueue: async (token: string, photos: QueuedPhoto[]) => {

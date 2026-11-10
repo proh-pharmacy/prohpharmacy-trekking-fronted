@@ -1,2 +1,3 @@
-export * from './ThermalInvoiceReceipt';
-export * from './useThermalInvoicePrint';
+export * from './ProfessionalInvoiceDocument';
+export * from './ProfessionalPaymentReceipt';
+export * from './useLetterDocumentPrint';

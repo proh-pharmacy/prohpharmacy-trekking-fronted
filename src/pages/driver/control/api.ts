@@ -4,6 +4,7 @@ import { treksApi, type DriverTrek, type DriverReturn } from '../../../api-clien
 import type { StockItem } from '../../../api-client/vehicleStock';
 import type { Product } from '../../../api-client/products';
 import type { CustomerPerson } from '../../../api-client/customers';
+import { hasLegacyCollection } from '../../../components/invoices/paymentRules';
 
 export interface RegionTrek {
   trekId: string;
@@ -129,16 +130,21 @@ export interface DriverInvoicePreviewResponse {
     };
     invoice: {
       id: string;
-      invoiceNumber: string;
+      invoiceNumber: string | null;
       status: string;
       issuedAt: string;
     } | null;
     products: Array<{
+      stopProductId: string;
+      basicQuantity: number;
+      packagingQuantity: number | null;
+      plannedBasicQuantity: number | null;
+      plannedPackagingQuantity: number | null;
       productId: string;
       productName: string;
       basicUnitName: string;
       packagingUnitName: string | null;
-      basicQtyDelivered: number;
+      basicQtyDelivered: number | null;
       packagingQtyDelivered: number | null;
       basicUnitPrice: number;
       packagingUnitPrice: number | null;
@@ -146,7 +152,7 @@ export interface DriverInvoicePreviewResponse {
       amtPaid: number | null;
       balance: number | null;
       paymentMethod: string | null;
-      deliveredAt: string;
+      deliveredAt: string | null;
     }>;
     totals: { amountDue: number; amtPaid: number; balance: number };
   };
@@ -257,10 +263,16 @@ export type ActionType =
   | 'AddWalkInStop'
   | 'RecordDelivery'
   | 'RecordUnplannedSale'
+  | 'RecordInvoicePayment'
   | 'RecordReturn'
   | 'VoidReturn';
 
 export interface QueuedAction {
+  invoiceId?: string | null;
+  receiptNumber?: string | null;
+  paymentConflictResolved?: boolean;
+  legacyPaymentReview?: boolean;
+  legacyCollection?: Record<string, unknown>;
   type: ActionType;
   clientId: string;
   occurredAt: string;
@@ -289,6 +301,8 @@ export interface QueuedPhoto {
 }
 
 export interface SyncResult {
+  invoiceId?: string | null;
+  receiptNumber?: string | null;
   clientId: string;
   type: ActionType;
   status: 'Created' | 'AlreadySynced' | 'Conflict';
@@ -511,6 +525,7 @@ export const fieldApi = {
   },
   getLegacyTrek: (token: string) => treksApi.getByDriverToken(token),
   sync: async (token: string, actions: QueuedAction[]): Promise<SyncResult[]> => {
+    if (actions.some(hasLegacyCollection)) throw new Error('Review legacy collections before syncing goods.');
     const response = await publicApi.post<{ results: SyncResult[] }>(path(token, '/sync'), {
       actions: actions.map(({ type, clientId, occurredAt, payload }) => ({ type, clientId, occurredAt, payload })),
     });
@@ -529,6 +544,7 @@ export const fieldApi = {
     return response.data;
   },
   recordUnplannedSale: async (token: string, stopId: string, payload: Record<string, unknown>) => {
+    if (hasLegacyCollection({ type: 'RecordUnplannedSale', payload })) throw new Error('Collect payment separately from goods.');
     const response = await publicApi.post(path(token, `/stops/${stopId}/products/unplanned`), payload);
     return response.data;
   },

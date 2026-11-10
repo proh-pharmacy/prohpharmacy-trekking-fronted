@@ -415,7 +415,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 text-portal-muted hover:text-portal-heading rounded transition cursor-pointer"
+              className="p-1 text-red-accent hover:text-red-accent-hover rounded transition cursor-pointer"
               title="Clear selection"
             >
               <i className="pi pi-times text-[10px]" />
@@ -442,7 +442,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             className="bg-portal-surface border border-portal-border rounded shadow-2xl overflow-hidden animate-scaleIn font-sans flex flex-col"
           >
             {/* Search Input Filter Container */}
-            <div className="px-2 border-b border-portal-border/60 bg-portal-canvas flex items-center gap-2 shrink-0">
+            <div className="px-2 border-b border-portal-border/60 bg-portal-surface flex items-center gap-2 shrink-0">
               <span className="inline-flex self-stretch shrink-0 items-center justify-center pl-1 text-portal-muted" aria-hidden="true">
                 <i className="pi pi-search block text-xs leading-none" />
               </span>
