@@ -173,6 +173,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 interface StopCardProps {
   alternate?: boolean;
   expanded: boolean;
+  dimmed?: boolean;
   onToggle: () => void;
   customer?: FieldCustomer;
   onEditCustomer: (customer: FieldCustomer) => void;
@@ -200,7 +201,7 @@ interface StopCardProps {
   syncing: boolean;
 }
 
-const StopCard: React.FC<StopCardProps> = ({ alternate = false, expanded, onToggle, customer, onEditCustomer, trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing, queue, enqueuePayment, onInvoiceChanged }) => {
+const StopCard: React.FC<StopCardProps> = ({ alternate = false, expanded, dimmed = false, onToggle, customer, onEditCustomer, trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing, queue, enqueuePayment, onInvoiceChanged }) => {
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
   const [returnToRemove, setReturnToRemove] = useState<{ stopId: string; returnId: string; productName: string } | null>(null);
@@ -313,7 +314,7 @@ const StopCard: React.FC<StopCardProps> = ({ alternate = false, expanded, onTogg
     : null;
 
   return (
-    <div className={`relative border-l-4 border-l-transparent px-4 py-3 shadow-none transition-colors sm:px-5 ${alternate ? 'stop-invoice-row-alternate' : 'bg-portal-surface'}`}>
+    <div className={`relative border-l-4 border-l-transparent px-4 py-3 shadow-none transition-[colors,opacity] duration-200 sm:px-5 ${alternate ? 'stop-invoice-row-alternate' : 'bg-portal-surface'} ${dimmed ? 'opacity-45 hover:opacity-100 focus-within:opacity-100' : 'opacity-100'}`}>
       {expanded && <span className="stop-invoice-journey-marker" aria-hidden="true" />}
       {/* Header */}
       <div className="flex items-center justify-between gap-3 min-w-0">
@@ -388,15 +389,15 @@ const StopCard: React.FC<StopCardProps> = ({ alternate = false, expanded, onTogg
       >
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-4 border-t border-portal-border/40 pt-4">
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-nowrap items-center gap-2">
         {!locked && <>
-          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" disabled={invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Add product to invoice'} onClick={() => onFieldAction('sale', stop.stopId)}>Add Product to Invoice</FlatButton>
+          <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" className="flex-1 justify-center whitespace-nowrap sm:flex-none" disabled={invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Add product to invoice'} onClick={() => onFieldAction('sale', stop.stopId)}>Add Product</FlatButton>
         </>}
         <InvoicePayments summary={stop} token={token} customerName={stop.customerName}
           stopId={queuedStop ? queuedStop.serverId || undefined : stop.stopId} stopClientId={queuedStop?.clientId}
           queue={queue} enqueue={enqueuePayment} offlineInvoice={localInvoice}
           disabled={trek.status === 'Cancelled'} goodsPending={queuedSales.length > 0 || queuedDeliveries.length > 0 || !!queuedStop}
-          onChanged={onInvoiceChanged} showSummary={false} />
+          onChanged={onInvoiceChanged} showSummary={false} buttonLabel="Make Payment" buttonClassName="flex-1 justify-center whitespace-nowrap sm:flex-none" />
       </div>
       {invoiceFullyPaid && (
         <p className="flex items-center gap-1.5 text-[11px] text-portal-muted">
@@ -839,6 +840,10 @@ export const DriverPage: React.FC = () => {
 
   const sortedStops = [...trek.stops].sort((a, b) => a.sequence - b.sequence);
   const queuedStops = visibleWalkInStopActions(queue, trek.trekId, trek.stops);
+  const hasExpandedStop = expandedStopId !== null && (
+    sortedStops.some((stop) => stop.stopId === expandedStopId)
+    || queuedStops.some((action) => action.clientId === expandedStopId)
+  );
   const registeredCustomerActions = queue
     .filter((action) => action.type === 'RegisterCustomer')
     .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
@@ -1155,6 +1160,7 @@ export const DriverPage: React.FC = () => {
                         key={stop.stopId}
                         alternate={index % 2 === 0}
                         expanded={expandedStopId === stop.stopId}
+                        dimmed={hasExpandedStop && expandedStopId !== stop.stopId}
                         onToggle={() => setExpandedStopId((current) => current === stop.stopId ? null : stop.stopId)}
                         customer={resolveStopCustomer(stop)}
                         onEditCustomer={setEditingCustomer}
@@ -1229,6 +1235,7 @@ export const DriverPage: React.FC = () => {
                         key={action.clientId}
                         alternate={(sortedStops.length + index) % 2 === 0}
                         expanded={expandedStopId === action.clientId}
+                        dimmed={hasExpandedStop && expandedStopId !== action.clientId}
                         onToggle={() => setExpandedStopId((current) => current === action.clientId ? null : action.clientId)}
                         customer={resolveStopCustomer(stop)}
                         onEditCustomer={setEditingCustomer}

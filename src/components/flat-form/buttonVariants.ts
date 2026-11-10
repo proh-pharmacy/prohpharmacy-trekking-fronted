@@ -18,9 +18,9 @@ export const buttonVariants = cva(
         warning:
           '!bg-amber-600 hover:!bg-amber-500 active:!bg-amber-700 !text-white !border-amber-600 hover:!border-amber-500',
         'danger-outline':
-          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-500 dark:text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-600 dark:hover:!text-red-300',
+          '!bg-transparent hover:!bg-red-accent/10 active:!bg-red-accent/20 !text-red-accent !border-red-accent hover:!border-red-accent-hover hover:!text-red-accent-hover',
         'outline-danger':
-          '!bg-transparent hover:!bg-red-accent/15 active:!bg-red-accent/25 !text-red-500 dark:text-red-400 !border-red-accent/50 hover:!border-red-accent hover:!text-red-600 dark:hover:!text-red-300',
+          '!bg-transparent hover:!bg-red-accent/10 active:!bg-red-accent/20 !text-red-accent !border-red-accent hover:!border-red-accent-hover hover:!text-red-accent-hover',
         outline:
           '!bg-transparent hover:!bg-portal-hover active:!bg-portal-active !text-portal-heading !border-portal-border hover:!border-portal-border/80',
         ghost:

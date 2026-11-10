@@ -25,13 +25,15 @@ type Props = {
   enqueue?: (type: 'RecordInvoicePayment', payload: Record<string, unknown>) => Promise<string>;
   onChanged?: () => void | Promise<unknown>;
   showSummary?: boolean;
+  buttonLabel?: string;
+  buttonClassName?: string;
 };
 const message = (error: unknown) => {
   const e = error as { response?: { data?: { message?: string; detail?: string } }; message?: string };
   return e.response?.data?.message || e.response?.data?.detail || e.message || 'Request failed. Please retry.';
 };
 
-export function InvoicePayments({ summary, token, customerName, stopId, stopClientId, queue = [], offlineInvoice, goodsPending, disabled, enqueue, onChanged, showSummary = true }: Props) {
+export function InvoicePayments({ summary, token, customerName, stopId, stopClientId, queue = [], offlineInvoice, goodsPending, disabled, enqueue, onChanged, showSummary = true, buttonLabel = 'Make Payment', buttonClassName }: Props) {
   const [open, setOpen] = useState(false);
   const [invoice, setInvoice] = useState<SaleInvoice | null>(null);
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
@@ -55,7 +57,9 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
     || (stopId && queue.some(parent => parent.type === 'AddWalkInStop' && parent.clientId === action.payload.stopClientId && parent.serverId === stopId))));
   const outstandingActions = paymentActions.filter(action => action.status !== 'synced');
   const reserved = outstandingActions.reduce((sum, action) => sum + Number(action.payload.amount || 0), 0);
-  const balance = Math.max(0, Number(invoice?.balance ?? summary.invoiceBalance ?? 0) - reserved);
+  const totalAmount = Number(invoice?.totalAmount ?? offlineInvoice?.totalAmount ?? summary.invoiceTotal ?? 0);
+  const balance = Math.max(0, Number(invoice?.balance ?? offlineInvoice?.balance ?? summary.invoiceBalance ?? 0) - reserved);
+  const buttonDisabled = Boolean(disabled || totalAmount <= 0 || balance <= 0);
   const paymentRevision = paymentActions.map(action => `${action.clientId}:${action.status}`).join('|');
 
   useEffect(() => {
@@ -198,14 +202,16 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
   };
 
   return <>
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 text-[11px] text-portal-muted">
-      {showSummary && <>
+    {showSummary ? (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 text-[11px] text-portal-muted">
         <span className="font-mono text-portal-accent">{summary.invoiceNumber || 'Invoice awaiting sync'}</span>
         <span>{invoiceStatusLabel(summary.invoiceStatus)}</span>
         <span>Total {fmtGhs(summary.invoiceTotal)}</span><span>Paid {fmtGhs(summary.invoicePaid)}</span><span>Balance {fmtGhs(summary.invoiceBalance)}</span>
-      </>}
-      <FlatButton size="sm" variant="outline" onClick={() => void show()}>View invoice / payments</FlatButton>
-    </div>
+        <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} onClick={() => void show()}>{buttonLabel}</FlatButton>
+      </div>
+    ) : (
+      <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} onClick={() => void show()}>{buttonLabel}</FlatButton>
+    )}
     <FlatModal
       visible={open}
       onHide={() => { if (!busy) setOpen(false); }}
@@ -248,7 +254,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
           <div className="space-y-4">
             {/* Top KPI Summary Strip */}
             {invoice && (
-              <div className="grid grid-cols-3 divide-x divide-portal-border rounded border border-portal-border bg-portal-canvas overflow-hidden !shadow-none">
+              <div className="grid grid-cols-1 divide-y divide-portal-border overflow-hidden rounded border border-portal-border bg-portal-canvas !shadow-none sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div className="px-4 py-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted mb-0.5">Invoice Total</p>
                   <p className="font-mono text-sm font-bold text-portal-heading tabular-nums">{fmtGhs(invoice.totalAmount)}</p>
@@ -364,55 +370,77 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                 {!(invoice?.payments ?? []).length && !paymentActions.length && (
                   <p className="text-portal-muted py-2">No payments recorded.</p>
                 )}
-                <div className="divide-y divide-portal-border/40">
-                  {(invoice?.payments ?? []).map(payment => (
-                    <div key={payment.paymentId} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                      <div className="space-y-0.5">
+                {((invoice?.payments ?? []).length > 0 || paymentActions.length > 0) && (
+                  <div role="table" aria-label="Payment history" className="overflow-hidden border border-portal-border">
+                    <div role="row" className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] gap-4 border-b border-portal-border bg-portal-surface px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-portal-muted sm:grid">
+                      <span role="columnheader">Payment</span>
+                      <span role="columnheader">Recorded</span>
+                      <span role="columnheader" className="text-right">Action</span>
+                    </div>
+                    <div className="divide-y divide-portal-border/40">
+                    {(invoice?.payments ?? []).map(payment => (
+                    <div role="row" key={payment.paymentId} className="grid grid-cols-1 gap-2 bg-portal-canvas px-3 py-3 odd:bg-portal-surface/30 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] sm:items-center sm:gap-4">
+                      <div role="cell" className="space-y-0.5">
                         <p className="font-mono text-xs font-semibold text-portal-heading">
                           {fmtGhs(payment.amount)} <span className="font-sans font-normal text-portal-muted">· {payment.paymentMethod}</span>
                         </p>
+                        {payment.reference && <p className="text-[11px] text-portal-muted">Ref: {payment.reference}</p>}
+                      </div>
+                      <div role="cell">
                         <p className="text-[11px] text-portal-muted">
                           {new Date(payment.recordedAt).toLocaleString('en-GB')}
                         </p>
                       </div>
-                      {payment.isLegacy || !payment.receiptNumber ? (
-                        <FlatButton
-                          size="sm"
-                          variant="outline"
-                          leftIcon="pi pi-file"
-                          className="!text-red-accent hover:!text-red-accent"
-                          title="View imported payment record"
-                          aria-label="View imported payment record"
-                          onClick={() => setReceipt(payment)}
-                        >
-                          View Payment Record
-                        </FlatButton>
-                      ) : (
-                        <FlatButton size="sm" variant="outline" leftIcon="pi pi-receipt" className="!text-red-accent hover:!text-red-accent" title={`View receipt ${payment.receiptNumber}`} aria-label={`View receipt ${payment.receiptNumber}`} onClick={() => void viewReceipt(payment.paymentId)}>
-                          View Receipt
-                        </FlatButton>
-                      )}
+                      <div role="cell" className="mt-1 sm:mt-0 sm:justify-self-end">
+                        {payment.isLegacy || !payment.receiptNumber ? (
+                          <FlatButton
+                            size="sm"
+                            variant="danger"
+                            fullWidth
+                            leftIcon="pi pi-file"
+                            className="sm:!w-auto"
+                            title="View imported payment record"
+                            aria-label="View imported payment record"
+                            onClick={() => setReceipt(payment)}
+                          >
+                            View Payment Record
+                          </FlatButton>
+                        ) : (
+                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={`View receipt ${payment.receiptNumber}`} aria-label={`View receipt ${payment.receiptNumber}`} onClick={() => void viewReceipt(payment.paymentId)}>
+                            View Receipt
+                          </FlatButton>
+                        )}
+                      </div>
                     </div>
                   ))}
-                  {paymentActions.map(action => (
-                    <div key={action.clientId} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0 text-portal-muted">
-                      <div className="space-y-0.5">
+                    {paymentActions.map(action => (
+                    <div role="row" key={action.clientId} className="grid grid-cols-1 gap-2 bg-portal-canvas px-3 py-3 text-portal-muted odd:bg-portal-surface/30 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] sm:items-center sm:gap-4">
+                      <div role="cell" className="space-y-0.5">
                         <p className="font-mono text-xs font-semibold text-portal-text">
                           {fmtGhs(Number(action.payload.amount))}
+                          {Boolean(action.payload.paymentMethod) && <span className="font-sans font-normal text-portal-muted"> · {String(action.payload.paymentMethod)}</span>}
                         </p>
+                        {Boolean(action.payload.reference) && <p className="text-[11px]">Ref: {String(action.payload.reference)}</p>}
+                      </div>
+                      <div role="cell" className="space-y-0.5">
+                        <p className="text-[11px]">{new Date(action.occurredAt).toLocaleString('en-GB')}</p>
                         <p className="text-[11px]">
                           {action.status === 'synced' ? 'Payment synced' : action.status === 'conflict' ? 'Payment needs review in Sync Centre' : 'Payment awaiting sync'}
                         </p>
                         {action.reason && <p className="text-[11px] text-portal-orange">{action.reason}</p>}
                       </div>
-                      {action.status === 'synced' && action.serverId && (
-                        <FlatButton size="sm" variant="outline" leftIcon="pi pi-receipt" className="!text-red-accent hover:!text-red-accent" title={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} aria-label={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} onClick={() => void viewReceipt(action.serverId!)}>
-                          View Receipt
-                        </FlatButton>
-                      )}
+                      <div role="cell" className="mt-1 sm:mt-0 sm:justify-self-end">
+                        {action.status === 'synced' && action.serverId && (
+                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} aria-label={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} onClick={() => void viewReceipt(action.serverId!)}>
+                            View Receipt
+                          </FlatButton>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
