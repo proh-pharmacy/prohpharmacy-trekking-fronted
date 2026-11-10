@@ -8,9 +8,9 @@ import { resetTableData } from '../data-table';
 import { fmtGhs } from '../../lib/utils';
 import type { QueuedAction } from '../../pages/driver/control/api';
 import { collectionMethods, invoiceStatusLabel, paymentError } from './paymentRules';
-import { ThermalInvoiceReceipt } from './ThermalInvoiceReceipt';
-import { ThermalPaymentReceipt } from './ThermalPaymentReceipt';
-import { useThermalInvoicePrint } from './useThermalInvoicePrint';
+import { ProfessionalInvoiceDocument } from './ProfessionalInvoiceDocument';
+import { ProfessionalPaymentReceipt } from './ProfessionalPaymentReceipt';
+import { useLetterDocumentPrint } from './useLetterDocumentPrint';
 
 type Props = {
   summary: StopInvoiceSummary;
@@ -46,7 +46,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
   const [receiptQrCode, setReceiptQrCode] = useState('');
   const [online, setOnline] = useState(navigator.onLine);
   const busyRef = useRef(false);
-  const { receiptRef, printInvoice } = useThermalInvoicePrint();
+  const { documentRef, printDocument } = useLetterDocumentPrint();
   const key = `invoice-payment:${token || 'staff'}:${summary.invoiceId || stopClientId || stopId}`;
   const cacheKey = `invoice-detail:${token || 'staff'}:${summary.invoiceId}`;
   const paymentActions = queue.filter(action => action.type === 'RecordInvoicePayment' && !action.paymentConflictResolved && (
@@ -82,12 +82,12 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
 
   useEffect(() => {
     setReceiptQrCode('');
-    if (!open || !token || !receipt?.paymentId || receipt.isLegacy || !receipt.receiptNumber) return;
+    if (!open || !token || !receipt?.invoiceId || receipt.isLegacy || !receipt.receiptNumber) return;
     let active = true;
-    const url = `${window.location.origin}/receipt/preview?token=${encodeURIComponent(token)}&paymentId=${encodeURIComponent(receipt.paymentId)}`;
+    const url = `${window.location.origin}/invoice/preview?token=${encodeURIComponent(token)}&invoiceId=${encodeURIComponent(receipt.invoiceId)}`;
     void QRCode.toDataURL(url, { margin: 1, width: 144 }).then(code => { if (active) setReceiptQrCode(code); }).catch(() => {});
     return () => { active = false; };
-  }, [open, receipt?.isLegacy, receipt?.paymentId, receipt?.receiptNumber, token]);
+  }, [open, receipt?.invoiceId, receipt?.isLegacy, receipt?.receiptNumber, token]);
 
   const load = async () => {
     if (!navigator.onLine) {
@@ -209,9 +209,9 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
     <FlatModal
       visible={open}
       onHide={() => { if (!busy) setOpen(false); }}
-      title={receipt ? 'Payment receipt' : invoice?.invoiceNumber || 'Invoice and payments'}
+      title={receipt ? receipt.isLegacy ? 'Imported payment record' : 'Payment receipt' : invoice?.invoiceNumber || 'Invoice and payments'}
       subtitle={!receipt && invoice ? `${invoice.customerName} · ${invoiceStatusLabel(invoice.status)}` : undefined}
-      size="lg"
+      size={receipt ? 'xl' : 'lg'}
     >
       <div className="space-y-4 text-xs text-portal-text">
         {busy && <p role="status" className="text-portal-muted">Loading…</p>}
@@ -222,14 +222,26 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
         )}
         {receipt ? (
           <div className="space-y-4">
-            <div className="rounded border border-portal-border bg-portal-canvas p-4 !shadow-none">
-              <ThermalPaymentReceipt ref={receiptRef} receipt={receipt} customerName={customerName || invoice?.customerName} qrCode={receiptQrCode} qrCaption={receiptQrCode ? 'Scan to view this receipt.' : undefined} />
+            <div className="overflow-x-auto rounded border border-portal-border bg-portal-canvas p-4 !shadow-none">
+              <ProfessionalPaymentReceipt
+                ref={documentRef}
+                receipt={receipt}
+                customerName={customerName || invoice?.customerName}
+                regionName={invoice?.regionName}
+                vehicleName={invoice?.vehicleDisplayName}
+                trekNumber={invoice?.trekNumber}
+                trekDate={invoice?.trekDate}
+                driverName={invoice?.driverName}
+                salesStaffName={invoice?.salesStaffName}
+                qrCode={receiptQrCode}
+                qrCaption={receiptQrCode ? 'Scan to view this invoice.' : undefined}
+              />
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-portal-border pt-3">
               <FlatButton size="sm" variant="outline" leftIcon="pi pi-arrow-left" onClick={() => setReceipt(null)}>Back to invoice</FlatButton>
-              {!receipt.isLegacy && receipt.receiptNumber && (
-                <FlatButton size="sm" leftIcon="pi pi-print" onClick={printInvoice}>Print / Save PDF</FlatButton>
-              )}
+              <FlatButton size="sm" leftIcon="pi pi-print" onClick={printDocument}>
+                {receipt.isLegacy ? 'Print payment record' : 'Print / Save PDF'}
+              </FlatButton>
             </div>
           </div>
         ) : (
@@ -364,7 +376,17 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                         </p>
                       </div>
                       {payment.isLegacy || !payment.receiptNumber ? (
-                        <span className="text-[11px] text-portal-muted">Imported history</span>
+                        <FlatButton
+                          size="sm"
+                          variant="outline"
+                          leftIcon="pi pi-file"
+                          className="!text-red-accent hover:!text-red-accent"
+                          title="View imported payment record"
+                          aria-label="View imported payment record"
+                          onClick={() => setReceipt(payment)}
+                        >
+                          View Payment Record
+                        </FlatButton>
                       ) : (
                         <FlatButton size="sm" variant="outline" leftIcon="pi pi-receipt" className="!text-red-accent hover:!text-red-accent" title={`View receipt ${payment.receiptNumber}`} aria-label={`View receipt ${payment.receiptNumber}`} onClick={() => void viewReceipt(payment.paymentId)}>
                           View Receipt
@@ -406,22 +428,28 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                 Refresh invoice
               </FlatButton>
               {invoice && (
-                <FlatButton size="sm" variant="outline" leftIcon="pi pi-print" disabled={!invoice.invoiceNumber} onClick={printInvoice}>
+                <FlatButton size="sm" variant="outline" leftIcon="pi pi-print" disabled={!invoice.invoiceNumber} onClick={printDocument}>
                   Print invoice
                 </FlatButton>
               )}
             </div>
 
-            {/* Hidden printable invoice receipt for Print invoice button */}
+            {/* Off-screen printable invoice document for the Print invoice button. */}
             {invoice && (
-              <div hidden>
-                <ThermalInvoiceReceipt
-                  ref={receiptRef}
+              <div className="letter-print-host pointer-events-none fixed left-[-10000px] top-0" aria-hidden="true">
+                <ProfessionalInvoiceDocument
+                  ref={documentRef}
                   invoiceNumber={invoice.invoiceNumber}
                   customerName={invoice.customerName}
+                  customerCode={invoice.customerCode}
                   trekNumber={invoice.trekNumber}
                   trekDate={invoice.trekDate}
                   issuedAt={invoice.issuedAt}
+                  vehicleName={invoice.vehicleDisplayName}
+                  regionName={invoice.regionName}
+                  driverName={invoice.driverName}
+                  salesStaffName={invoice.salesStaffName}
+                  status={invoice.status}
                   lines={invoice.lineItems.map((line, index) => ({
                     key: line.stopProductId || String(index),
                     productName: line.productName,
@@ -431,6 +459,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                   totalAmount={invoice.totalAmount}
                   totalPaid={invoice.totalPaid}
                   balance={invoice.balance}
+                  paymentMethods={[...new Set((invoice.payments ?? []).map(payment => payment.paymentMethod).filter(Boolean))].join(', ') || undefined}
                   qrCode={invoiceQrCode}
                   qrCaption={invoiceQrCode ? 'Scan to view this invoice.' : undefined}
                 />

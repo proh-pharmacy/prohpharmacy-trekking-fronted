@@ -16,6 +16,7 @@ module.exports = {
         'muted-text': '#5F6F64',
         'light-border': '#DDE9E0',
         'invoice-backdrop': '#22272e',
+        'invoice-ink': '#142D2A',
 
         // Portal Dynamic Theme System
         'portal-canvas': 'var(--color-portal-canvas)',

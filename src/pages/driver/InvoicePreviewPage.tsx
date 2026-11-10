@@ -3,15 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { getApiError } from '../../api-client';
 import { invoicesApi } from '../../api-client/invoices';
-import { ThermalInvoiceReceipt, useThermalInvoicePrint } from '../../components/invoices';
+import { ProfessionalInvoiceDocument, useLetterDocumentPrint } from '../../components/invoices';
 import { fieldApi, type DriverInvoicePreviewResponse } from './control/api';
 
-const dateTime = (value: string) => new Date(value).toLocaleString('en-GB', {
-  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-});
-
 export const InvoicePreviewPage: React.FC = () => {
-  const { receiptRef, printInvoice } = useThermalInvoicePrint();
+  const { documentRef, printDocument } = useLetterDocumentPrint();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
   const invoiceId = searchParams.get('invoiceId')?.trim() ?? '';
@@ -111,7 +107,7 @@ export const InvoicePreviewPage: React.FC = () => {
 
   return (
     <main
-      className="min-h-dvh bg-invoice-backdrop px-3 py-6 print:min-h-0 print:bg-white print:p-0"
+      className="min-h-dvh overflow-x-auto bg-invoice-backdrop px-3 py-6 print:min-h-0 print:overflow-visible print:bg-white print:p-0"
     >
       <div className="invoice-preview-toolbar mb-3 flex justify-center">
         <img
@@ -121,14 +117,19 @@ export const InvoicePreviewPage: React.FC = () => {
         />
       </div>
 
-      <ThermalInvoiceReceipt
-        ref={receiptRef}
+      <ProfessionalInvoiceDocument
+        ref={documentRef}
         invoiceNumber={invoice.stop.invoice?.invoiceNumber}
-        issuedAt={issuedAt ? dateTime(issuedAt) : invoice.scheduledDate}
-        subtitle={invoice.vehicleDisplayName}
+        issuedAt={issuedAt || invoice.scheduledDate}
         customerName={invoice.stop.customer.businessName}
+        customerCode={invoice.stop.customer.customerCode}
         trekNumber={invoice.trekNumber}
         trekDate={invoice.scheduledDate}
+        vehicleName={invoice.vehicleDisplayName}
+        regionName={invoice.regionName}
+        driverName={invoice.driverName}
+        salesStaffName={invoice.salesStaffName}
+        status={invoice.stop.invoice?.status}
         lines={lines}
         totalAmount={invoice.stop.totals.amountDue}
         totalPaid={invoice.stop.totals.amtPaid}
@@ -140,7 +141,7 @@ export const InvoicePreviewPage: React.FC = () => {
       <div className="invoice-preview-toolbar mt-4 flex justify-center">
         <button
           type="button"
-          onClick={printInvoice}
+          onClick={printDocument}
           className="inline-flex items-center gap-1.5 !rounded-none border-0 border-b border-dotted border-red-accent-light bg-transparent px-0 pb-0.5 text-[11px] font-semibold text-red-accent-light transition-colors hover:!border-red-accent hover:!bg-transparent hover:!text-red-accent"
         >
           <i className="pi pi-print text-[10px]" aria-hidden="true" />

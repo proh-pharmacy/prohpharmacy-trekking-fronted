@@ -15,6 +15,7 @@
   --color-muted-text: #5F6F64;
   --color-light-border: #DDE9E0;
   --color-invoice-backdrop: #22272e;
+  --color-invoice-ink: #142D2A;
 
   /* Portal Dynamic Theme System */
   --color-portal-canvas: var(--color-portal-canvas);
@@ -62,6 +63,17 @@
   --color-header-heading: var(--color-header-heading);
   --color-header-text: var(--color-header-text);
   --color-header-muted: var(--color-header-muted);
+}
+
+.professional-print-document {
+  font-family: "Inter var", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-variation-settings: normal;
+}
+
+.professional-print-document,
+.professional-print-document * {
+  border-radius: 0 !important;
 }
 
 /* ==========================================================================
