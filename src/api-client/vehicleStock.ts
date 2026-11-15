@@ -9,6 +9,7 @@ export interface StockItem {
   basicUnitId: string;
   basicUnitName: string;
   basicUnitPrice: number;
+  vehicleBasicUnitPrice?: number | null;
   packagingUnitId: string | null;
   packagingUnitName: string | null;
   packagingUnitPrice: number | null;
@@ -24,6 +25,7 @@ export interface StockLineItem {
   productId: string;
   basicQty: number;
   packagingQty: number;
+  basicUnitPrice?: number | null;
 }
 
 export interface LoadStockPayload {

@@ -5,8 +5,16 @@ import type { QueuedAction } from './api';
 
 /** Local preview of goods only. Collections always come from invoice-level summaries. */
 export function offlineInvoice(trek: DriverTrek, stop: DriverStop, products: Product[], sales: QueuedAction[], deliveries: QueuedAction[]): SaleInvoice {
+  const latestDeliveryByStopProductId = deliveries.length > 0 ? new Map<string, QueuedAction>() : null;
+  if (latestDeliveryByStopProductId) {
+    for (const action of deliveries) {
+      const stopProductId = String(action.payload.stopProductId || '');
+      if (stopProductId) latestDeliveryByStopProductId.set(stopProductId, action);
+    }
+  }
+  const productsById = sales.length > 0 ? new Map(products.map(item => [item.id, item])) : null;
   const lines: SaleInvoiceLineItem[] = stop.products.map(product => {
-    const pending = deliveries.filter(action => action.payload.stopProductId === product.stopProductId).at(-1);
+    const pending = latestDeliveryByStopProductId?.get(product.stopProductId);
     const basicDelivered = pending?.payload.basicQtyDelivered ?? product.basicQtyDelivered;
     const packagingDelivered = pending?.payload.packagingQtyDelivered ?? product.packagingQtyDelivered;
     const delivered = basicDelivered != null || packagingDelivered != null;
@@ -18,7 +26,7 @@ export function offlineInvoice(trek: DriverTrek, stop: DriverStop, products: Pro
       amtPaid: null, balance: null, paymentMethod: null, isUnplanned: product.isUnplanned ?? false, deliveredAt: product.deliveredAt ?? null };
   });
   for (const action of sales) {
-    const product = products.find(item => item.id === action.payload.productId);
+    const product = productsById?.get(String(action.payload.productId || ''));
     const basicQuantity = Number(action.payload.basicQtyDelivered ?? 0);
     const packagingQuantity = Number(action.payload.packagingQtyDelivered ?? 0);
     const basicUnitPrice = Number(action.payload.basicUnitPrice ?? product?.basicUnitPrice ?? 0);

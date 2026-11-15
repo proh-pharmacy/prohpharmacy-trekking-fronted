@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton } from '../../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../../components/overlay';
@@ -49,6 +49,28 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
   const [generatingLink, setGeneratingLink] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [driverLink, setDriverLink]         = useState<string | null>(null);
+  const [expandedStopIds, setExpandedStopIds] = useState<Set<string>>(() => new Set());
+
+  const MODAL_PRODUCT_PREVIEW_LIMIT = 8;
+
+  const sortedStops = useMemo(
+    () => (trek ? [...trek.stops].sort((a, b) => a.sequence - b.sequence) : []),
+    [trek?.stops],
+  );
+
+  const existingCustomerIds = useMemo(
+    () => (trek ? trek.stops.map((stop) => stop.customerAccountId) : []),
+    [trek?.stops],
+  );
+
+  const toggleStopProducts = useCallback((stopId: string) => {
+    setExpandedStopIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(stopId)) next.delete(stopId);
+      else next.add(stopId);
+      return next;
+    });
+  }, []);
 
   const loadTrek = useCallback(async () => {
     if (!trekId) return;
@@ -64,7 +86,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
   }, [trekId]);
 
   useEffect(() => {
-    if (visible && trekId) { setDriverLink(null); loadTrek(); }
+    if (visible && trekId) { setDriverLink(null); setExpandedStopIds(new Set()); loadTrek(); }
   }, [visible, trekId, loadTrek]);
 
   const handleStatusChange = async (status: TrekStatus) => {
@@ -259,7 +281,13 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {[...trek.stops].sort((a, b) => a.sequence - b.sequence).map((stop) => (
+                  {sortedStops.map((stop) => {
+                    const isStopProductsExpanded = expandedStopIds.has(stop.stopId);
+                    const visibleProducts = isStopProductsExpanded
+                      ? stop.products
+                      : stop.products.slice(0, MODAL_PRODUCT_PREVIEW_LIMIT);
+                    const hiddenCount = stop.products.length - visibleProducts.length;
+                    return (
                     <div key={stop.stopId} className="bg-portal-canvas border border-portal-border/60 rounded p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
@@ -279,7 +307,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                             )}
                             {stop.products.length > 0 && (
                               <div className="mt-2 space-y-1">
-                                {stop.products.map((p) => (
+                                {visibleProducts.map((p) => (
                                   <div key={p.productId} className="flex flex-wrap items-center gap-2 text-[11px]">
                                     <i className="pi pi-box text-[10px] text-portal-muted" />
                                     <span className="text-portal-text">{p.productName}</span>
@@ -296,6 +324,15 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                                     )}
                                   </div>
                                 ))}
+                                {stop.products.length > MODAL_PRODUCT_PREVIEW_LIMIT && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStopProducts(stop.stopId)}
+                                    className="pt-1 text-left text-[11px] font-medium text-portal-accent transition-colors hover:underline"
+                                  >
+                                    {isStopProductsExpanded ? 'Show fewer products' : `+ ${hiddenCount} more products…`}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -316,7 +353,8 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                         )}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </div>
@@ -342,6 +380,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           trekRegionId={trek.regionId}
           trekRegionName={trek.regionName}
           nextSequence={trek.stops.length + 1}
+          existingCustomerIds={existingCustomerIds}
           onSuccess={loadTrek}
         />
       )}
@@ -355,6 +394,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           trekRegionId={trek.regionId}
           trekRegionName={trek.regionName}
           nextSequence={editingStop.sequence}
+          existingCustomerIds={existingCustomerIds}
           stop={editingStop}
           onSuccess={loadTrek}
         />

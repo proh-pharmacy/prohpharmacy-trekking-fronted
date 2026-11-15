@@ -91,9 +91,7 @@ export function useFieldControl(token: string) {
     }
     if (results[1].status === 'fulfilled') {
       const { products: fetched, stopPriceOverrides: newOverrides } = results[1].value;
-      const prior = (await fieldStore.get<Product[]>(token, 'products')) ?? [];
-      const data = productSince ? mergeById(prior, fetched) : fetched;
-      setProducts(data); await fieldStore.set(token, 'products', data);
+      setProducts(fetched); await fieldStore.set(token, 'products', fetched);
       setStopPriceOverrides(newOverrides); await fieldStore.set(token, 'stopPriceOverrides', newOverrides);
       await fieldStore.set(token, 'productSeedVersion', 2);
     }

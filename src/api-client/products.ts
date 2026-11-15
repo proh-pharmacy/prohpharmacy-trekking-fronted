@@ -23,6 +23,7 @@ export interface Product {
   basicUnitId: string;
   basicUnitName: string;
   basicUnitPrice: number;
+  vehicleBasicUnitPrice?: number | null;
   packagingUnitId: string | null;
   packagingUnitName: string | null;
   packagingUnitPrice: number | null;
@@ -91,6 +92,8 @@ export interface ProductMatchRow {
   quantity: number | null;
   basicQty: number | null;
   packagingQty: number | null;
+  priceText?: string | null;
+  basicUnitPrice?: number | null;
   ocrConfidence?: number | null;
   matchStatus: 'Exact' | 'Suggested' | 'Ambiguous' | 'Unmatched' | string;
   suggestedProductId?: string | null;
@@ -107,9 +110,60 @@ export interface ProductMatchFileResult {
   rows: ProductMatchRow[];
 }
 
+export interface ExcelColumnMapping {
+  fileIndex?: number;
+  worksheet?: string | null;
+  headerRow?: number | null;
+  productNameColumn?: string | null;
+  quantityColumn?: string | null;
+  basicQtyColumn?: string | null;
+  packagingQtyColumn?: string | null;
+  unitColumn?: string | null;
+  priceColumn?: string | null;
+}
+
+export interface ProductMatchAggregatedRow {
+  productId: string;
+  productName: string;
+  basicUnitId?: string | null;
+  basicUnitName?: string | null;
+  packagingUnitId?: string | null;
+  packagingUnitName?: string | null;
+  basicQty: number | null;
+  packagingQty: number | null;
+  basicUnitPrice?: number | null;
+  warnings: string[];
+}
+
 export interface ProductMatchResult {
   summary: Record<string, number>;
   files: ProductMatchFileResult[];
+  aggregatedProducts?: ProductMatchAggregatedRow[];
+}
+
+export interface ProductMatchJobAccepted {
+  jobId: string;
+  status: 'Queued' | string;
+  pollUrl: string;
+  resultUrl: string;
+  retryAfterSeconds: number;
+}
+
+export interface ProductMatchJobStatus {
+  jobId: string;
+  status: 'Queued' | 'Processing' | 'Completed' | 'PartiallyCompleted' | 'Failed' | string;
+  totalFiles: number;
+  processedFiles: number;
+  currentFileIndex: number | null;
+  currentPage: number | null;
+  currentFilePages: number | null;
+  progressPercentage: number;
+  message: string | null;
+  errorMessage: string | null;
+  resultUrl: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 
 export const productsApi = {
@@ -197,12 +251,32 @@ export const productsApi = {
     return res.data;
   },
 
-  matchFiles: async (files: File[], excelMappings?: unknown[]): Promise<ProductMatchResult> => {
+  matchFiles: async (
+    files: File[],
+    excelMappings?: ExcelColumnMapping[],
+    signal?: AbortSignal,
+  ): Promise<ProductMatchJobAccepted> => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     if (excelMappings?.length) formData.append('excelMappings', JSON.stringify(excelMappings));
-    const res = await apiClient.post<ProductMatchResult>('/products/match-files', formData, {
-      timeout: 180000,
+    const res = await apiClient.post<ProductMatchJobAccepted>('/products/match-files', formData, {
+      signal,
+    });
+    return res.data;
+  },
+
+  getMatchJob: async (jobId: string, signal?: AbortSignal): Promise<ProductMatchJobStatus> => {
+    const res = await apiClient.get<ProductMatchJobStatus>(`/products/match-files/jobs/${jobId}`, {
+      signal,
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    return res.data;
+  },
+
+  getMatchResult: async (jobId: string, signal?: AbortSignal): Promise<ProductMatchResult> => {
+    const res = await apiClient.get<ProductMatchResult>(`/products/match-files/jobs/${jobId}/result`, {
+      signal,
+      headers: { 'Cache-Control': 'no-cache' },
     });
     return res.data;
   },

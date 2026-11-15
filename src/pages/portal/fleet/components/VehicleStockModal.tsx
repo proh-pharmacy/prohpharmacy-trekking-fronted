@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import ReactCrop, { type Crop, type PercentCrop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { FlatConfirmDialog, FlatModal } from '../../../../components/overlay';
@@ -15,10 +16,14 @@ import {
   getApiError,
   vehicleStockApi,
   type Product,
+  type ProductMatchJobAccepted,
+  type ProductMatchJobStatus,
+  type ProductMatchResult,
   productsApi,
   type ProductMatchRow,
   type StockLineItem,
 } from '../../../../api-client';
+import { ProductModal } from '../../products/components/ProductModal';
 
 type Mode = 'load' | 'remove';
 
@@ -51,13 +56,50 @@ interface ReviewItem {
   packagingUnitName: string | null;
   basicQty: number | null;
   packagingQty: number | null;
+  basicUnitPrice: number | null;
+  selectedProduct: Product | null;
 }
 
 interface ReviewValidationError {
   id: string;
-  field: 'productId' | 'basicQty' | 'packagingQty';
+  field: 'productId' | 'basicQty' | 'packagingQty' | 'basicUnitPrice';
   message: string;
 }
+
+const hasAtMostTwoDecimalPlaces = (value: number) => {
+  const roundedToCents = Math.round((value + Number.EPSILON) * 100) / 100;
+  return Math.abs(value - roundedToCents) < 1e-9;
+};
+
+const TERMINAL_MATCH_STATUSES = new Set(['Completed', 'PartiallyCompleted', 'Failed']);
+const MATCH_JOB_POLL_INTERVAL_MS = 500;
+
+const waitForPollingDelay = (milliseconds: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  if (signal.aborted) {
+    reject(new DOMException('Document matching polling stopped.', 'AbortError'));
+    return;
+  }
+  const handleAbort = () => {
+    window.clearTimeout(timeoutId);
+    reject(new DOMException('Document matching polling stopped.', 'AbortError'));
+  };
+  const timeoutId = window.setTimeout(() => {
+    signal.removeEventListener('abort', handleAbort);
+    resolve();
+  }, milliseconds);
+  signal.addEventListener('abort', handleAbort, { once: true });
+});
+
+const isRequestCancelled = (error: unknown) => (
+  (error instanceof DOMException && error.name === 'AbortError')
+  || (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED')
+);
+
+const responseStatus = (error: unknown) => (
+  typeof error === 'object' && error !== null && 'response' in error
+    ? (error as { response?: { status?: number } }).response?.status
+    : undefined
+);
 
 const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElement): Promise<File> => {
   const canvas = document.createElement('canvas');
@@ -106,6 +148,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   onComplete,
   lockedProduct = null,
 }) => {
+  const queryClient = useQueryClient();
   const isRemove = mode === 'remove';
   const isLocked = !!lockedProduct;
   const title = isRemove ? 'Reduce Stock' : 'Add Stock';
@@ -120,6 +163,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [reviewValidationError, setReviewValidationError] = useState<ReviewValidationError | null>(null);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [matchJob, setMatchJob] = useState<ProductMatchJobStatus | null>(null);
+  const [productModalRowId, setProductModalRowId] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropUrl, setCropUrl] = useState('');
   const [cropQueue, setCropQueue] = useState<File[]>([]);
@@ -128,6 +173,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const matchAbortRef = useRef<AbortController | null>(null);
 
   // form state
   const [productId, setProductId] = useState('');
@@ -150,6 +196,10 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     () => reviewItems?.find((item) => item.id === pendingReviewRemoveId) || null,
     [reviewItems, pendingReviewRemoveId],
   );
+  const productModalReviewItem = useMemo(
+    () => reviewItems?.find((item) => item.id === productModalRowId) || null,
+    [reviewItems, productModalRowId],
+  );
 
   const hasPackaging = !!productUnits.packaging;
 
@@ -171,6 +221,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   };
 
   useEffect(() => {
+    if (!visible) {
+      matchAbortRef.current?.abort();
+      matchAbortRef.current = null;
+      return;
+    }
+    matchAbortRef.current?.abort();
+    matchAbortRef.current = null;
     if (visible) {
       setItems([]);
       setReviewItems(null);
@@ -179,6 +236,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       setPendingReviewRemoveId(null);
       setResetReviewPending(false);
       setUploadErrors([]);
+      setMatchJob(null);
+      setProductModalRowId(null);
       setCropFile(null);
       setCropQueue([]);
       setCropIndex(0);
@@ -206,6 +265,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       setBalanceLoading(false);
     }
   }, [visible, mode, isLocked, lockedProduct]);
+
+  useEffect(() => () => matchAbortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!visible || !productId) {
@@ -338,11 +399,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     })));
   };
 
-  const processUploadFiles = async (files: File[]) => {
-    setUploading(true);
-    try {
-      const result = await productsApi.matchFiles(files);
-      const rows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
+  const applyMatchResult = (result: ProductMatchResult) => {
+    const rows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
         const candidate = row.candidates?.[0];
         return {
           id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
@@ -353,21 +411,81 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           packagingUnitName: candidate?.packagingUnitName || null,
           basicQty: row.basicQty,
           packagingQty: row.packagingQty,
+          basicUnitPrice: row.basicUnitPrice ?? null,
+          selectedProduct: null,
         };
-      }));
-      setUploadErrors(result.files.flatMap((file) => file.errors.map((error) => `${file.fileName}: ${error.message}`)));
-      if (!rows.length) {
-        toast.error('No product rows were extracted from the selected files.');
-        return;
+    }));
+    setUploadErrors(result.files.flatMap((file) => file.errors.map((error) => `${file.fileName}: ${error.message}`)));
+    if (!rows.length) {
+      toast.error('No product rows were extracted from the selected files.');
+      return false;
+    }
+    setReviewItems(rows);
+    setFormOpen(false);
+    const failed = result.files.filter((file) => file.status !== 'Processed');
+    if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
+    return true;
+  };
+
+  const pollMatchJob = async (accepted: ProductMatchJobAccepted, signal: AbortSignal) => {
+    setMatchJob({
+      jobId: accepted.jobId,
+      status: accepted.status,
+      totalFiles: 0,
+      processedFiles: 0,
+      currentFileIndex: null,
+      currentPage: null,
+      currentFilePages: null,
+      progressPercentage: 0,
+      message: 'Your documents are queued for processing.',
+      errorMessage: null,
+      resultUrl: accepted.resultUrl || null,
+      createdAt: new Date().toISOString(),
+      startedAt: null,
+      completedAt: null,
+    });
+
+    while (!signal.aborted) {
+      await waitForPollingDelay(MATCH_JOB_POLL_INTERVAL_MS, signal);
+      const status = await productsApi.getMatchJob(accepted.jobId, signal);
+      setMatchJob(status);
+      if (!TERMINAL_MATCH_STATUSES.has(status.status)) continue;
+      if (!status.resultUrl) {
+        throw new Error(status.errorMessage || status.message || 'Document matching failed. Upload the documents again.');
       }
-      setReviewItems(rows);
-      setFormOpen(false);
-      const failed = result.files.filter((file) => file.status !== 'Processed');
-      if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
+      try {
+        return await productsApi.getMatchResult(accepted.jobId, signal);
+      } catch (error: unknown) {
+        if (responseStatus(error) === 409) continue;
+        throw error;
+      }
+    }
+    throw new DOMException('Document matching polling stopped.', 'AbortError');
+  };
+
+  const processUploadFiles = async (files: File[]) => {
+    matchAbortRef.current?.abort();
+    const controller = new AbortController();
+    matchAbortRef.current = controller;
+    setUploading(true);
+    setMatchJob(null);
+    try {
+      const accepted = await productsApi.matchFiles(files, undefined, controller.signal);
+      const result = await pollMatchJob(accepted, controller.signal);
+      applyMatchResult(result);
+      setMatchJob(null);
     } catch (err: unknown) {
+      if (isRequestCancelled(err)) return;
       const apiError = getApiError(err);
-      toast.error(apiError?.message || 'Could not process the selected documents.');
+      const status = responseStatus(err);
+      if (status === 404) {
+        toast.error('This document-matching job is no longer available. Upload the documents again.');
+      } else {
+        toast.error(apiError?.message || (err instanceof Error ? err.message : 'Could not process the selected documents.'));
+      }
+      setMatchJob(null);
     } finally {
+      if (matchAbortRef.current === controller) matchAbortRef.current = null;
       setUploading(false);
     }
   };
@@ -462,10 +580,12 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           quantityText: null,
           basicQtyText: null,
           packagingQtyText: null,
+          priceText: null,
           unitText: null,
           quantity: null,
           basicQty: null,
           packagingQty: null,
+          basicUnitPrice: null,
           ocrConfidence: null,
           matchStatus: 'Manual',
           suggestedProductId: null,
@@ -479,13 +599,24 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         packagingUnitName: null,
         basicQty: null,
         packagingQty: null,
+        basicUnitPrice: null,
+        selectedProduct: null,
       },
     ]);
   };
 
   const submitReview = async () => {
     if (!reviewItems?.length || submitting) return;
-    const invalidIndex = reviewItems.findIndex((item) => !item.productId || item.basicQty == null || item.basicQty <= 0 || (item.packagingQty ?? 0) < 0);
+    const invalidIndex = reviewItems.findIndex((item) => (
+      !item.productId
+      || item.basicQty == null
+      || item.basicQty <= 0
+      || (item.packagingQty ?? 0) < 0
+      || (item.basicUnitPrice != null && (
+        item.basicUnitPrice <= 0
+        || !hasAtMostTwoDecimalPlaces(item.basicUnitPrice)
+      ))
+    ));
     if (invalidIndex >= 0) {
       const invalid = reviewItems[invalidIndex];
       if (!invalid.productId) {
@@ -494,8 +625,10 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         showReviewValidationError(invalid, invalidIndex, 'basicQty', 'Enter the basic quantity.');
       } else if (invalid.basicQty <= 0) {
         showReviewValidationError(invalid, invalidIndex, 'basicQty', 'Basic quantity must be greater than 0.');
-      } else {
+      } else if ((invalid.packagingQty ?? 0) < 0) {
         showReviewValidationError(invalid, invalidIndex, 'packagingQty', 'Packaging quantity cannot be negative.');
+      } else {
+        showReviewValidationError(invalid, invalidIndex, 'basicUnitPrice', 'Enter a positive price with no more than two decimal places, or leave it empty.');
       }
       return;
     }
@@ -506,7 +639,12 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       return;
     }
     setReviewValidationError(null);
-    await submit(reviewItems.map((item) => ({ productId: item.productId, basicQty: item.basicQty as number, packagingQty: item.packagingQty ?? 0 })));
+    await submit(reviewItems.map((item) => ({
+      productId: item.productId,
+      basicQty: item.basicQty as number,
+      packagingQty: item.packagingQty ?? 0,
+      basicUnitPrice: item.basicUnitPrice,
+    })));
   };
 
   const submit = async (payload: StockLineItem[]) => {
@@ -533,17 +671,31 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     }
   };
 
+  const closeModal = () => {
+    matchAbortRef.current?.abort();
+    matchAbortRef.current = null;
+    setMatchJob(null);
+    setUploading(false);
+    onHide();
+  };
+
   const footer = cropFile
     ? (
       <div className="flex items-center justify-end gap-3 w-full">
-        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={uploading} />
+        <FlatButton variant="danger-outline" label="Cancel" onClick={closeModal} disabled={uploading} />
         <FlatButton variant="primary" label={uploading ? 'Preparing...' : 'Use cropped image'} icon="pi pi-check" onClick={() => void handleCropConfirm()} loading={uploading} disabled={!completedCrop || uploading} />
+      </div>
+    )
+    : matchJob
+    ? (
+      <div className="flex w-full items-center justify-end">
+        <FlatButton variant="danger-outline" label="Close" onClick={closeModal} />
       </div>
     )
     : reviewItems
     ? (
       <div className="flex items-center justify-end gap-3 w-full">
-        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
+        <FlatButton variant="danger-outline" label="Cancel" onClick={closeModal} disabled={submitting} />
         <FlatButton variant="primary" label={submitting ? 'Loading...' : 'Confirm stock'} icon="pi pi-check" onClick={submitReview} loading={submitting} disabled={submitting || reviewItems.length === 0} />
       </div>
     )
@@ -555,7 +707,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         }`}
         aria-hidden={balanceLoading}
       >
-        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
+        <FlatButton variant="danger-outline" label="Cancel" onClick={closeModal} disabled={submitting} />
         <FlatButton
           variant={isRemove ? 'danger' : 'primary'}
           label={submitting ? 'Saving...' : (isRemove ? 'Reduce Stock' : 'Add Stock')}
@@ -571,7 +723,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         className={`flex items-center justify-end gap-3 w-full transition-opacity ${formOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         aria-hidden={formOpen}
       >
-        <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
+        <FlatButton variant="danger-outline" label="Cancel" onClick={closeModal} disabled={submitting} />
         <FlatButton
           variant={isRemove ? 'danger' : 'primary'}
           label={submitting ? 'Saving...' : (isRemove ? 'Reduce Stock' : 'Add Stock')}
@@ -758,9 +910,10 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   );
 
   return (
-    <FlatModal
+    <>
+      <FlatModal
       visible={visible}
-      onHide={submitting || uploading || !!cropFile ? () => {} : onHide}
+      onHide={submitting || (uploading && !matchJob) || !!cropFile ? () => {} : closeModal}
       title={title}
       size="xl"
       footer={footer}
@@ -812,7 +965,45 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                 </div>
               )}
 
-              {reviewItems ? (
+              {!reviewItems && uploadErrors.length > 0 && (
+                <div className="rounded border border-portal-orange/30 bg-portal-orange/5 px-3 py-2 text-[11px] text-portal-orange">
+                  {uploadErrors.map((error) => <div key={error}>{error}</div>)}
+                </div>
+              )}
+
+              {matchJob ? (
+                <div className="border border-portal-border bg-portal-canvas px-4 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-portal-text">Processing uploaded documents</p>
+                      <p className="mt-1 text-[11px] text-portal-muted">{matchJob.message || 'Checking document progress...'}</p>
+                    </div>
+                    <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-portal-accent">
+                      {Math.max(0, Math.min(100, Math.round(matchJob.progressPercentage || 0)))}%
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1.5 overflow-hidden bg-portal-border" aria-hidden="true">
+                    <div
+                      className="h-full bg-portal-accent transition-[width] duration-300"
+                      style={{ width: `${Math.max(0, Math.min(100, matchJob.progressPercentage || 0))}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-portal-muted">
+                    {matchJob.totalFiles > 0 && (
+                      <span>Files: {matchJob.processedFiles} of {matchJob.totalFiles}</span>
+                    )}
+                    {matchJob.currentFileIndex != null && matchJob.totalFiles > 0 && (
+                      <span>Current file: {matchJob.currentFileIndex + 1} of {matchJob.totalFiles}</span>
+                    )}
+                    {matchJob.currentPage != null && (
+                      <span>Page: {matchJob.currentPage}{matchJob.currentFilePages ? ` of ${matchJob.currentFilePages}` : ''}</span>
+                    )}
+                  </div>
+                  <p className="mt-3 border-t border-portal-border pt-3 text-[10px] text-portal-muted">
+                    You may close this window. Processing will continue on the server, but progress updates will stop here.
+                  </p>
+                </div>
+              ) : reviewItems ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review extracted rows ({reviewItems.length})</span>
@@ -824,13 +1015,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                     </div>
                   )}
                   <div className="overflow-x-auto rounded border border-portal-border/60">
-                    <table className="w-full min-w-[770px] text-xs">
+                    <table className="w-full min-w-[830px] text-xs">
                       <thead className="bg-portal-canvas/40 text-portal-muted"><tr>
                         <th className="w-[42px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">#</th>
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Extracted Name</th>
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Matched Product</th>
-                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Basic qty</th>
-                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Pack qty</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Qty</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Price</th>
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Confidence</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Action</th>
                       </tr></thead>
@@ -862,10 +1053,58 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                               ) : '—'}
                             </td>
                             <td className="w-[260px] px-3 py-2">
-                              <FlatAsyncSelect<Product> size="sm" placeholder="Select product" value={item.productId} initialSelectedItem={item.source.candidates?.find((candidate) => candidate.productId === item.productId) as Product | undefined} endpointUrl="/products" defaultParams={{ isActive: true }} pageSize={10} searchParam="search" optionValue="id" optionLabel={(p) => p.name} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'productId' ? reviewValidationError.message : undefined} onChange={(value, product) => updateReviewItem(item.id, { productId: (value as string) || '', productName: product?.name || '', basicUnitName: product?.basicUnitName || null, packagingUnitName: product?.packagingUnitName || null })} />
+                              <FlatAsyncSelect<Product>
+                                size="sm"
+                                placeholder="Select product"
+                                value={item.productId}
+                                initialSelectedItem={item.selectedProduct || item.source.candidates?.find((candidate) => candidate.productId === item.productId) as Product | undefined}
+                                endpointUrl="/products"
+                                defaultParams={{ isActive: true }}
+                                pageSize={10}
+                                searchParam="search"
+                                optionValue="id"
+                                optionLabel={(product) => product.name}
+                                errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'productId' ? reviewValidationError.message : undefined}
+                                footerAction={!item.productId ? {
+                                  label: item.source.extractedName
+                                    ? `Create “${item.source.extractedName}”`
+                                    : 'Create new product',
+                                  icon: 'pi pi-plus',
+                                  onClick: () => setProductModalRowId(item.id),
+                                } : undefined}
+                                onChange={(value, product) => updateReviewItem(item.id, {
+                                  productId: (value as string) || '',
+                                  productName: product?.name || '',
+                                  basicUnitName: product?.basicUnitName || null,
+                                  packagingUnitName: product?.packagingUnitName || null,
+                                  selectedProduct: product || null,
+                                })}
+                              />
                             </td>
                             <td className="w-[110px] px-3 py-2"><FlatInputNumber size="sm" min={0} value={item.basicQty} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'basicQty' ? reviewValidationError.message : undefined} onChange={(value) => updateReviewItem(item.id, { basicQty: value })} /></td>
-                            <td className="w-[110px] px-3 py-2"><FlatInputNumber size="sm" min={0} value={item.packagingQty} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'packagingQty' ? reviewValidationError.message : undefined} onChange={(value) => updateReviewItem(item.id, { packagingQty: value })} /></td>
+                            <td className="w-[160px] px-3 py-2">
+                              <FlatInputNumber
+                                size="sm"
+                                min={0.01}
+                                minFractionDigits={2}
+                                maxFractionDigits={2}
+                                locale="en-GH"
+                                useGrouping
+                                placeholder="No vehicle price"
+                                value={item.basicUnitPrice}
+                                errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'basicUnitPrice' ? reviewValidationError.message : undefined}
+                                onChange={(value) => updateReviewItem(item.id, { basicUnitPrice: value })}
+                              />
+                              {item.source.priceText && item.basicUnitPrice == null && (
+                                <span
+                                  className="mt-1 block cursor-help truncate text-[10px] text-portal-orange"
+                                  title={item.source.warnings?.join('\n') || `Could not read extracted price: ${item.source.priceText}`}
+                                >
+                                  <i className="pi pi-exclamation-triangle mr-1 text-[9px]" aria-hidden="true" />
+                                  Extracted: {item.source.priceText}
+                                </span>
+                              )}
+                            </td>
                             <td className="w-[90px] px-3 py-2">
                               {(() => {
                                 const indicator = matchIndicator(item.source);
@@ -1045,6 +1284,28 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           setResetReviewPending(false);
         }}
       />
-    </FlatModal>
+      </FlatModal>
+
+      <ProductModal
+        visible={Boolean(productModalReviewItem)}
+        product={null}
+        initialName={productModalReviewItem?.source.extractedName || productModalReviewItem?.productName || ''}
+        onHide={() => setProductModalRowId(null)}
+        onSuccess={(createdProduct) => {
+          if (!productModalRowId) return;
+          updateReviewItem(productModalRowId, {
+            productId: createdProduct.id,
+            productName: createdProduct.name,
+            basicUnitName: createdProduct.basicUnitName || null,
+            packagingUnitName: createdProduct.packagingUnitName || null,
+            selectedProduct: createdProduct,
+          });
+          setReviewValidationError((current) => (
+            current?.id === productModalRowId && current.field === 'productId' ? null : current
+          ));
+          void queryClient.invalidateQueries({ queryKey: ['flat-async-select', '/products'] });
+        }}
+      />
+    </>
   );
 };

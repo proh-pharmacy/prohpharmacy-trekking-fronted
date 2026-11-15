@@ -148,6 +148,7 @@ export interface DriverInvoicePreviewResponse {
       packagingQtyDelivered: number | null;
       basicUnitPrice: number;
       packagingUnitPrice: number | null;
+      usesVehicleStockPrice?: boolean;
       lineTotal: number;
       amtPaid: number | null;
       balance: number | null;
@@ -253,7 +254,11 @@ export interface DriverLocation {
   recordedAt: string;
 }
 
-export type StopPriceOverrides = Record<string, Record<string, { basicUnitPrice: number; packagingUnitPrice: number | null }>>;
+export type StopPriceOverrides = Record<string, Record<string, {
+  basicUnitPrice: number;
+  packagingUnitPrice: number | null;
+  vehicleBasicUnitPrice?: number | null;
+}>>;
 
 export type ActionType =
   | 'RegisterCustomer'
