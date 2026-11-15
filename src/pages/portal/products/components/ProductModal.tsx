@@ -12,7 +12,8 @@ interface ProductModalProps {
   onHide: () => void;
   product: Product | null;
   units?: Unit[];
-  onSuccess?: () => void;
+  initialName?: string;
+  onSuccess?: (savedProduct: Product) => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
@@ -20,6 +21,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   onHide,
   product,
   units: propUnits = EMPTY_UNITS,
+  initialName = '',
   onSuccess,
 }) => {
   const isEditing = Boolean(product);
@@ -71,14 +73,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       setPackagingUnitPrice(product.packagingUnitPrice ?? null);
       setDescription(product.description || '');
     } else {
-      setName('');
+      setName(initialName.trim());
       setBasicUnitId('');
       setBasicUnitPrice(0);
       setPackagingUnitId('');
       setPackagingUnitPrice(null);
       setDescription('');
     }
-  }, [visible, product]);
+  }, [visible, product, initialName]);
 
   const unitOptions = useMemo(() => {
     const list = availableUnits.map((unit) => ({ label: unit.name, value: unit.id }));
@@ -119,17 +121,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         packagingUnitPrice: packagingUnitId ? packagingUnitPrice : null,
       };
 
+      let savedProduct: Product;
       if (isEditing && product) {
-        await productsApi.updateProduct(product.id, payload);
+        savedProduct = await productsApi.updateProduct(product.id, payload);
         toast.success(`Product "${name.trim()}" updated successfully.`);
       } else {
-        await productsApi.createProduct(payload);
+        savedProduct = await productsApi.createProduct(payload);
         toast.success(`Product "${name.trim()}" created successfully.`);
       }
 
       resetTableData();
+      onSuccess?.(savedProduct);
       onHide();
-      onSuccess?.();
     } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.detail || 'Failed to save product.';
       toast.error(msg);

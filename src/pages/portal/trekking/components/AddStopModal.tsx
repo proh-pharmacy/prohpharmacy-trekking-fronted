@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { FlatConfirmDialog, FlatModal } from '../../../../components/overlay';
-import { FlatButton, FlatDropdown, FlatInputNumber, FlatTextarea } from '../../../../components/flat-form';
+import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText, FlatTextarea } from '../../../../components/flat-form';
 import { FlatAsyncSelect } from '../../../../components/flat-form/FlatAsyncSelect';
 import {
   treksApi, customersApi, organisationApi, vehicleStockApi, getApiError,
@@ -69,6 +69,8 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
   const [stockNotTracked, setStockNotTracked]     = useState(false);
   const [stockCheckFailed, setStockCheckFailed]   = useState(false);
   const [productScope, setProductScope]           = useState<'vehicle' | 'all'>('vehicle');
+  const [productSearch, setProductSearch]         = useState('');
+  const [productPage, setProductPage]             = useState(1);
   const [districts, setDistricts]                 = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts]   = useState(false);
   const [saving, setSaving]                       = useState(false);
@@ -78,6 +80,24 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
     () => new Set(existingCustomerIds.filter((id) => id !== stop?.customerAccountId)),
     [existingCustomerIds, stop?.customerAccountId]
   );
+
+  const selectedProductIds = useMemo(
+    () => new Set(products.filter((row) => row.key !== editingProductKey && row.productId).map((row) => row.productId)),
+    [products, editingProductKey],
+  );
+
+  const PRODUCT_PAGE_SIZE = 25;
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((row) => row.product?.name?.toLowerCase().includes(q));
+  }, [products, productSearch]);
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCT_PAGE_SIZE));
+  const safeProductPage = Math.min(productPage, totalProductPages);
+  const pagedProducts = useMemo(() => {
+    const start = (safeProductPage - 1) * PRODUCT_PAGE_SIZE;
+    return filteredProducts.slice(start, start + PRODUCT_PAGE_SIZE);
+  }, [filteredProducts, safeProductPage]);
 
   const initialStopCustomer = useMemo(() => stop ? ({
     id: stop.customerAccountId,
@@ -104,6 +124,8 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
       setStockNotTracked(false);
       setStockCheckFailed(false);
       setProductScope('vehicle');
+      setProductSearch('');
+      setProductPage(1);
       setErrors({});
     }
   }, [visible, nextSequence, trekRegionId, stop]);
@@ -213,7 +235,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
       setProductEntryError('Select a product.');
       return;
     }
-    if (products.some((row) => row.key !== editingProductKey && row.productId === productEntry.productId)) {
+    if (selectedProductIds.has(productEntry.productId)) {
       setProductEntryError('This product is already in the list.');
       return;
     }
@@ -418,47 +440,91 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
                 No initial products. You can add products to this stop later.
               </div>
             ) : (
-              <div className="overflow-hidden rounded border border-portal-border/60">
-                <table className="w-full text-xs">
-                  <thead className="bg-portal-canvas/50 text-portal-muted">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Product</th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Quantity</th>
-                      <th className="w-[70px]" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-portal-border/40">
-                    {products.map((row) => (
-                      <tr key={row.key}>
-                        <td className="px-3 py-2">
-                          <p className="max-w-[22rem] truncate text-xs font-semibold text-white">{row.product?.name}</p>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[11px] tabular-nums text-portal-text">
-                          {row.hasPackagingUnit ? `${Number(row.plannedPackagingQuantity || 0)} ${row.product?.packagingUnitName || 'packaging'} · ` : ''}
-                          {Number(row.plannedBasicQuantity || 0)} {row.product?.basicUnitName || 'basic'}
-                        </td>
-                        <td className="whitespace-nowrap px-2 py-2 text-right">
-                          <button type="button" onClick={() => openProductEntry(row)} className="h-6 w-6 rounded text-portal-muted transition hover:bg-white/[0.08] hover:text-white" title="Edit product">
-                            <i className="pi pi-pencil text-[10px]" />
-                          </button>
-                          <button type="button" onClick={() => setPendingRemoveKey(row.key)} className="h-6 w-6 rounded text-red-400 transition hover:bg-red-500/10 hover:text-red-300" title="Remove product">
-                            <i className="pi pi-times text-[10px]" />
-                          </button>
-                        </td>
+              <div className="space-y-2">
+                {products.length > 8 && (
+                  <FlatInputText
+                    size="sm"
+                    leftIcon="pi pi-search"
+                    placeholder="Search added products..."
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setProductPage(1);
+                    }}
+                  />
+                )}
+                <div className="overflow-hidden rounded border border-portal-border/60">
+                  <table className="w-full text-xs">
+                    <thead className="bg-portal-canvas/50 text-portal-muted">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Product</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Quantity</th>
+                        <th className="w-[70px]" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-portal-border/40">
+                      {pagedProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-6 text-center text-xs text-portal-muted">
+                            No matching products.
+                          </td>
+                        </tr>
+                      ) : pagedProducts.map((row) => (
+                        <tr key={row.key}>
+                          <td className="px-3 py-2">
+                            <p className="max-w-[22rem] truncate text-xs font-semibold text-white">{row.product?.name}</p>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[11px] tabular-nums text-portal-text">
+                            {row.hasPackagingUnit ? `${Number(row.plannedPackagingQuantity || 0)} ${row.product?.packagingUnitName || 'packaging'} · ` : ''}
+                            {Number(row.plannedBasicQuantity || 0)} {row.product?.basicUnitName || 'basic'}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-right">
+                            <button type="button" onClick={() => openProductEntry(row)} className="h-6 w-6 rounded text-portal-muted transition hover:bg-white/[0.08] hover:text-white" title="Edit product">
+                              <i className="pi pi-pencil text-[10px]" />
+                            </button>
+                            <button type="button" onClick={() => setPendingRemoveKey(row.key)} className="h-6 w-6 rounded text-red-400 transition hover:bg-red-500/10 hover:text-red-300" title="Remove product">
+                              <i className="pi pi-times text-[10px]" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredProducts.length > PRODUCT_PAGE_SIZE && (
+                    <div className="flex items-center justify-between border-t border-portal-border/40 bg-portal-canvas/40 px-3 py-2 text-[11px] text-portal-muted">
+                      <span>
+                        Showing {(safeProductPage - 1) * PRODUCT_PAGE_SIZE + 1}–{Math.min(safeProductPage * PRODUCT_PAGE_SIZE, filteredProducts.length)} of {filteredProducts.length}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <FlatButton
+                          size="sm"
+                          variant="outline"
+                          label="Prev"
+                          disabled={safeProductPage <= 1}
+                          onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                        />
+                        <span className="px-1 font-mono text-portal-text">
+                          {safeProductPage} / {totalProductPages}
+                        </span>
+                        <FlatButton
+                          size="sm"
+                          variant="outline"
+                          label="Next"
+                          disabled={safeProductPage >= totalProductPages}
+                          onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {errors.products && <p className="text-[11px] text-red-400">{errors.products}</p>}
           </div>
 
+          {productFormOpen && (
           <div
-            className={`absolute inset-0 z-20 overflow-y-auto bg-portal-surface/35 px-4 py-4 backdrop-blur-sm transition-all duration-200 ${
-              productFormOpen ? 'visible opacity-100' : 'invisible pointer-events-none opacity-0'
-            }`}
-            aria-hidden={!productFormOpen}
+            className="absolute inset-0 z-20 overflow-y-auto bg-portal-surface/35 px-4 py-4 backdrop-blur-sm transition-all duration-200 visible opacity-100"
           >
             <div className="mx-auto max-w-sm space-y-3">
               <div className="mb-4 border-b border-portal-border/60 pb-3">
@@ -491,7 +557,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
                 searchParam="search"
                 optionValue="id"
                 optionLabel={(product) => `${product.name} · ${product.packagingUnitName ? `${product.packagingUnitName} / ` : ''}${product.basicUnitName || 'basic unit'}`}
-                optionDisabled={(product) => products.some((selected) => selected.key !== editingProductKey && selected.productId === product.id)}
+                optionDisabled={(product) => selectedProductIds.has(product.id)}
                 itemTemplate={(product) => (
                   <div className="min-w-0">
                     <span className="block truncate text-xs font-semibold text-white">{product.name}</span>
@@ -584,6 +650,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <FlatTextarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)}

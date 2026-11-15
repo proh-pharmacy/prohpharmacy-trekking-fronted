@@ -74,6 +74,8 @@
 .professional-print-document,
 .professional-print-document * {
   border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
 }
 
 /* ==========================================================================

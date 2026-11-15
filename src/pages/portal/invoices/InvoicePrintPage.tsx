@@ -3,11 +3,6 @@ import { useParams } from 'react-router-dom';
 import { invoicesApi, type SaleInvoice } from '../../../api-client';
 import { ProfessionalInvoiceDocument, useLetterDocumentPrint } from '../../../components/invoices';
 
-const quantityText = (item: SaleInvoice['lineItems'][number]) => [
-  Number(item.packagingQuantity ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQuantity} ${item.packagingUnitName}` : '',
-  Number(item.basicQuantity ?? 0) > 0 ? `${item.basicQuantity} ${item.basicUnitName}` : '',
-].filter(Boolean).join(' · ') || '—';
-
 export const InvoicePrintPage: React.FC = () => {
   const { invoiceNumber = '' } = useParams<{ invoiceNumber: string }>();
   const { documentRef, printDocument } = useLetterDocumentPrint();
@@ -36,7 +31,12 @@ export const InvoicePrintPage: React.FC = () => {
   const lines = invoice.lineItems.map((item, index) => ({
     key: `${item.productId}-${index}`,
     productName: item.productName,
-    quantity: quantityText(item),
+    basicQuantity: item.basicQuantity,
+    basicUnitName: item.basicUnitName,
+    basicUnitPrice: item.basicUnitPrice,
+    packagingQuantity: item.packagingQuantity,
+    packagingUnitName: item.packagingUnitName,
+    packagingUnitPrice: item.packagingUnitPrice,
     lineTotal: item.lineTotal,
   }));
 

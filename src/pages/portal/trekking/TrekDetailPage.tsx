@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { InvoicePayments } from '../../../components/invoices/InvoicePayments';
 import { useParams, useNavigate } from 'react-router-dom';
 import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type TrekStockLoad, type TrekStockCheckItem, type TrekStockWarning, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
@@ -173,11 +173,11 @@ export const TrekDetailPage: React.FC = () => {
   const loadTrek = useCallback(async (silent = false) => {
     if (!trekId) return;
     if (!silent) setLoading(true);
+    void loadStockReadiness();
     try {
       const data = await treksApi.getTrek(trekId);
       setTrek(data);
       setDeliveryRows(initDeliveryRows(data));
-      await loadStockReadiness();
     } catch {
       toast.error('Failed to load trek.');
     } finally {
@@ -196,14 +196,14 @@ export const TrekDetailPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [shareOpen]);
 
-  const updateRow = (stopProductId: string, field: keyof DeliveryRow, value: string) => {
+  const updateRow = useCallback((stopProductId: string, field: keyof DeliveryRow, value: string) => {
     setDeliveryRows((prev) => ({
       ...prev,
       [stopProductId]: { ...prev[stopProductId], [field]: value },
     }));
-  };
+  }, []);
 
-  const handleRecordProduct = async (product: TrekStopProduct): Promise<boolean> => {
+  const handleRecordProduct = useCallback(async (product: TrekStopProduct): Promise<boolean> => {
     if (!trek) return false;
     const row = deliveryRows[product.stopProductId] ?? {};
     const basic = row.basicQtyDelivered === '' ? null : parseNumericInput(row.basicQtyDelivered);
@@ -239,9 +239,9 @@ export const TrekDetailPage: React.FC = () => {
     } finally {
       setRecordingProduct(null);
     }
-  };
+  }, [trek, deliveryRows, loadTrek]);
 
-  const handleRecordReturn = async (stop: TrekStop, payload: RecordReturnPayload): Promise<boolean> => {
+  const handleRecordReturn = useCallback(async (stop: TrekStop, payload: RecordReturnPayload): Promise<boolean> => {
     if (!trek) return false;
     try {
       await treksApi.recordReturn(trek.id, stop.stopId, payload);
@@ -253,9 +253,9 @@ export const TrekDetailPage: React.FC = () => {
       toast.error(err.response?.data?.detail || 'Failed to save return.');
       return false;
     }
-  };
+  }, [trek, loadTrek]);
 
-  const handleVoidReturn = async (stop: TrekStop, item: DriverReturn): Promise<boolean> => {
+  const handleVoidReturn = useCallback(async (stop: TrekStop, item: DriverReturn): Promise<boolean> => {
     if (!trek) return false;
     try {
       await treksApi.voidReturn(trek.id, stop.stopId, item.returnId);
@@ -267,7 +267,9 @@ export const TrekDetailPage: React.FC = () => {
       toast.error(err.response?.data?.detail || 'Failed to remove return.');
       return false;
     }
-  };
+  }, [trek, loadTrek]);
+
+  const handleInvoiceChanged = useCallback(() => loadTrek(true), [loadTrek]);
 
   const handleStatusChange = async (status: TrekStatus) => {
     if (!trek) return;
@@ -432,7 +434,14 @@ export const TrekDetailPage: React.FC = () => {
   const isStructureLocked = isLocked || trek?.status === 'InProgress';
   const isDeliveryLocked = trek?.status !== 'InProgress';
   const nextStatuses = trek ? (NEXT_STATUSES[trek.status] ?? []) : [];
-  const sortedStops = trek ? [...trek.stops].sort((a, b) => b.sequence - a.sequence) : [];
+  const sortedStops = useMemo(
+    () => (trek ? [...trek.stops].sort((a, b) => b.sequence - a.sequence) : []),
+    [trek]
+  );
+  const existingCustomerIds = useMemo(
+    () => (trek ? trek.stops.map((stop) => stop.customerAccountId) : []),
+    [trek]
+  );
 
   // ── Loading ────────────────────────────────────────────────────────
   if (loading) {
@@ -648,7 +657,7 @@ export const TrekDetailPage: React.FC = () => {
                   key={stop.stopId}
                   stop={stop}
                   showInvoicePayments={trek.status !== 'Draft' && trek.status !== 'Cancelled'}
-                  onInvoiceChanged={() => loadTrek(true)}
+                  onInvoiceChanged={handleInvoiceChanged}
                   isLocked={isStructureLocked}
                   isDeliveryLocked={isDeliveryLocked}
                   deliveryRows={deliveryRows}
@@ -657,8 +666,8 @@ export const TrekDetailPage: React.FC = () => {
                   onRecordReturn={handleRecordReturn}
                   onVoidReturn={handleVoidReturn}
                   recordingProduct={recordingProduct}
-                  onEdit={() => setEditingStop(stop)}
-                  onRemove={() => setRemovingStop(stop)}
+                  onEdit={setEditingStop}
+                  onRemove={setRemovingStop}
                   canManageStops={canManageStops}
                   canRecordDelivery={canRecordDelivery}
                   canRecordReturns={canRecordReturns}
@@ -682,8 +691,8 @@ export const TrekDetailPage: React.FC = () => {
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={sortedStops.length + 1}
-        existingCustomerIds={trek.stops.map((stop) => stop.customerAccountId)}
-        onSuccess={() => loadTrek(true)}
+        existingCustomerIds={existingCustomerIds}
+        onSuccess={handleInvoiceChanged}
       />
 
       {editingStop && !isStructureLocked && <AddStopModal
@@ -694,9 +703,9 @@ export const TrekDetailPage: React.FC = () => {
         trekRegionId={trek.regionId}
         trekRegionName={trek.regionName}
         nextSequence={editingStop.sequence}
-        existingCustomerIds={trek.stops.map((stop) => stop.customerAccountId)}
+        existingCustomerIds={existingCustomerIds}
         stop={editingStop}
-        onSuccess={() => loadTrek(true)}
+        onSuccess={handleInvoiceChanged}
       />}
 
       <FlatConfirmDialog
@@ -943,6 +952,8 @@ const StockReadinessPanel: React.FC<{
 };
 
 // ── Stop card ──────────────────────────────────────────────────────────
+const COLLAPSED_PREVIEW_LIMIT = 8;
+
 interface StopCardProps {
   onInvoiceChanged: () => Promise<void>;
   stop: TrekStop;
@@ -955,8 +966,8 @@ interface StopCardProps {
   onRecordReturn: (stop: TrekStop, payload: RecordReturnPayload) => Promise<boolean>;
   onVoidReturn: (stop: TrekStop, item: DriverReturn) => Promise<boolean>;
   recordingProduct: string | null;
-  onEdit: () => void;
-  onRemove: () => void;
+  onEdit: (stop: TrekStop) => void;
+  onRemove: (stop: TrekStop) => void;
   canManageStops: boolean;
   canRecordDelivery: boolean;
   canRecordReturns: boolean;
@@ -972,7 +983,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
   );
 };
 
-const StopCard: React.FC<StopCardProps> = ({
+const StopCard: React.FC<StopCardProps> = React.memo(({
   stop, showInvoicePayments, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canRecordReturns, onInvoiceChanged,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -986,14 +997,40 @@ const StopCard: React.FC<StopCardProps> = ({
   const [returnReason, setReturnReason] = useState('');
   const [savingReturn, setSavingReturn] = useState(false);
   const [voidingReturn, setVoidingReturn] = useState<DriverReturn | null>(null);
-  const isRecorded = stop.products.length > 0 && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null);
+  const isRecorded = useMemo(
+    () => stop.products.length > 0 && stop.products.every((p) => p.basicQtyDelivered != null || p.packagingQtyDelivered != null),
+    [stop.products]
+  );
   const landmark = stop.primaryLocationLandmark?.trim() || null;
   const street = stop.primaryLocationStreet?.trim() || null;
-  const selectedReturnProduct = stop.products.find((product) => product.productId === returnProductId);
-  const productRows: ProductTableRow[] = stop.products.map((product) => ({
-    ...product,
-    displayRow: deliveryRows[product.stopProductId] ?? {},
-  }));
+  const selectedReturnProduct = useMemo(
+    () => (returnModalOpen && returnProductId ? stop.products.find((product) => product.productId === returnProductId) : undefined),
+    [returnModalOpen, returnProductId, stop.products]
+  );
+  const returnProductOptions = useMemo(
+    () => (returnModalOpen ? stop.products.map((product) => ({ label: product.productName, value: product.productId })) : []),
+    [returnModalOpen, stop.products]
+  );
+  const productRows = useMemo<ProductTableRow[]>(
+    () => (expanded && activeStopTab === 'products'
+      ? stop.products.map((product) => ({
+          ...product,
+          displayRow: deliveryRows[product.stopProductId] ?? {},
+        }))
+      : []),
+    [expanded, activeStopTab, stop.products, deliveryRows]
+  );
+  const sortedReturns = useMemo(
+    () => (expanded && activeStopTab === 'returns'
+      ? [...(stop.returns ?? [])].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+      : []),
+    [expanded, activeStopTab, stop.returns]
+  );
+  const collapsedPreviewProducts = useMemo(
+    () => (!expanded ? stop.products.slice(0, COLLAPSED_PREVIEW_LIMIT) : []),
+    [expanded, stop.products]
+  );
+  const hiddenPreviewCount = Math.max(0, stop.products.length - COLLAPSED_PREVIEW_LIMIT);
   const returnTotal = selectedReturnProduct
     ? parseNumericInput(returnBasicQty) * Number(selectedReturnProduct.basicUnitPrice || 0)
     + parseNumericInput(returnPackagingQty) * Number(selectedReturnProduct.packagingUnitPrice || 0)
@@ -1025,12 +1062,12 @@ const StopCard: React.FC<StopCardProps> = ({
         </button>
         {!isLocked && canManageStops && (
           <div className="flex items-center gap-1 shrink-0">
-            <button type="button" onClick={onEdit}
+            <button type="button" onClick={() => onEdit(stop)}
               className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
               title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
               <i className="pi pi-pencil text-xs" />
             </button>
-            {!stop.invoiceId && <button type="button" onClick={onRemove}
+            {!stop.invoiceId && <button type="button" onClick={() => onRemove(stop)}
               className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
               title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
               <i className="pi pi-trash text-xs" />
@@ -1040,108 +1077,116 @@ const StopCard: React.FC<StopCardProps> = ({
       </div>
 
       {showInvoicePayments && <InvoicePayments summary={stop} customerName={stop.customerName} onChanged={onInvoiceChanged} />}
-      {stop.products.length > 0 && (
-        <div
-          aria-hidden={expanded}
-          className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div className="ml-8 mt-3 divide-y divide-portal-border/30 sm:ml-10">
-              {stop.products.map((product) => {
-                const quantities = [
-                  product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0
-                    ? `${product.plannedPackagingQuantity} ${product.packagingUnitName}` : null,
-                  Number(product.plannedBasicQuantity || 0) > 0
-                    ? `${product.plannedBasicQuantity} ${product.basicUnitName || 'basic units'}` : null,
-                ].filter(Boolean).join(' · ');
-                return (
-                  <button
-                    key={product.stopProductId}
-                    type="button"
-                    disabled={expanded}
-                    onClick={() => { setActiveStopTab('products'); setExpanded(true); }}
-                    aria-label={`View ${product.productName} in ${stop.customerName} products`}
-                    className="group flex w-full cursor-pointer flex-wrap gap-x-1.5 py-1.5 text-left text-[11px] first:pt-0 last:pb-0"
-                  >
-                    <span className="text-portal-text transition-colors group-hover:text-portal-accent">{product.productName}</span>
-                    {quantities && <span className="text-portal-muted">· {quantities}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {!expanded && collapsedPreviewProducts.length > 0 && (
+        <div className="ml-8 mt-3 divide-y divide-portal-border/30 sm:ml-10">
+          {collapsedPreviewProducts.map((product) => {
+            const quantities = [
+              product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0
+                ? `${product.plannedPackagingQuantity} ${product.packagingUnitName}` : null,
+              Number(product.plannedBasicQuantity || 0) > 0
+                ? `${product.plannedBasicQuantity} ${product.basicUnitName || 'basic units'}` : null,
+            ].filter(Boolean).join(' · ');
+            return (
+              <button
+                key={product.stopProductId}
+                type="button"
+                onClick={() => { setActiveStopTab('products'); setExpanded(true); }}
+                aria-label={`View ${product.productName} in ${stop.customerName} products`}
+                className="group flex w-full cursor-pointer flex-wrap gap-x-1.5 py-1.5 text-left text-[11px] first:pt-0 last:pb-0"
+              >
+                <span className="text-portal-text transition-colors group-hover:text-portal-accent">{product.productName}</span>
+                {quantities && <span className="text-portal-muted">· {quantities}</span>}
+              </button>
+            );
+          })}
+          {hiddenPreviewCount > 0 && (
+            <button
+              type="button"
+              onClick={() => { setActiveStopTab('products'); setExpanded(true); }}
+              className="w-full cursor-pointer py-1.5 text-left text-[11px] font-medium text-portal-accent hover:text-portal-accent-hover"
+            >
+              + {hiddenPreviewCount} more {hiddenPreviewCount === 1 ? 'product' : 'products'}…
+            </button>
+          )}
         </div>
       )}
 
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="min-h-0 overflow-hidden">
-          <div className="mt-4 space-y-4">
-            <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
-              <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products</button>
-              <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
-              <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
-            </div>
-            {/* Info grid */}
-            {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
-              <div>
-                <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
-                <InfoRow label="Region" value={stop.regionName} />
-                <InfoRow label="District" value={stop.districtName} />
-                <InfoRow label="Landmark" value={landmark} />
-                <InfoRow label="Street" value={street} />
+          {expanded && (
+            <div className="mt-4 space-y-4">
+              <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
+                <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products{stop.products.length ? ` (${stop.products.length})` : ''}</button>
+                <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
+                <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Contact</p>
-                <InfoRow label="Customer Phone" value={stop.customerPhone} mono />
-                <InfoRow label="Primary Contact" value={stop.primaryContactName} />
-                <InfoRow label="Contact Phone" value={stop.primaryContactPhone} mono />
-                {stop.notes && <InfoRow label="Notes" value={stop.notes} />}
-              </div>
-            </div>}
-
-            {activeStopTab === 'returns' && (
-              <div className="ml-0 sm:ml-10">
-                <div className="mb-3 flex justify-end">
-                  {canRecordReturns && <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>}
+              {/* Info grid */}
+              {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">
+                <div>
+                  <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Location</p>
+                  <InfoRow label="Region" value={stop.regionName} />
+                  <InfoRow label="District" value={stop.districtName} />
+                  <InfoRow label="Landmark" value={landmark} />
+                  <InfoRow label="Street" value={street} />
                 </div>
-                <FlatDataTable
-                  data={[...(stop.returns ?? [])].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())}
-                  enablePaginator={false}
-                  enableTableFilter={false}
-                  emptyDataText="No returns recorded for this stop."
-                  columns={[
-                    { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
-                    { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.invoiceNumber || '—'}</span> },
-                    { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
-                    { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
-                    { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
-                    { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
-                    { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
-                    ...(canRecordReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> }] : []),
-                  ]}
-                />
-              </div>
-            )}
+                <div>
+                  <p className="text-[10px] font-bold text-portal-muted uppercase tracking-wider pb-1 pt-1 mb-0.5">Contact</p>
+                  <InfoRow label="Customer Phone" value={stop.customerPhone} mono />
+                  <InfoRow label="Primary Contact" value={stop.primaryContactName} />
+                  <InfoRow label="Contact Phone" value={stop.primaryContactPhone} mono />
+                  {stop.notes && <InfoRow label="Notes" value={stop.notes} />}
+                </div>
+              </div>}
 
-            {/* Products table */}
-            {activeStopTab === 'products' && stop.products.length > 0 && (
-              <div className="ml-0 sm:ml-10">
-                <FlatDataTable
-                  data={productRows}
-                  enablePaginator={false}
-                  enableTableFilter={false}
-                  emptyDataText="No products recorded for this stop."
-                  columns={[
-                    { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
-                    { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
-                    { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
-                    { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
-                    ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> }] : []),
-                  ]}
-                />
-              </div>
-            )}
-          </div>
+              {activeStopTab === 'returns' && (
+                <div className="ml-0 sm:ml-10">
+                  <div className="mb-3 flex justify-end">
+                    {canRecordReturns && <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>}
+                  </div>
+                  <FlatDataTable
+                    data={sortedReturns}
+                    enablePaginator={sortedReturns.length > 25}
+                    initialPageSize={25}
+                    enableTableFilter={sortedReturns.length > 4}
+                    filterablePlaceholder="Search returns..."
+                    emptyDataText="No returns recorded for this stop."
+                    columns={[
+                      { field: 'productName', header: 'Product', body: (item) => <span className="text-xs text-portal-text">{item.productName}</span> },
+                      { field: 'invoiceNumber', header: 'Invoice', body: (item) => <span className="font-mono text-xs text-portal-muted">{item.invoiceNumber || '—'}</span> },
+                      { field: 'quantities', header: 'Returned', body: (item) => <span className="text-xs text-portal-text">{item.packagingQtyReturned ? `${item.packagingQtyReturned} ${item.packagingUnitName} · ` : ''}{item.basicQtyReturned} {item.basicUnitName}</span> },
+                      { field: 'refundAmount', header: 'Refund', body: (item) => <span className="text-xs text-portal-text">{fmtGhs(item.refundAmount)}</span> },
+                      { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
+                      { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
+                      { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
+                      ...(canRecordReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> }] : []),
+                    ]}
+                  />
+                </div>
+              )}
+
+              {/* Products table */}
+              {activeStopTab === 'products' && stop.products.length > 0 && (
+                <div className="ml-0 sm:ml-10">
+                  <FlatDataTable
+                    dataKey="stopProductId"
+                    data={productRows}
+                    enablePaginator={productRows.length > 25}
+                    initialPageSize={25}
+                    enableTableFilter={productRows.length > 10}
+                    filterablePlaceholder="Search products..."
+                    emptyDataText="No products recorded for this stop."
+                    columns={[
+                      { field: 'productName', header: 'Product', body: (product) => <><span className="block text-xs font-medium text-portal-text">{product.productName}</span><span className="mt-1.5 block text-[11px] font-normal text-portal-muted">{fmtGhs(Number(product.basicUnitPrice))} / {product.basicUnitName || 'basic unit'}{product.packagingUnitName && product.packagingUnitPrice != null ? ` · ${fmtGhs(Number(product.packagingUnitPrice))} / ${product.packagingUnitName}` : ''}</span></> },
+                      { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
+                      { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
+                      { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
+                      ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> }] : []),
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1201,7 +1246,7 @@ const StopCard: React.FC<StopCardProps> = ({
         }}>Save return</FlatButton></div>}
       >
         <div className="space-y-3">
-          <FlatDropdown id={`${stop.stopId}-return-product`} label="Product" options={stop.products.map((product) => ({ label: product.productName, value: product.productId }))} value={returnProductId} onChange={(value) => { setReturnProductId(value ?? ''); setReturnBasicQty(''); setReturnPackagingQty(''); }} size="sm" />
+          <FlatDropdown id={`${stop.stopId}-return-product`} label="Product" options={returnProductOptions} value={returnProductId} onChange={(value) => { setReturnProductId(value ?? ''); setReturnBasicQty(''); setReturnPackagingQty(''); }} filter size="sm" />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FlatInputNumber id={`${stop.stopId}-return-basic`} label={`${selectedReturnProduct?.basicUnitName || 'Basic'} quantity`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(returnBasicQty)} onChange={(value) => setReturnBasicQty(numberRowValue(value))} onInput={(event) => setReturnBasicQty((event.target as HTMLInputElement).value)} />
             {selectedReturnProduct?.packagingUnitName && <FlatInputNumber id={`${stop.stopId}-return-packaging`} label={`${selectedReturnProduct.packagingUnitName} quantity`} min={0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(returnPackagingQty)} onChange={(value) => setReturnPackagingQty(numberRowValue(value))} onInput={(event) => setReturnPackagingQty((event.target as HTMLInputElement).value)} />}
@@ -1224,6 +1269,6 @@ const StopCard: React.FC<StopCardProps> = ({
 
     </div>
   );
-};
+});
 
 export default TrekDetailPage;

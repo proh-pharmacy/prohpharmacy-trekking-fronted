@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
-import { FlatButton, FlatDatePicker, FlatDropdown } from '../../../components/flat-form';
+import { FlatButton, FlatDatePicker, FlatDropdown, FlatInputNumber } from '../../../components/flat-form';
 import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
 import {
@@ -138,7 +138,7 @@ export const CustomerDetailPage: React.FC = () => {
   const [addVisible, setAddVisible] = useState(false);
   const [addType, setAddType] = useState<LedgerEntryType>('Debit');
   const [addPaymentMethod, setAddPaymentMethod] = useState('');
-  const [addAmount, setAddAmount] = useState('');
+  const [addAmount, setAddAmount] = useState<number | null>(null);
   const [addDescription, setAddDescription] = useState('');
   const [addRecordedAt, setAddRecordedAt] = useState('');
   const [adding, setAdding] = useState(false);
@@ -298,14 +298,13 @@ export const CustomerDetailPage: React.FC = () => {
   // ── Add entry submit ───────────────────────────────────────────────
   const handleAddEntry = async () => {
     if (!customerId) return;
-    const amt = parseFloat(addAmount);
     if (!addType) { toast.error('Entry type is required.'); return; }
-    if (!addAmount || isNaN(amt) || amt <= 0) { toast.error('A positive amount is required.'); return; }
+    if (addAmount == null || !Number.isFinite(addAmount) || addAmount <= 0) { toast.error('A positive amount is required.'); return; }
     if (!addDescription.trim()) { toast.error('Description is required.'); return; }
 
     const payload: AddLedgerEntryPayload = {
       entryType: addType,
-      amount: amt,
+      amount: addAmount,
       description: addDescription.trim(),
       ...(addType === 'Credit' && addPaymentMethod ? { paymentMethod: addPaymentMethod } : {}),
       ...(addRecordedAt ? { recordedAt: addRecordedAt } : {}),
@@ -326,7 +325,7 @@ export const CustomerDetailPage: React.FC = () => {
   };
 
   const resetAddModal = () => {
-    setAddAmount('');
+    setAddAmount(null);
     setAddPaymentMethod('');
     setAddDescription('');
     setAddRecordedAt('');
@@ -625,20 +624,16 @@ export const CustomerDetailPage: React.FC = () => {
             </div>
           )}
 
-          <div>
-            <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">
-              Amount (GHS)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={addAmount}
-              onChange={(e) => setAddAmount(e.target.value)}
-              placeholder="0.00"
-              className="bg-portal-canvas border border-portal-border text-white text-xs h-[38px] px-3 w-full focus:outline-none focus:border-portal-accent"
-            />
-          </div>
+          <FlatInputNumber
+            label="Amount (GHS)"
+            min={0.01}
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            value={addAmount}
+            onChange={setAddAmount}
+            placeholder="0.00"
+            size="sm"
+          />
 
           <div>
             <label className="block text-[11px] font-medium text-portal-muted uppercase tracking-wide mb-1.5">

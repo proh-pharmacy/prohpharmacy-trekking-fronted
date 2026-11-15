@@ -12,6 +12,7 @@ export interface TrekStopProduct {
   packagingUnitName: string | null;
   basicUnitPrice: number;
   packagingUnitPrice: number | null;
+  usesVehicleStockPrice?: boolean;
   amountDue?: number | null;
   plannedBasicQuantity: number;
   plannedPackagingQuantity: number | null;
@@ -212,6 +213,7 @@ export interface DriverStopProduct {
   packagingUnitName: string | null;
   basicUnitPrice: number;
   packagingUnitPrice: number | null;
+  usesVehicleStockPrice?: boolean;
   amountDue?: number | null;
   plannedBasicQuantity: number;
   plannedPackagingQuantity: number | null;

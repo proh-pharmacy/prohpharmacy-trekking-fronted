@@ -44,6 +44,7 @@ export interface SaleInvoiceLineItem {
   packagingQtyDelivered: number | null;
   basicUnitPrice: number;
   packagingUnitPrice: number | null;
+  usesVehicleStockPrice?: boolean;
   lineTotal: number;
   amtPaid: number | null;
   balance: number | null;

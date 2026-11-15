@@ -95,13 +95,15 @@ export const InvoicePreviewPage: React.FC = () => {
   }
 
   const issuedAt = invoice.stop.invoice?.issuedAt || invoice.stop.products[0]?.deliveredAt;
-  const lines = invoice.stop.products.map((item) => ({
-    key: item.productId,
+  const lines = invoice.stop.products.map((item, index) => ({
+    key: item.stopProductId || String(index),
     productName: item.productName,
-    quantity: [
-      Number(item.packagingQuantity ?? 0) > 0 && item.packagingUnitName ? `${item.packagingQuantity} ${item.packagingUnitName}` : '',
-      Number(item.basicQuantity ?? 0) > 0 ? `${item.basicQuantity} ${item.basicUnitName}` : '',
-    ].filter(Boolean).join(' · ') || '—',
+    basicQuantity: item.basicQuantity,
+    basicUnitName: item.basicUnitName,
+    basicUnitPrice: item.basicUnitPrice,
+    packagingQuantity: item.packagingQuantity,
+    packagingUnitName: item.packagingUnitName,
+    packagingUnitPrice: item.packagingUnitPrice,
     lineTotal: item.lineTotal,
   }));
 

@@ -1,5 +1,5 @@
 import type { CustomerPhotos } from '../../../api-client/customerDocuments';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { DriverTrek } from '../../../api-client/treks';
 import type { Product } from '../../../api-client/products';
@@ -97,30 +97,42 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
     setProductScope('vehicle');
     setKind(requestedKind);
   }, [requestedKind, requestedTrekId, requestedStopId, requestedStopClientId, requestedSequence, requestedNonce, fixedTrekId, trek.trekId]);
-  const pendingCustomers = queue
-    .filter((action) => action.type === 'RegisterCustomer' && action.status === 'pending')
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-  const pendingStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status !== 'conflict');
-  const customerChoices = [
-    ...pendingCustomers.map((action) => ({ label: `${action.payload.businessName} · saved on device`, value: `client:${action.clientId}` })),
-    ...[...customers]
-      .sort((a, b) => String(b.createdAt || b.recordedAt || '').localeCompare(String(a.createdAt || a.recordedAt || '')))
-      .map((customer) => ({ label: `${customer.businessName} · ${customer.primaryPhoneNumber}`, value: `id:${customer.id}` })),
-  ];
-  const stopChoices = [
-    ...(!trek.isLocked ? trek.stops : []).map((stop) => ({ label: `${stop.sequence}. ${stop.customerName}`, value: `id:${stop.stopId}` })),
-    ...pendingStops.filter((action) => !fixedTrekId || action.payload.trekId === fixedTrekId).map((action) => ({ label: `Additional stop ${action.payload.sequence} · saved on device`, value: `client:${action.clientId}` })),
-  ];
-  const selectedProduct = products.find((product) => product.id === values.productId);
-  const visibleProducts = products.filter((product) =>
-    product.isActive !== false && (productScope === 'all' || product.inVehicleCatalogue !== false));
-  const productChoices = visibleProducts.map((product) => ({
-    label: product.name,
-    value: product.id,
-    inVehicleCatalogue: product.inVehicleCatalogue !== false,
-    basicUnitName: product.basicUnitName,
-    packagingUnitName: product.packagingUnitName,
-  }));
+  const customerChoices = useMemo(() => {
+    if (kind !== 'stop') return [];
+    const pendingCustomers = queue
+      .filter((action) => action.type === 'RegisterCustomer' && action.status === 'pending')
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    return [
+      ...pendingCustomers.map((action) => ({ label: `${action.payload.businessName} · saved on device`, value: `client:${action.clientId}` })),
+      ...[...customers]
+        .sort((a, b) => String(b.createdAt || b.recordedAt || '').localeCompare(String(a.createdAt || a.recordedAt || '')))
+        .map((customer) => ({ label: `${customer.businessName} · ${customer.primaryPhoneNumber}`, value: `id:${customer.id}` })),
+    ];
+  }, [kind, queue, customers]);
+  const stopChoices = useMemo(() => {
+    if (modalOnly && kind !== 'sale') return [];
+    const pendingStops = queue.filter((action) => action.type === 'AddWalkInStop' && action.status !== 'conflict');
+    return [
+      ...(!trek.isLocked ? trek.stops : []).map((stop) => ({ label: `${stop.sequence}. ${stop.customerName}`, value: `id:${stop.stopId}` })),
+      ...pendingStops.filter((action) => !fixedTrekId || action.payload.trekId === fixedTrekId).map((action) => ({ label: `Additional stop ${action.payload.sequence} · saved on device`, value: `client:${action.clientId}` })),
+    ];
+  }, [modalOnly, kind, queue, trek.isLocked, trek.stops, fixedTrekId]);
+  const selectedProduct = useMemo(
+    () => (kind === 'sale' && values.productId ? products.find((product) => product.id === values.productId) : undefined),
+    [kind, values.productId, products]
+  );
+  const productChoices = useMemo(() => {
+    if (kind !== 'sale') return [];
+    return products
+      .filter((product) => product.isActive !== false && (productScope === 'all' || product.inVehicleCatalogue !== false))
+      .map((product) => ({
+        label: product.name,
+        value: product.id,
+        inVehicleCatalogue: product.inVehicleCatalogue !== false,
+        basicUnitName: product.basicUnitName,
+        packagingUnitName: product.packagingUnitName,
+      }));
+  }, [kind, products, productScope]);
   // Resolve the stop-specific price if the customer has a custom markup rule; fall back to region price
   const rawStopId = values.stopId ?? '';
   const resolvedStopId = rawStopId.startsWith('id:') ? rawStopId.slice(3) : null;

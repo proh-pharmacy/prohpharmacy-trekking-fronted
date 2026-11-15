@@ -57,6 +57,12 @@ export interface FlatAsyncSelectProps<T = any> {
     options: { label: string; value: string; disabled?: boolean }[];
     onChange: (value: string) => void;
   };
+  footerAction?: {
+    label: string;
+    icon?: string;
+    onClick: (searchTerm: string) => void;
+    disabled?: boolean;
+  };
 }
 
 interface PageResult<T> {
@@ -95,6 +101,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   size = 'sm',
   variant = 'dark',
   filter,
+  footerAction,
 }: FlatAsyncSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -563,6 +570,26 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                 </div>
               )}
             </div>
+
+            {footerAction && (
+              <div className="shrink-0 border-t border-portal-border bg-portal-surface p-1.5">
+                <button
+                  type="button"
+                  disabled={footerAction.disabled}
+                  title={footerAction.label}
+                  onClick={() => {
+                    if (footerAction.disabled) return;
+                    setIsOpen(false);
+                    setIsFilterOpen(false);
+                    footerAction.onClick(searchTerm.trim());
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold text-portal-accent transition-colors hover:bg-portal-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <i className={`${footerAction.icon || 'pi pi-plus'} shrink-0 text-[11px]`} aria-hidden="true" />
+                  <span className="truncate">{footerAction.label}</span>
+                </button>
+              </div>
+            )}
           </div>,
           document.body
         )}

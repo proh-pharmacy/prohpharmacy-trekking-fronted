@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 import { invoicesApi, type CollectionMethod, type InvoicePaymentRequest, type PaymentReceipt, type SaleInvoice, type StopInvoiceSummary } from '../../api-client/invoices';
-import { FlatButton, FlatDropdown, FlatInputText } from '../flat-form';
+import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../flat-form';
 import { FlatModal } from '../overlay';
 import { resetTableData } from '../data-table';
 import { fmtGhs } from '../../lib/utils';
@@ -311,18 +311,17 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                     </div>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <FlatInputText
+                    <FlatInputNumber
                       label="Amount collected (GHS)"
                       size="sm"
-                      type="number"
-                      inputMode="decimal"
-                      min="0.01"
-                      step="0.01"
+                      min={0.01}
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
                       max={pending ? undefined : balance}
-                      value={amount == null ? '' : String(amount)}
-                      onChange={event => setAmount(event.target.value === '' ? null : Number(event.target.value))}
+                      value={amount}
+                      onChange={setAmount}
                       disabled={busy || !!pending}
-                      className="!bg-portal-surface focus:!bg-portal-surface"
+                      inputClassName="!bg-portal-surface focus:!bg-portal-surface"
                     />
                     <FlatDropdown
                       label="Payment method"
@@ -481,7 +480,12 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                   lines={invoice.lineItems.map((line, index) => ({
                     key: line.stopProductId || String(index),
                     productName: line.productName,
-                    quantity: `${line.basicQuantity} ${line.basicUnitName}${line.packagingUnitName ? ` · ${line.packagingQuantity ?? 0} ${line.packagingUnitName}` : ''}`,
+                    basicQuantity: line.basicQuantity,
+                    basicUnitName: line.basicUnitName,
+                    basicUnitPrice: line.basicUnitPrice,
+                    packagingQuantity: line.packagingQuantity,
+                    packagingUnitName: line.packagingUnitName,
+                    packagingUnitPrice: line.packagingUnitPrice,
                     lineTotal: line.lineTotal,
                   }))}
                   totalAmount={invoice.totalAmount}

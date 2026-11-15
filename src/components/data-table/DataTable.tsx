@@ -945,131 +945,133 @@ export function FlatDataTable<TData extends Record<string, any>>({
 
       {/* 5. Flat DataTable View */}
       <div className="border border-portal-border/60 bg-portal-surface rounded overflow-hidden shadow-none">
-        {/* Desktop View */}
-        <div className={cn(isMobile ? 'hidden' : 'block')}>
-          <PrimeDataTable
-            dataKey={dataKey}
-            expandedRows={isMobile ? undefined : expandedRowKeys}
-            rowExpansionTemplate={rowExpansionTemplate}
-            value={tableDataList}
-            loading={isBusy}
-            responsiveLayout="scroll"
-            className="p-datatable-sm w-full"
-            emptyMessage={
-              <div className="py-16 flex flex-col items-center justify-center text-portal-muted">
+        {!isMobile ? (
+          /* Desktop View */
+          <div className="block">
+            <PrimeDataTable
+              dataKey={dataKey}
+              expandedRows={expandedRowKeys}
+              rowExpansionTemplate={rowExpansionTemplate}
+              value={tableDataList}
+              loading={isBusy}
+              responsiveLayout="scroll"
+              className="p-datatable-sm w-full"
+              emptyMessage={
+                <div className="py-16 flex flex-col items-center justify-center text-portal-muted">
+                  <Package className="w-12 h-12 mb-3 stroke-[1.5] text-portal-border" />
+                  <p className="font-semibold text-portal-heading text-sm">{emptyDataText}</p>
+                  {dataSourceUrl && (
+                    <button
+                      type="button"
+                      onClick={() => refetch()}
+                      className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer transition"
+                    >
+                      Reload
+                    </button>
+                  )}
+                </div>
+              }
+              pt={{
+                thead: { className: 'bg-table-header border-b border-portal-border' },
+                headerRow: { className: 'border-none' },
+                column: {
+                  headerCell: {
+                    className:
+                      'bg-table-header text-table-header-text text-[10px] font-bold uppercase tracking-wider py-2.5 px-2.5 border-b border-portal-border whitespace-nowrap text-left rounded-none',
+                  },
+                  bodyCell: {
+                    className:
+                      'py-2.5 px-2.5 text-xs text-portal-text border-b border-portal-border/40 font-medium rounded-none',
+                  },
+                },
+              }}
+            >
+              {columns.map((col) => (
+                <Column
+                  key={col.field}
+                  field={col.field}
+                  header={
+                    <div className={cn(
+                      'flex items-center gap-2',
+                      col.headerStyle?.textAlign === 'right' && 'w-full justify-end',
+                      col.headerStyle?.textAlign === 'center' && 'w-full justify-center',
+                    )} style={{
+                      width: col.headerStyle?.textAlign ? '100%' : undefined,
+                      justifyContent: col.headerStyle?.textAlign === 'right'
+                        ? 'flex-end'
+                        : col.headerStyle?.textAlign === 'center'
+                          ? 'center'
+                          : undefined,
+                    }}>
+                      <span className="text-table-header-text font-medium">{col.header}</span>
+                      {sortableColumns?.find((s) => s.key === col.field) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const conf = sortableColumns.find((s) => s.key === col.field);
+                            if (!conf) return;
+                            const currentVal = filters[conf.accessor];
+                            const nextVal = currentVal === 'asc' ? 'desc' : 'asc';
+                            handleFilterChange(conf.accessor, nextVal);
+                          }}
+                          className="text-table-header-text/70 hover:text-portal-accent cursor-pointer transition"
+                          title="Sort"
+                        >
+                          <ArrowUpDown className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  }
+                  body={col.body}
+                  style={col.style}
+                  headerStyle={col.headerStyle}
+                  className={col.className}
+                />
+              ))}
+            </PrimeDataTable>
+          </div>
+        ) : (
+          /* Mobile View: Flat Stacked Cards */
+          <div className="block">
+            {tableDataList.length === 0 ? (
+              <div className="py-16 flex flex-col items-center justify-center text-portal-muted p-4">
                 <Package className="w-12 h-12 mb-3 stroke-[1.5] text-portal-border" />
                 <p className="font-semibold text-portal-heading text-sm">{emptyDataText}</p>
                 {dataSourceUrl && (
                   <button
                     type="button"
                     onClick={() => refetch()}
-                    className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer transition"
+                    className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer"
                   >
                     Reload
                   </button>
                 )}
               </div>
-            }
-            pt={{
-              thead: { className: 'bg-table-header border-b border-portal-border' },
-              headerRow: { className: 'border-none' },
-              column: {
-                headerCell: {
-                  className:
-                    'bg-table-header text-table-header-text text-[10px] font-bold uppercase tracking-wider py-2.5 px-2.5 border-b border-portal-border whitespace-nowrap text-left rounded-none',
-                },
-                bodyCell: {
-                  className:
-                    'py-2.5 px-2.5 text-xs text-portal-text border-b border-portal-border/40 font-medium rounded-none',
-                },
-              },
-            }}
-          >
-            {columns.map((col) => (
-              <Column
-                key={col.field}
-                field={col.field}
-                header={
-                  <div className={cn(
-                    'flex items-center gap-2',
-                    col.headerStyle?.textAlign === 'right' && 'w-full justify-end',
-                    col.headerStyle?.textAlign === 'center' && 'w-full justify-center',
-                  )} style={{
-                    width: col.headerStyle?.textAlign ? '100%' : undefined,
-                    justifyContent: col.headerStyle?.textAlign === 'right'
-                      ? 'flex-end'
-                      : col.headerStyle?.textAlign === 'center'
-                        ? 'center'
-                        : undefined,
-                  }}>
-                    <span className="text-table-header-text font-medium">{col.header}</span>
-                    {sortableColumns?.find((s) => s.key === col.field) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const conf = sortableColumns.find((s) => s.key === col.field);
-                          if (!conf) return;
-                          const currentVal = filters[conf.accessor];
-                          const nextVal = currentVal === 'asc' ? 'desc' : 'asc';
-                          handleFilterChange(conf.accessor, nextVal);
-                        }}
-                        className="text-table-header-text/70 hover:text-portal-accent cursor-pointer transition"
-                        title="Sort"
+            ) : (
+              <div className="flat-data-table-mobile-list divide-y divide-portal-border/40">
+                {tableDataList.map((item, rowIdx) => (
+                  <div
+                    key={dataKey ? item[dataKey] : rowIdx}
+                    className="flat-data-table-mobile-row p-3 space-y-3"
+                  >
+                    {columns.map((col) => (
+                      <div
+                        key={col.field}
+                        className={cn('grid grid-cols-3 gap-2', col.field === 'actions' ? 'items-center' : 'items-baseline')}
                       >
-                        <ArrowUpDown className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                }
-                body={col.body}
-                style={col.style}
-                headerStyle={col.headerStyle}
-                className={col.className}
-              />
-            ))}
-          </PrimeDataTable>
-        </div>
-
-        {/* Mobile View: Flat Stacked Cards */}
-        <div className={cn(isMobile ? 'block' : 'hidden')}>
-          {tableDataList.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center text-portal-muted p-4">
-              <Package className="w-12 h-12 mb-3 stroke-[1.5] text-portal-border" />
-              <p className="font-semibold text-portal-heading text-sm">{emptyDataText}</p>
-              {dataSourceUrl && (
-                <button
-                  type="button"
-                  onClick={() => refetch()}
-                  className="mt-3 px-3 py-1.5 border border-portal-border text-portal-heading hover:bg-portal-hover text-xs font-bold uppercase tracking-wider rounded cursor-pointer"
-                >
-                  Reload
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flat-data-table-mobile-list divide-y divide-portal-border/40">
-              {tableDataList.map((item, rowIdx) => (
-                <div
-                  key={dataKey ? item[dataKey] : rowIdx}
-                  className="flat-data-table-mobile-row p-3 space-y-3"
-                >
-                  {columns.map((col) => (
-                    <div
-                      key={col.field}
-                      className={cn('grid grid-cols-3 gap-2', col.field === 'actions' ? 'items-center' : 'items-baseline')}
-                    >
-                      <span className="text-xs font-semibold text-portal-muted uppercase tracking-wide">{col.header}</span>
-                      <div className={cn('flat-data-table-mobile-value col-span-2 text-[13px] text-portal-text break-words font-medium leading-snug', col.field === 'actions' && 'flat-data-table-mobile-actions')}>
-                        {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
+                        <span className="text-xs font-semibold text-portal-muted uppercase tracking-wide">{col.header}</span>
+                        <div className={cn('flat-data-table-mobile-value col-span-2 text-[13px] text-portal-text break-words font-medium leading-snug', col.field === 'actions' && 'flat-data-table-mobile-actions')}>
+                          {col.body ? col.body(item, { rowIndex: rowIdx }) : item[col.field]}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {isMobile && dataKey && expandedRowKeys?.[String(item[dataKey])] && rowExpansionTemplate?.(item)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                    ))}
+                    {dataKey && expandedRowKeys?.[String(item[dataKey])] && rowExpansionTemplate?.(item)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 6. Flat Pagination Bar */}
         {enablePaginator && totalCount > 0 && (

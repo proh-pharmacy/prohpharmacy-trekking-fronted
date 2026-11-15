@@ -34,6 +34,8 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
   onInput,
   onKeyUp,
   onKeyDown,
+  locale = 'en-GH',
+  useGrouping = true,
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
@@ -76,6 +78,8 @@ export const FlatInputNumber: React.FC<FlatInputNumberProps> = ({
         inputId={inputId}
         inputRef={inputRef}
         value={value}
+        locale={locale}
+        useGrouping={useGrouping}
         // PrimeReact's onChange is emitted as the user edits the value. Its
         // onValueChange callback is emitted on blur in this component version.
         onChange={(e) => onChange?.(e.value ?? null)}
