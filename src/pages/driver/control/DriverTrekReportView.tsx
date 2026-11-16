@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import type { TrekStockEstimate } from './stockEstimate';
+import { TrekStockTable } from './StockLevel';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import type { StockItem } from '../../../api-client/vehicleStock';
 import { FlatButton } from '../../../components/flat-form';
 import { fmtGhs } from '../../../lib/utils';
@@ -6,6 +8,8 @@ import { fieldApi, type DriverTrekReport } from './api';
 import { fieldStore } from './store';
 
 interface Props {
+  stockEstimate: TrekStockEstimate;
+  active: boolean;
   token: string;
   online: boolean;
   vehicleStock: StockItem[];
@@ -26,7 +30,7 @@ const returnTone = (status: string) => status === 'Approved'
     ? 'text-red-accent'
     : 'text-portal-muted';
 
-export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleStock, onOpenDownloads }) => {
+export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleStock, stockEstimate, active, onOpenDownloads }) => {
   const [report, setReport] = useState<DriverTrekReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
@@ -59,22 +63,23 @@ export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleSt
 
   useEffect(() => { void loadReport(); }, [loadReport]);
 
+  const vehicleStockByProduct = useMemo(() => new Map(vehicleStock.map((item) => [item.productId, item])), [vehicleStock]);
+
   if (loading && !report) {
-    return <div className="flex min-h-72 items-center justify-center text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading report...</div>;
+    return <><TrekStockTable estimate={stockEstimate} online={online} active={active} /><div className="flex min-h-72 items-center justify-center text-xs text-portal-muted"><i className="pi pi-spin pi-spinner mr-2" />Loading report...</div></>;
   }
 
   if (!report) {
     return (
-      <div className="rounded border border-portal-border/60 bg-portal-surface p-8 text-center">
+      <><TrekStockTable estimate={stockEstimate} online={online} active={active} /><div className="rounded border border-portal-border/60 bg-portal-surface p-8 text-center">
         <p className="text-xs text-portal-muted">{error || 'Report unavailable.'}</p>
         {online && <FlatButton size="sm" variant="outline" className="mt-4" onClick={() => void loadReport()}>Try again</FlatButton>}
-      </div>
+      </div></>
     );
   }
 
   const summary = report.summary;
   const refunds = report.refunds ?? [];
-  const vehicleStockByProduct = new Map(vehicleStock.map((item) => [item.productId, item]));
   const cashCollected = report.collectionsByMethod
     .filter((item) => item.method.toLowerCase() === 'cash')
     .reduce((total, item) => total + item.amount, 0);
@@ -217,34 +222,7 @@ export const DriverTrekReportView: React.FC<Props> = ({ token, online, vehicleSt
         {!refunds.length && <p className="px-4 py-6 text-center text-xs text-portal-muted">No refunds recorded.</p>}
       </section>
 
-      <section className="overflow-hidden rounded border border-portal-border/60 bg-portal-surface">
-        <div className="border-b border-portal-border/60 px-4 py-3"><h2 className="text-sm font-semibold text-portal-text">Vehicle stock</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left">
-            <thead className="bg-portal-canvas/50 text-[10px] uppercase tracking-wide text-portal-muted">
-              <tr><th className="px-3 py-2">Product</th><th className="px-3 py-2">Quantity</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Last updated</th></tr>
-            </thead>
-            <tbody className="divide-y divide-portal-border/40">
-              {vehicleStock.map((item) => {
-                const outOfStock = item.basicQuantityOnHand === 0 && item.packagingQuantityOnHand === 0;
-                const status = outOfStock ? 'Out of stock' : item.isLowStock ? 'Low stock' : 'In stock';
-                const tone = outOfStock || item.isLowStock ? 'text-red-accent' : 'text-portal-accent';
-                return (
-                <tr key={item.productId}>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-portal-text">{item.productName}</td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-portal-text">
-                    {item.packagingUnitName ? `${item.packagingQuantityOnHand.toLocaleString()} ${item.packagingUnitName} · ` : ''}{item.basicQuantityOnHand.toLocaleString()} {item.basicUnitName}
-                  </td>
-                  <td className={`px-3 py-2.5 text-xs font-medium ${tone}`}>{status}</td>
-                  <td className="px-3 py-2.5 text-[11px] text-portal-muted">{item.updatedAt ? dateTime(item.updatedAt) : '—'}</td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {!vehicleStock.length && <p className="px-4 py-6 text-center text-xs text-portal-muted">No products are currently stocked on this vehicle.</p>}
-      </section>
+      <TrekStockTable estimate={stockEstimate} online={online} active={active} />
 
       {report.stockSummary.length > 0 && (
         <section className="overflow-hidden rounded border border-portal-border/60 bg-portal-surface">

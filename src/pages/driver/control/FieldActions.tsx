@@ -1,3 +1,5 @@
+import type { TrekStockEstimate } from './stockEstimate';
+import { StockPreview } from './StockLevel';
 import type { CustomerPhotos } from '../../../api-client/customerDocuments';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -17,6 +19,7 @@ const RELATIONSHIPS = ['Owner', 'Proprietor', 'Director', 'Manager', 'PrimaryCon
 const options = (values: string[]) => values.map((value) => ({ label: value.replace(/([a-z])([A-Z])/g, '$1 $2'), value }));
 
 interface Props {
+  stockEstimate: TrekStockEstimate;
   trek: DriverTrek;
   products: Product[];
   stopPriceOverrides: StopPriceOverrides;
@@ -54,7 +57,7 @@ function ActionTile({ icon, title, description, onClick }: {
   </button>;
 }
 
-export function FieldActions({ trek, products, stopPriceOverrides, customers, districts, queue, syncProducts, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
+export function FieldActions({ stockEstimate, trek, products, stopPriceOverrides, customers, districts, queue, syncProducts, enqueue, queuePhoto, request, backendReady, modalOnly = false, fixedTrekId, onClose }: Props) {
   const [kind, setKind] = useState<FieldActionKind | null>(null);
   const [values, setValues] = useState<Values>({});
   const [saving, setSaving] = useState(false);
@@ -325,6 +328,7 @@ export function FieldActions({ trek, products, stopPriceOverrides, customers, di
           {number('basicQty', `Basic qty delivered${selectedProduct?.basicUnitName ? ` (${selectedProduct.basicUnitName})` : ''}`, true, 0)}
           {selectedProduct?.packagingUnitName && number('packagingQty', `Packaging qty delivered (${selectedProduct.packagingUnitName})`)}
           {selectedProduct && <div className="col-span-full flex items-center justify-between rounded border border-portal-border/50 bg-portal-canvas/50 px-3 py-2"><span className="text-[10px] font-medium uppercase tracking-wider text-portal-muted">Calculated sale total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedSaleAmount)}</span></div>}
+          {selectedProduct && <StockPreview item={stockEstimate.byProduct.get(selectedProduct.id)} basic={parseNumericInput(values.basicQty || '0')} packaging={parseNumericInput(values.packagingQty || '0')} />}
           {text('notes', 'Notes')}
         </>}
       </div>
