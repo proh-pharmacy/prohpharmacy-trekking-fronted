@@ -206,6 +206,8 @@ export interface TrekStockCheckResult {
 
 export interface DriverStopProduct {
   stopProductId: string;
+  /** UTC addition time; null for historical rows. Preserved by delivery edits. */
+  addedAt?: string | null;
   clientGeneratedId?: string | null;
   productId: string;
   productName: string;

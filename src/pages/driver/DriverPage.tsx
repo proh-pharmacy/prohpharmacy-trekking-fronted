@@ -1,3 +1,6 @@
+import { orderDriverProducts } from './control/productOrder';
+import { estimateTrekStock, type TrekStockEstimate } from './control/stockEstimate';
+import { StockLevel, StockPreview } from './control/StockLevel';
 import { photoLabel, photoCustomerReference } from './control/photoLifecycle';
 import { registrationDetails, applyCustomerUpdate } from './control/customerCache';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -174,6 +177,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 // ── Stop card ─────────────────────────────────────────────────────────────────
 
 interface StopCardProps {
+  stockEstimate: TrekStockEstimate;
   alternate?: boolean;
   expanded: boolean;
   dimmed?: boolean;
@@ -204,7 +208,7 @@ interface StopCardProps {
   syncing: boolean;
 }
 
-const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expanded, dimmed = false, onToggle, customer, onEditCustomer, trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing, queue, enqueuePayment, onInvoiceChanged }) => {
+const StopCard: React.FC<StopCardProps> = React.memo(({ stockEstimate, alternate = false, expanded, dimmed = false, onToggle, customer, onEditCustomer, trek, token, stop, rows, locked, onRowChange, onRecordProduct, recordingProduct, onVoid, onFieldAction, queuedReturns, queuedVoids, queuedSales, queuedDeliveries, queuedStop, products, onRemoveQueued, onCancelQueuedDelivery, syncing, queue, enqueuePayment, onInvoiceChanged }) => {
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
   const [editingProduct, setEditingProduct] = useState<DriverStopProduct | null>(null);
   const [returnToRemove, setReturnToRemove] = useState<{ stopId: string; returnId: string; productName: string } | null>(null);
@@ -221,6 +225,12 @@ const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expan
     [expanded, queuedSales.length, queuedReturns.length, products]
   );
 
+  // Sort source entries only when products or the queue change, not on quantity edits.
+  const orderedProductEntries = useMemo(
+    () => expanded ? orderDriverProducts(stop.products, queuedSales, queue) : [],
+    [expanded, stop.products, queuedSales, queue]
+  );
+
   const productRows = useMemo<ProductLedgerRow[]>(() => {
     if (!expanded) return [];
     const deliveriesByStopProductId = queuedDeliveries.length > 0 ? new Map<string, QueuedAction[]>() : null;
@@ -233,8 +243,8 @@ const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expan
         else deliveriesByStopProductId.set(spId, [action]);
       }
     }
-    return [
-      ...stop.products.map((product): ProductLedgerRow => {
+    return orderedProductEntries.map(({ product, action }): ProductLedgerRow => {
+      if (product) {
         const pendingDeliveries = deliveriesByStopProductId?.get(product.stopProductId) ?? EMPTY_QUEUED_ACTIONS;
         const pending = pendingDeliveries.at(-1);
         const payload = pending?.payload;
@@ -247,27 +257,27 @@ const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expan
             }
           : (rows[product.stopProductId] ?? {});
         return { ...product, displayRow, pendingDeliveries };
-      }),
-      ...queuedSales.map((action): ProductLedgerRow => {
-        const product = productsById?.get(String(action.payload.productId || ''));
-        return {
-          stopProductId: action.clientId,
-          productId: String(action.payload.productId || ''),
-          productName: product?.name || 'Product',
-          basicUnitName: product?.basicUnitName || 'basic units',
-          packagingUnitName: product?.packagingUnitName || null,
-          basicUnitPrice: Number(product?.basicUnitPrice ?? 0),
-          packagingUnitPrice: product?.packagingUnitPrice ?? null,
-          plannedBasicQuantity: 0,
-          plannedPackagingQuantity: null,
-          basicQtyDelivered: Number(action.payload.basicQtyDelivered ?? 0),
-          packagingQtyDelivered: action.payload.packagingQtyDelivered == null ? null : Number(action.payload.packagingQtyDelivered),
-          isUnplanned: true,
-          queuedSale: action,
-        };
-      }),
-    ];
-  }, [expanded, stop.products, rows, queuedDeliveries, queuedSales, productsById]);
+      }
+      const sale = action!;
+      const catalogueProduct = productsById?.get(String(sale.payload.productId || ''));
+      return {
+        stopProductId: sale.clientId,
+        addedAt: sale.occurredAt,
+        productId: String(sale.payload.productId || ''),
+        productName: catalogueProduct?.name || 'Product',
+        basicUnitName: catalogueProduct?.basicUnitName || 'basic units',
+        packagingUnitName: catalogueProduct?.packagingUnitName || null,
+        basicUnitPrice: Number(catalogueProduct?.basicUnitPrice ?? 0),
+        packagingUnitPrice: catalogueProduct?.packagingUnitPrice ?? null,
+        plannedBasicQuantity: 0,
+        plannedPackagingQuantity: null,
+        basicQtyDelivered: Number(sale.payload.basicQtyDelivered ?? 0),
+        packagingQtyDelivered: sale.payload.packagingQtyDelivered == null ? null : Number(sale.payload.packagingQtyDelivered),
+        isUnplanned: true,
+        queuedSale: sale,
+      };
+    });
+  }, [expanded, orderedProductEntries, rows, queuedDeliveries, productsById]);
 
   const returnRows = useMemo<ReturnLedgerRow[]>(() => {
     if (!expanded || activeStopTab !== 'returns') return [];
@@ -524,6 +534,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expan
                     { field: 'planned', header: 'Planned', body: (product) => product.queuedSale ? <span className="text-[11px] text-portal-muted">Unplanned sale</span> : <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
                     { field: 'delivered', header: 'Delivered', body: (product) => { const row = product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : (product.displayRow ?? {}); return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
                     { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.queuedSale ? { basicQtyDelivered: String(product.basicQtyDelivered ?? ''), packagingQtyDelivered: String(product.packagingQtyDelivered ?? '') } : (product.displayRow ?? {})))}</span> },
+                    { field: 'stockLevel', header: 'Stock left (est.)', body: (product) => <StockLevel item={stockEstimate.byProduct.get(product.productId)} /> },
                     { field: 'actions', header: 'Action', body: (product) => {
                       if (product.queuedSale) return <div className="flex flex-col items-start gap-1"><span className={`text-[11px] ${product.queuedSale.status === 'conflict' ? 'text-red-accent' : 'text-portal-accent'}`}>{product.queuedSale.status === 'conflict' ? 'Needs review' : product.queuedSale.status === 'synced' ? 'Confirming sync' : 'Awaiting sync'}</span>{product.queuedSale.status !== 'synced' && <button type="button" className="text-[11px] text-portal-muted hover:text-red-accent disabled:opacity-40" disabled={syncing || locked || invoiceFullyPaid} title={invoiceFullyPaid ? 'A fully paid invoice cannot be changed. Use Returns for corrections.' : 'Cancel product'} onClick={() => void onRemoveQueued(product.queuedSale!.clientId)}>Cancel</button>}</div>;
                       const pending = product.pendingDeliveries ?? EMPTY_QUEUED_ACTIONS;
@@ -594,6 +605,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({ alternate = false, expan
               {editingProduct.packagingUnitName && <FlatInputNumber id={`${editingProduct.stopProductId}-packaging-driver-modal`} label={`${editingProduct.packagingUnitName} delivered`} min={invoiceHasPayment ? minimumPackaging : 0} maxFractionDigits={2} useGrouping size="sm" value={numberInputValue(row.packagingQtyDelivered)} onChange={(value) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', numberRowValue(value))} onInput={(event) => onRowChange(editingProduct.stopProductId, 'packagingQtyDelivered', (event.target as HTMLInputElement).value)} disabled={locked || invoiceFullyPaid} />}
             </div>
             <div className="grid grid-cols-2 gap-3 rounded border border-portal-border/50 bg-portal-surface px-3 py-2"><div><span className="block text-[10px] uppercase tracking-wider text-portal-muted">Calculated total</span><span className="text-sm font-semibold text-portal-accent">{fmtGhs(calculatedTotal)}</span></div></div>
+            <StockPreview item={stockEstimate.byProduct.get(editingProduct.productId)} basic={row.basicQtyDelivered ? parseNumericInput(row.basicQtyDelivered) : NaN} packaging={row.packagingQtyDelivered ? parseNumericInput(row.packagingQtyDelivered) : NaN} replacing={stockEstimate.byDelivery.get(editingProduct.stopProductId)} />
             <FlatInputText id={`${editingProduct.stopProductId}-notes-driver-modal`} label="Delivery note" value={row.notes} onChange={(event) => onRowChange(editingProduct.stopProductId, 'notes', event.target.value)} placeholder="Optional delivery note..." size="sm" />
           </div>
         </FlatModal>;
@@ -651,6 +663,7 @@ export const DriverPage: React.FC = () => {
 
   const { trek, products, stopPriceOverrides, customers, districts, regionTreks, assignedTreks, vehicleStock, queue, photoQueue, loading, syncing, refreshing, uploadingPhotos, online, error, controlAvailable, lastSyncedAt, refresh, syncProducts, sync, completeTrek, enqueue, rememberCustomerLocation, queuePhoto, retry, reconcileLegacy, resolvePaymentConflict, remove, removePhoto, retryPhoto, clearFailedPhotos } = useFieldControl(token);
   const { device, phoneAddress, weather, deviceUnavailable, reporting, locationError, sendingSos, report, sendSos } = useDeviceStatus(token);
+  const stockEstimate = useMemo(() => estimateTrekStock(vehicleStock, trek, queue), [vehicleStock, trek, queue]);
   const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryRow>>({});
   const [recordingProduct, setRecordingProduct] = useState<string | null>(null);
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
@@ -1293,6 +1306,7 @@ export const DriverPage: React.FC = () => {
               )}
 
               <FieldActions
+                stockEstimate={stockEstimate}
                 trek={trek}
                 products={products}
                 syncProducts={syncProducts}
@@ -1341,7 +1355,8 @@ export const DriverPage: React.FC = () => {
                           enqueuePayment={enqueue}
                           onInvoiceChanged={handleInvoiceChanged}
                           stop={stop}
-                          rows={isStopExpanded ? deliveryRows : EMPTY_DELIVERY_ROWS}
+                          stockEstimate={stockEstimate}
+                        rows={isStopExpanded ? deliveryRows : EMPTY_DELIVERY_ROWS}
                           locked={trek.isLocked}
                           onRowChange={updateRow}
                           onRecordProduct={handleRecordProduct}
@@ -1407,6 +1422,7 @@ export const DriverPage: React.FC = () => {
                         enqueuePayment={enqueue}
                         onInvoiceChanged={handleInvoiceChanged}
                         stop={stop}
+                        stockEstimate={stockEstimate}
                         rows={isStopExpanded ? deliveryRows : EMPTY_DELIVERY_ROWS}
                         locked={trek.isLocked || action.status === 'conflict'}
                         onRowChange={updateRow}
@@ -1458,6 +1474,7 @@ export const DriverPage: React.FC = () => {
                 onSubmit={saveDriverCustomerLocation}
               />}
               <FieldActions
+                stockEstimate={stockEstimate}
                 trek={trek}
                 products={products}
                 syncProducts={syncProducts}
@@ -1581,7 +1598,7 @@ export const DriverPage: React.FC = () => {
               />
             </div>
           )}
-          renderReportView={() => <DriverTrekReportView token={token} online={online} vehicleStock={vehicleStock} onOpenDownloads={() => setDocumentsModalOpen(true)} />}
+          renderReportView={() => <DriverTrekReportView token={token} online={online} vehicleStock={vehicleStock} stockEstimate={stockEstimate} active={trek.status === 'Scheduled' || trek.status === 'InProgress'} onOpenDownloads={() => setDocumentsModalOpen(true)} />}
           renderActionsView={() => (
             <div className="space-y-4">
               <div className="border-b border-portal-border/60 pb-3">
@@ -1590,6 +1607,7 @@ export const DriverPage: React.FC = () => {
                 </div>
               </div>
               <FieldActions
+                stockEstimate={stockEstimate}
                 trek={trek}
                 products={products}
                 syncProducts={syncProducts}
