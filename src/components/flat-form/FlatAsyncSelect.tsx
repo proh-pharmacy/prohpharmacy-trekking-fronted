@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { dropdownPlacement } from './dropdownPlacement';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import api from '../../api-client';
@@ -108,14 +109,15 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<T | undefined>(initialSelectedItem);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number }>({
-    top: 0,
-    left: 0,
-    width: 0,
-  });
+  const [dropdownPosition, setDropdownPosition] = useState<ReturnType<typeof dropdownPlacement> | null>(null);
+  const positioned = dropdownPosition !== null;
+  const hasFooterAction = Boolean(footerAction);
+  const anchorName = `--async-select-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const listContentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isDark = variant === 'dark';
   const effectiveSize: FlatInputSize = size || 'sm';
@@ -246,25 +248,63 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
     }
   }, [value, items, optionValue]);
 
-  // Update dropdown position relative to trigger
+  // Measure once per animation frame; result scrolling does not move the anchor.
   const updatePosition = useCallback(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
-    }
+    const trigger = triggerRef.current;
+    const panel = dropdownRef.current;
+    if (!trigger || !panel) return;
+    const rect = trigger.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const bounds = { left: viewport?.offsetLeft ?? 0, top: viewport?.offsetTop ?? 0,
+      width: viewport?.width ?? document.documentElement.clientWidth,
+      height: viewport?.height ?? window.innerHeight };
+    const list = listRef.current;
+    const chromeHeight = Array.from(panel.children).reduce((height, child) =>
+      height + (child === list ? 0 : (child as HTMLElement).offsetHeight), 2);
+    const desiredHeight = chromeHeight + Math.min(list?.scrollHeight ?? 256, 256);
+    const next = dropdownPlacement(rect, bounds, desiredHeight);
+    setDropdownPosition(previous => previous && Object.keys(next).every(key =>
+      previous[key as keyof typeof next] === next[key as keyof typeof next]) ? previous : next);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    let frame = 0;
+    const schedule = (event?: Event) => {
+      if (event?.type === 'scroll' && event.target instanceof Node && dropdownRef.current?.contains(event.target)) return;
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; updatePosition(); });
+    };
+    updatePosition();
+    const observer = new ResizeObserver(() => schedule());
+    for (const element of [triggerRef.current, dropdownRef.current, listContentRef.current]) {
+      if (element) observer.observe(element);
+    }
+    // Observe fixed controls as well: a filter or footer can change panel height.
+    for (const child of Array.from(dropdownRef.current?.children ?? [])) observer.observe(child);
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('scroll', schedule);
+    };
+  }, [isOpen, isFilterOpen, hasFooterAction, updatePosition]);
+
+  useLayoutEffect(() => {
+    if (isOpen && positioned) searchInputRef.current?.focus({ preventScroll: true });
+  }, [isOpen, positioned]);
 
   // Handle open/close
   const toggleDropdown = () => {
     if (disabled) return;
     if (!isOpen) {
-      updatePosition();
+      setDropdownPosition(null);
       setIsOpen(true);
-      setTimeout(() => searchInputRef.current?.focus(), 50);
     } else {
       setIsOpen(false);
       setIsFilterOpen(false);
@@ -295,22 +335,14 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
       }
     };
 
-    const handleResizeOrScroll = () => {
-      updatePosition();
-    };
-
     document.addEventListener('mousedown', handleOutside);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleResizeOrScroll);
-    window.addEventListener('scroll', handleResizeOrScroll, true);
 
     return () => {
       document.removeEventListener('mousedown', handleOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleResizeOrScroll);
-      window.removeEventListener('scroll', handleResizeOrScroll, true);
     };
-  }, [isOpen, updatePosition]);
+  }, [isOpen]);
 
   // Scroll listener for infinite scroll
   const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -388,6 +420,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
       <div
         id={inputId}
         ref={triggerRef}
+        style={{ anchorName } as React.CSSProperties}
         onClick={toggleDropdown}
         className={`
           relative w-full border rounded flex items-center justify-between cursor-pointer transition-colors select-none
@@ -440,13 +473,19 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
           <div
             ref={dropdownRef}
             style={{
-              position: 'absolute',
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              width: `${Math.max(260, dropdownPosition.width)}px`,
+              position: 'fixed',
+              top: dropdownPosition?.top ?? 0,
+              left: dropdownPosition?.left ?? 0,
+              width: dropdownPosition?.width ?? 260,
+              maxHeight: dropdownPosition?.maxHeight,
+              visibility: dropdownPosition ? 'visible' : 'hidden',
+              positionAnchor: anchorName,
+              '--async-select-min-left': `${dropdownPosition?.minLeft ?? 8}px`,
+              '--async-select-max-left': `${dropdownPosition?.maxLeft ?? 8}px`,
               zIndex: 99999,
-            }}
-            className="bg-portal-surface border border-portal-border rounded shadow-2xl overflow-hidden animate-scaleIn font-sans flex flex-col"
+            } as React.CSSProperties}
+            className="flat-async-select-panel bg-portal-surface border border-portal-border rounded shadow-2xl overflow-y-auto overscroll-contain font-sans flex flex-col"
+
           >
             {/* Search Input Filter Container */}
             <div className="px-2 border-b border-portal-border/60 bg-portal-surface flex items-center gap-2 shrink-0">
@@ -486,7 +525,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
             </div>
 
             {filter && isFilterOpen && (
-              <div className="max-h-48 overflow-y-auto custom-scrollbar border-b border-portal-border/60 bg-portal-surface p-2 shrink-0">
+              <div className="max-h-48 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar border-b border-portal-border/60 bg-portal-surface p-2 shrink">
                 <p className="px-2 pb-1 text-[11px] font-medium text-portal-muted">{filter.label}</p>
                 {filter.options.map((option) => (
                   <button
@@ -505,9 +544,11 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
 
             {/* Scrollable Items List Container */}
             <div
+              ref={listRef}
               onScroll={handleListScroll}
-              className="max-h-64 overflow-y-auto custom-scrollbar p-1 divide-y divide-portal-border/20 text-base sm:text-xs"
+              className="min-h-0 max-h-64 shrink overflow-y-auto overscroll-contain custom-scrollbar p-1 text-base sm:text-xs"
             >
+              <div ref={listContentRef} className="divide-y divide-portal-border/20">
               {showFirstLoad ? (
                 <div className="py-8 flex flex-col items-center justify-center text-portal-muted gap-2">
                   <i className="pi pi-spin pi-spinner text-portal-accent text-base" />
@@ -569,6 +610,7 @@ export function FlatAsyncSelect<T extends Record<string, any> = any>({
                   Showing {items.length} of {totalCount}
                 </div>
               )}
+              </div>
             </div>
 
             {footerAction && (

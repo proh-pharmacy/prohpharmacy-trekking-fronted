@@ -24,6 +24,11 @@ import {
   type StockLineItem,
 } from '../../../../api-client';
 import { ProductModal } from '../../products/components/ProductModal';
+import {
+  sortItemsByConfidence,
+  type ConfidenceSortDirection,
+} from './confidenceSort';
+import { reviewBasicQuantity } from './matchReviewQuantity';
 
 type Mode = 'load' | 'remove';
 
@@ -43,6 +48,7 @@ interface StagedItem {
   packagingUnitName?: string | null;
   basicQty: number;
   packagingQty: number;
+  basicUnitPrice: number | null;
   beforeBasic: number;
   beforePackaging: number;
 }
@@ -160,6 +166,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [excludeTracked, setExcludeTracked] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[] | null>(null);
+  const [confidenceSortDirection, setConfidenceSortDirection] = useState<ConfidenceSortDirection | null>(null);
   const [reviewValidationError, setReviewValidationError] = useState<ReviewValidationError | null>(null);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -181,6 +188,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [productUnits, setProductUnits] = useState<{ basic?: string | null; packaging?: string | null }>({});
   const [basicQty, setBasicQty] = useState<number | null>(null);
   const [packagingQty, setPackagingQty] = useState<number | null>(null);
+  const [basicUnitPrice, setBasicUnitPrice] = useState<number | null>(null);
 
   const [balance, setBalance] = useState<{ basic: number; packaging: number } | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -200,6 +208,14 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     () => reviewItems?.find((item) => item.id === productModalRowId) || null,
     [reviewItems, productModalRowId],
   );
+  const sortedReviewItems = useMemo(
+    () => sortItemsByConfidence(reviewItems || [], confidenceSortDirection),
+    [reviewItems, confidenceSortDirection],
+  );
+  const reviewDisplayIndexById = useMemo(
+    () => new Map(sortedReviewItems.map((item, index) => [item.id, index])),
+    [sortedReviewItems],
+  );
 
   const hasPackaging = !!productUnits.packaging;
 
@@ -218,6 +234,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     }
     setBasicQty(null);
     setPackagingQty(null);
+    setBasicUnitPrice(null);
   };
 
   useEffect(() => {
@@ -231,6 +248,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     if (visible) {
       setItems([]);
       setReviewItems(null);
+      setConfidenceSortDirection(null);
       setReviewValidationError(null);
       setPendingRemoveId(null);
       setPendingReviewRemoveId(null);
@@ -261,6 +279,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       }
       setBasicQty(null);
       setPackagingQty(null);
+      setBasicUnitPrice(null);
       setBalance(null);
       setBalanceLoading(false);
     }
@@ -272,6 +291,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     if (!visible || !productId) {
       setBalance(null);
       setBalanceLoading(false);
+      setBasicUnitPrice(null);
       return;
     }
     let cancelled = false;
@@ -284,12 +304,14 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           basic: data.basicQuantityOnHand ?? 0,
           packaging: data.packagingQuantityOnHand ?? 0,
         });
+        if (!isRemove) setBasicUnitPrice(data.vehicleBasicUnitPrice ?? null);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         const apiError = getApiError(err);
         if (apiError?.code === '404' || (err as any)?.response?.status === 404) {
           setBalance({ basic: 0, packaging: 0 });
+          if (!isRemove) setBasicUnitPrice(null);
         } else {
           toast.error(apiError?.message || 'Failed to load current balance.');
           setBalance(null);
@@ -297,7 +319,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       })
       .finally(() => { if (!cancelled) setBalanceLoading(false); });
     return () => { cancelled = true; };
-  }, [visible, productId, vehicleId]);
+  }, [visible, productId, vehicleId, isRemove]);
 
   const stagedProductIds = useMemo(
     () => new Set(items.map((i) => i.productId)),
@@ -330,6 +352,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error('Packaging quantity cannot be negative.');
       return;
     }
+    if (!isRemove && basicUnitPrice != null && (
+      basicUnitPrice <= 0
+      || !hasAtMostTwoDecimalPlaces(basicUnitPrice)
+    )) {
+      toast.error('Enter a positive basic-unit price with no more than two decimal places, or leave it empty.');
+      return;
+    }
     if (isRemove && balance && basic > balance.basic) {
       toast.error(`Quantity cannot exceed the current balance of ${balance.basic} ${productUnits.basic || 'basic'}.`);
       return;
@@ -347,6 +376,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         packagingUnitName: productUnits.packaging ?? null,
         basicQty: basic,
         packagingQty: hasPackaging ? packaging : 0,
+        basicUnitPrice: isRemove ? null : basicUnitPrice,
         beforeBasic: balance?.basic ?? 0,
         beforePackaging: balance?.packaging ?? 0,
       },
@@ -367,6 +397,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error('Packaging quantity cannot be negative.');
       return;
     }
+    if (!isRemove && basicUnitPrice != null && (
+      basicUnitPrice <= 0
+      || !hasAtMostTwoDecimalPlaces(basicUnitPrice)
+    )) {
+      toast.error('Enter a positive basic-unit price with no more than two decimal places, or leave it empty.');
+      return;
+    }
     if (isRemove && balance && basic > balance.basic) {
       toast.error(`Quantity cannot exceed the current balance of ${balance.basic} ${productUnits.basic || 'basic'}.`);
       return;
@@ -379,7 +416,12 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error('Provide a reason for removal.');
       return;
     }
-    await submit([{ productId, basicQty: basic, packagingQty: hasPackaging ? packaging : 0 }]);
+    await submit([{
+      productId,
+      basicQty: basic,
+      packagingQty: hasPackaging ? packaging : 0,
+      ...(!isRemove ? { basicUnitPrice } : {}),
+    }]);
   };
 
   const handleSubmit = async () => {
@@ -396,11 +438,12 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       productId: i.productId,
       basicQty: i.basicQty,
       packagingQty: i.packagingQty,
+      ...(!isRemove ? { basicUnitPrice: i.basicUnitPrice } : {}),
     })));
   };
 
   const applyMatchResult = (result: ProductMatchResult) => {
-    const rows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
+    const uploadedRows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
         const candidate = row.candidates?.[0];
         return {
           id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
@@ -409,18 +452,63 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           productName: candidate?.name || row.extractedName || '',
           basicUnitName: candidate?.basicUnitName || null,
           packagingUnitName: candidate?.packagingUnitName || null,
-          basicQty: row.basicQty,
-          packagingQty: row.packagingQty,
+          basicQty: reviewBasicQuantity(row),
+          packagingQty: null,
           basicUnitPrice: row.basicUnitPrice ?? null,
           selectedProduct: null,
         };
     }));
+    const manualRows: ReviewItem[] = items.map((item) => ({
+      id: `staged-${item.productId}`,
+      source: {
+        page: null,
+        worksheet: null,
+        row: null,
+        extractedName: item.productName,
+        quantityText: String(item.basicQty),
+        basicQtyText: String(item.basicQty),
+        packagingQtyText: item.packagingQty > 0 ? String(item.packagingQty) : null,
+        priceText: item.basicUnitPrice != null ? String(item.basicUnitPrice) : null,
+        unitText: item.basicUnitName || null,
+        quantity: item.basicQty,
+        basicQty: item.basicQty,
+        packagingQty: item.packagingQty,
+        basicUnitPrice: item.basicUnitPrice,
+        ocrConfidence: null,
+        matchStatus: 'Manual',
+        suggestedProductId: item.productId,
+        candidates: [],
+        requiresReview: false,
+        warnings: [],
+      },
+      productId: item.productId,
+      productName: item.productName,
+      basicUnitName: item.basicUnitName || null,
+      packagingUnitName: item.packagingUnitName || null,
+      basicQty: item.basicQty,
+      packagingQty: item.packagingQty,
+      basicUnitPrice: item.basicUnitPrice,
+      selectedProduct: {
+        id: item.productId,
+        name: item.productName,
+        description: null,
+        basicUnitId: '',
+        basicUnitName: item.basicUnitName || '',
+        basicUnitPrice: item.basicUnitPrice ?? 0,
+        vehicleBasicUnitPrice: item.basicUnitPrice,
+        packagingUnitId: null,
+        packagingUnitName: item.packagingUnitName || null,
+        packagingUnitPrice: null,
+        isActive: true,
+      },
+    }));
     setUploadErrors(result.files.flatMap((file) => file.errors.map((error) => `${file.fileName}: ${error.message}`)));
-    if (!rows.length) {
+    if (!uploadedRows.length) {
       toast.error('No product rows were extracted from the selected files.');
       return false;
     }
-    setReviewItems(rows);
+    setReviewItems([...manualRows, ...uploadedRows]);
+    setConfidenceSortDirection(null);
     setFormOpen(false);
     const failed = result.files.filter((file) => file.status !== 'Processed');
     if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
@@ -561,7 +649,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   ) => {
     setReviewValidationError({ id: item.id, field, message });
     const productLabel = item.source.extractedName || item.productName || 'manually added product';
-    toast.error(`Row ${index + 1} — ${productLabel}: ${message}`);
+    const displayIndex = reviewDisplayIndexById.get(item.id) ?? index;
+    toast.error(`Row ${displayIndex + 1} — ${productLabel}: ${message}`);
     requestAnimationFrame(() => {
       document.getElementById(`stock-review-row-${item.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
@@ -809,6 +898,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
             setProductId((val as string) || '');
             setProductName(item?.name || '');
             setProductUnits({ basic: item?.basicUnitName ?? null, packaging: item?.packagingUnitName ?? null });
+            setBasicUnitPrice(!isRemove ? item?.vehicleBasicUnitPrice ?? null : null);
           }}
           filter={!isRemove ? {
             label: 'Scope',
@@ -844,6 +934,23 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         onChange={(val) => setBasicQty(val)}
         placeholder="e.g. 100"
       />
+
+      {!isRemove && (
+        <FlatInputNumber
+          label="Basic unit price (GHS)"
+          size="sm"
+          min={0.01}
+          max={999999999999.99}
+          minFractionDigits={2}
+          maxFractionDigits={2}
+          locale="en-GH"
+          useGrouping
+          value={basicUnitPrice}
+          onChange={setBasicUnitPrice}
+          placeholder="Use normal pricing"
+          helperText="Optional final vehicle selling price. Leave blank to use normal pricing."
+        />
+      )}
 
       {productId && (
         <div className="text-[11px]">
@@ -1006,9 +1113,16 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
               ) : reviewItems ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review extracted rows ({reviewItems.length})</span>
+                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review stock rows ({reviewItems.length})</span>
                     <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetReviewPending(true)} disabled={uploading || submitting} />
                   </div>
+                  <span className="sr-only" role="status">
+                    {confidenceSortDirection === 'ascending'
+                      ? 'Extracted rows sorted by confidence, lowest first.'
+                      : confidenceSortDirection === 'descending'
+                        ? 'Extracted rows sorted by confidence, highest first.'
+                        : ''}
+                  </span>
                   {uploadErrors.length > 0 && (
                     <div className="rounded border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-400">
                       {uploadErrors.map((error) => <div key={error}>{error}</div>)}
@@ -1022,18 +1136,35 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Matched Product</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Qty</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Price</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Confidence</th>
+                        <th
+                          scope="col"
+                          aria-sort={confidenceSortDirection || undefined}
+                          className="w-[110px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide"
+                        >
+                          <button
+                            type="button"
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-left uppercase tracking-wide text-portal-muted transition-colors hover:text-portal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-portal-accent"
+                            onClick={() => setConfidenceSortDirection((current) => current === 'ascending' ? 'descending' : 'ascending')}
+                            title={confidenceSortDirection === 'ascending' ? 'Sort confidence high to low' : 'Sort confidence low to high'}
+                          >
+                            Confidence
+                            <i
+                              className={`pi ${confidenceSortDirection === 'ascending' ? 'pi-sort-up-fill' : confidenceSortDirection === 'descending' ? 'pi-sort-down-fill' : 'pi-sort-alt'} text-[10px]`}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Action</th>
                       </tr></thead>
                       <tbody className="divide-y divide-portal-border/40">
                         {reviewItems.length === 0 && (
                           <tr>
                             <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-portal-muted">
-                              No extracted rows remain. Choose other files to continue.
+                              No stock rows remain. Add a product row to continue.
                             </td>
                           </tr>
                         )}
-                        {reviewItems.map((item, index) => (
+                        {sortedReviewItems.map((item, index) => (
                           <tr
                             key={item.id}
                             id={`stock-review-row-${item.id}`}
@@ -1081,7 +1212,17 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 })}
                               />
                             </td>
-                            <td className="w-[110px] px-3 py-2"><FlatInputNumber size="sm" min={0} value={item.basicQty} errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'basicQty' ? reviewValidationError.message : undefined} onChange={(value) => updateReviewItem(item.id, { basicQty: value })} /></td>
+                            <td className="w-[110px] px-3 py-2">
+                              <FlatInputNumber
+                                id={`stock-review-basic-${item.id}`}
+                                aria-label={`Quantity for ${item.productName || item.source.extractedName || 'product row'}`}
+                                size="sm"
+                                min={0}
+                                value={item.basicQty}
+                                errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'basicQty' ? reviewValidationError.message : undefined}
+                                onChange={(value) => updateReviewItem(item.id, { basicQty: value })}
+                              />
+                            </td>
                             <td className="w-[160px] px-3 py-2">
                               <FlatInputNumber
                                 size="sm"
@@ -1134,7 +1275,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 onClick={() => setPendingReviewRemoveId(item.id)}
                                 disabled={submitting}
                                 className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-red-accent transition-colors hover:text-red-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-                                aria-label={`Remove extracted row for ${item.productName || item.source.extractedName || 'unmatched product'}`}
+                                aria-label={`Remove stock row for ${item.productName || item.source.extractedName || 'unmatched product'}`}
                               >
                                 <i className="pi pi-trash text-[10px]" aria-hidden="true" />
                                 Remove
@@ -1190,6 +1331,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                           <tr key={item.productId}>
                             <td className="px-3 py-2 text-portal-text">
                               <div className="truncate">{item.productName}</div>
+                              {!isRemove && (
+                                <div className="mt-0.5 text-[11px] text-portal-muted">
+                                  {item.basicUnitPrice != null
+                                    ? `Vehicle price: ${item.basicUnitPrice.toLocaleString('en-GH', { style: 'currency', currency: 'GHS' })}`
+                                    : 'Normal pricing'}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-right font-mono tabular-nums text-portal-muted whitespace-nowrap">
                               {beforeText}
@@ -1249,7 +1397,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       <FlatConfirmDialog
         visible={!!pendingReviewRemoveItem}
         onHide={() => setPendingReviewRemoveId(null)}
-        title="Remove extracted row"
+        title="Remove stock row"
         message={
           pendingReviewRemoveItem
             ? `Remove "${pendingReviewRemoveItem.productName || pendingReviewRemoveItem.source.extractedName || 'Unmatched product'}" from the extracted rows?`
@@ -1269,13 +1417,14 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         visible={resetReviewPending}
         onHide={() => setResetReviewPending(false)}
         title="Reset extracted rows"
-        message="Discard the extracted rows and your review changes? You will return to the initial Add Stock view."
+        message={items.length > 0
+          ? 'Discard the uploaded rows and review changes? Your manually added entries will remain.'
+          : 'Discard the extracted rows and your review changes? You will return to the initial Add Stock view.'}
         confirmLabel="Reset"
         variant="danger"
         onConfirm={() => {
           setReviewItems(null);
           setReviewValidationError(null);
-          setItems([]);
           setUploadErrors([]);
           setPendingReviewRemoveId(null);
           setFormOpen(false);
