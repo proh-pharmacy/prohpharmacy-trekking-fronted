@@ -982,6 +982,14 @@ div.p-icon-field {
 }
 
 /* 10. Overlay Animations */
+/* Native horizontal tethering where supported; measured fixed coordinates
+   remain the fallback and handle vertical flipping / visual-viewport sizing. */
+@supports (anchor-name: --async-select) and (left: anchor(left)) {
+  .flat-async-select-panel {
+    left: clamp(var(--async-select-min-left), anchor(left), var(--async-select-max-left)) !important;
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1494,18 +1502,42 @@ div.p-icon-field {
   color: var(--color-portal-accent) !important;
 }
 
-.p-datepicker table td.p-datepicker-today > span:not(.p-highlight),
+.p-datepicker table td.p-datepicker-today > span {
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--color-portal-accent) 18%, var(--color-portal-surface)) !important;
+  color: var(--color-portal-heading) !important;
+  border: 2px solid var(--color-portal-accent) !important;
+  font-weight: 700 !important;
+}
+
 .p-datepicker table td.p-datepicker-today > span:not(.p-highlight):hover {
-  background: transparent !important;
-  color: var(--color-portal-accent) !important;
-  border-color: var(--color-portal-accent) !important;
+  background: color-mix(in srgb, var(--color-portal-accent) 26%, var(--color-portal-surface)) !important;
 }
 
 .p-datepicker table td.p-datepicker-today > span.p-highlight,
 .p-datepicker table td.p-datepicker-today > span.p-highlight:hover {
-  background: color-mix(in srgb, var(--color-portal-accent) 18%, transparent) !important;
-  color: var(--color-portal-accent) !important;
-  border-color: var(--color-portal-accent) !important;
+  background: var(--color-portal-accent) !important;
+  color: var(--color-portal-canvas) !important;
+}
+
+.p-datepicker table td > span:focus-visible {
+  outline: 2px solid var(--color-portal-heading) !important;
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .p-datepicker table td.p-datepicker-today > span {
+    border-color: CanvasText !important;
+  }
+
+  .p-datepicker table td.p-datepicker-today > span.p-highlight {
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  .p-datepicker table td > span:focus-visible {
+    outline-color: Highlight !important;
+  }
 }
 
 /* DatePicker Small (sm) Panel */
