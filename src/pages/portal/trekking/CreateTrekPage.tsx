@@ -241,27 +241,23 @@ export default function CreateTrekPage() {
       field: 'currentStaffName', header: 'Driver',
       body: (vehicle) => <div className="flex flex-col items-start gap-1 text-xs">
         <span>{vehicle.currentStaffName || 'No driver assigned'}</span>
-        {canAssignDriver && <>
+        {canAssignDriver && (
           <button type="button"
             disabled={saving || unassigning || (!vehicle.currentStaffId && vehicle.operationalStatus !== 'Active')}
-            className={`cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed ${vehicle.currentStaffId ? 'text-red-accent hover:text-red-accent-hover' : 'text-portal-accent hover:text-portal-accent-hover'}`}
+            className={`inline-flex items-center gap-1.5 cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed ${vehicle.currentStaffId ? 'text-red-accent hover:text-red-accent-hover' : 'text-portal-accent hover:text-portal-accent-hover'}`}
             aria-label={`${vehicle.currentStaffId ? 'Unassign' : 'Assign'} driver for ${vehicle.displayName}`}
             onClick={() => vehicle.currentStaffId ? setUnassignVehicle(vehicle) : setAssignVehicle(vehicle)}>
-            {vehicle.currentStaffId ? 'Unassign' : 'Assign'}
+            <i className={`pi ${vehicle.currentStaffId ? 'pi-user-minus' : 'pi-user-plus'} text-[11px]`} aria-hidden="true" />
+            <span>{vehicle.currentStaffId ? 'Unassign' : 'Assign'}</span>
           </button>
-        </>}
+        )}
       </div>,
     },
     {
       field: 'stock', header: 'Stock status',
       body: (vehicle) => <div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="text-xs">
           <span className={vehicle.stock?.hasStockLoaded ? 'font-semibold text-portal-accent' : 'text-portal-muted'}>{vehicle.stock ? (vehicle.stock.hasStockLoaded ? 'Loaded' : 'Empty') : 'Stock unavailable'}</span>
-          <span aria-hidden="true" className="text-portal-muted">|</span>
-          <button type="button" disabled={saving}
-            className="cursor-pointer font-medium text-red-accent hover:text-red-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={`Manage stock for ${vehicle.displayName}`}
-            onClick={() => navigate(`/portal/fleet/vehicles/${vehicle.id}/stock`)}>Manage</button>
         </div>
         {vehicle.stock && <div className="text-[11px] text-portal-muted">{vehicle.stock.inStockProductCount} in stock · {vehicle.stock.outOfStockProductCount} out · {vehicle.stock.lowStockProductCount} low</div>}
       </div>,
@@ -291,7 +287,7 @@ export default function CreateTrekPage() {
         </FlatButton>
       </div>,
     },
-  ], [saving, navigate, canAssignDriver, unassigning, reviewedDrafts, syncWizardUrl]);
+  ], [saving, canAssignDriver, unassigning, reviewedDrafts, syncWizardUrl]);
 
   const isStockStep = Boolean(review);
   const currentStep: 1 | 2 | 3 = isStockStep ? 3 : selected ? 2 : 1;
