@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sortItemsByConfidence } from '../src/pages/portal/fleet/components/confidenceSort.ts';
+import {
+  sortItemsByConfidence,
+  sortItemsForDefaultReview,
+} from '../src/pages/portal/fleet/components/confidenceSort.ts';
 
 const row = (id: string, matchStatus: string, similarityScore?: number) => ({
   id,
@@ -44,4 +47,24 @@ test('rows without match confidence remain last and ties preserve their input or
 test('no direction preserves the original array and order', () => {
   const rows = [row('first', 'Exact', 99), row('second', 'Unmatched')];
   assert.equal(sortItemsByConfidence(rows, null), rows);
+});
+
+test('default review order puts created rows first, unmatched next and matches by ascending score', () => {
+  const result = sortItemsForDefaultReview([
+    row('exact-high', 'Exact', 100),
+    row('manual', 'Manual'),
+    row('suggested-low', 'Suggested', 76),
+    row('unmatched', 'Unmatched'),
+    { ...row('created', 'Unmatched', 0), source: { ...row('created', 'Unmatched', 0).source, autoCreated: true } },
+    row('ambiguous-mid', 'Ambiguous', 84),
+  ]);
+
+  assert.deepEqual(result.map(({ id }) => id), [
+    'created',
+    'unmatched',
+    'suggested-low',
+    'ambiguous-mid',
+    'exact-high',
+    'manual',
+  ]);
 });

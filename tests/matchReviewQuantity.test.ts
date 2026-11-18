@@ -16,17 +16,18 @@ test('falls back to the extracted quantity when basic quantity is absent', () =>
   }), 5);
 });
 
-test('treats a legacy packaging-mapped quantity as basic when no generic value is present', () => {
+test('normalizes numeric API strings for the quantity input', () => {
+  assert.equal(reviewBasicQuantity({ basicQty: null, quantity: '5', quantityText: '5' }), 5);
+  assert.equal(reviewBasicQuantity({ basicQty: '2.5', quantity: null, quantityText: null }), 2.5);
+});
+
+test('does not copy an explicit packaging quantity into the basic quantity field', () => {
   assert.equal(reviewBasicQuantity({
     basicQty: null,
     quantity: null,
     packagingQty: 7,
-  }), 7);
-});
-
-test('normalizes numeric API strings for the quantity input', () => {
-  assert.equal(reviewBasicQuantity({ basicQty: null, quantity: '5', quantityText: '5' }), 5);
-  assert.equal(reviewBasicQuantity({ basicQty: '2.5', quantity: null, quantityText: null }), 2.5);
+    packagingQtyText: '7',
+  }), null);
 });
 
 test('falls back to the extracted quantity text when parsed API values are empty', () => {

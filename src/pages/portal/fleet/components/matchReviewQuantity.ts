@@ -21,10 +21,8 @@ export const reviewBasicQuantity = (row: MatchReviewQuantityRow): number | null 
   const candidates = [
     row.basicQty,
     row.quantity,
-    row.packagingQty,
     row.basicQtyText,
     row.quantityText,
-    row.packagingQtyText,
   ];
 
   for (const candidate of candidates) {

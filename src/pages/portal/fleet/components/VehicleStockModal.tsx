@@ -8,6 +8,7 @@ import { resetTableData } from '../../../../components/data-table';
 import {
   FlatAsyncSelect,
   FlatButton,
+  FlatCheckbox,
   FlatDropdown,
   FlatInputNumber,
   FlatTextarea,
@@ -16,9 +17,11 @@ import {
   getApiError,
   vehicleStockApi,
   type Product,
+  type ProductMatchCandidate,
   type ProductMatchJobAccepted,
   type ProductMatchJobStatus,
   type ProductMatchResult,
+  type ProductMatchSummary,
   productsApi,
   type ProductMatchRow,
   type StockLineItem,
@@ -26,11 +29,13 @@ import {
 import { ProductModal } from '../../products/components/ProductModal';
 import {
   sortItemsByConfidence,
+  sortItemsForDefaultReview,
   type ConfidenceSortDirection,
 } from './confidenceSort';
 import { reviewBasicQuantity } from './matchReviewQuantity';
 
 type Mode = 'load' | 'remove';
+type ReviewStatusFilter = 'All' | 'AutoCreated' | 'Unmatched' | 'Ambiguous' | 'Suggested' | 'Exact' | 'Manual';
 
 const REDUCTION_REASON_OPTIONS = [
   { label: 'Damaged goods', value: 'Damaged goods' },
@@ -39,6 +44,16 @@ const REDUCTION_REASON_OPTIONS = [
   { label: 'Returned to warehouse', value: 'Returned to warehouse' },
   { label: 'Lost or missing stock', value: 'Lost or missing stock' },
   { label: 'Other', value: 'Other' },
+];
+
+const REVIEW_STATUS_OPTIONS: Array<{ label: string; value: ReviewStatusFilter }> = [
+  { label: 'All statuses', value: 'All' },
+  { label: 'Newly created', value: 'AutoCreated' },
+  { label: 'Unmatched', value: 'Unmatched' },
+  { label: 'Ambiguous', value: 'Ambiguous' },
+  { label: 'Suggested', value: 'Suggested' },
+  { label: 'Exact', value: 'Exact' },
+  { label: 'Manual', value: 'Manual' },
 ];
 
 interface StagedItem {
@@ -107,6 +122,16 @@ const responseStatus = (error: unknown) => (
     : undefined
 );
 
+const formatUploadFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const canAutoCreateProductsFromFiles = (files: File[]) => (
+  files.length > 0 && files.every((file) => /\.(xlsx|pdf)$/i.test(file.name))
+);
+
 const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElement): Promise<File> => {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
@@ -129,6 +154,27 @@ const matchIndicator = (row: ProductMatchRow) => {
   if (score >= 85) return { score, color: 'text-portal-orange' };
   return { score, color: 'text-red-accent' };
 };
+
+const isAutoCreatedRow = (row: ProductMatchRow) => (
+  row.autoCreated === true || row.matchStatus === 'AutoCreated'
+);
+
+const candidateAsProduct = (
+  candidate: ProductMatchCandidate | undefined,
+  basicUnitPrice: number | null,
+): Product | null => candidate ? {
+  id: candidate.productId,
+  name: candidate.name,
+  description: null,
+  basicUnitId: candidate.basicUnitId || '',
+  basicUnitName: candidate.basicUnitName || '',
+  basicUnitPrice: basicUnitPrice ?? 0,
+  vehicleBasicUnitPrice: basicUnitPrice,
+  packagingUnitId: candidate.packagingUnitId || null,
+  packagingUnitName: candidate.packagingUnitName || null,
+  packagingUnitPrice: null,
+  isActive: true,
+} : null;
 
 interface VehicleStockModalProps {
   visible: boolean;
@@ -167,6 +213,9 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [excludeTracked, setExcludeTracked] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[] | null>(null);
   const [confidenceSortDirection, setConfidenceSortDirection] = useState<ConfidenceSortDirection | null>(null);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>('All');
+  const [createUnmatchedProducts, setCreateUnmatchedProducts] = useState(false);
+  const [matchSummary, setMatchSummary] = useState<ProductMatchSummary | null>(null);
   const [reviewValidationError, setReviewValidationError] = useState<ReviewValidationError | null>(null);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -175,6 +224,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropUrl, setCropUrl] = useState('');
   const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
   const [cropIndex, setCropIndex] = useState(0);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
@@ -195,7 +245,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
 
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [pendingReviewRemoveId, setPendingReviewRemoveId] = useState<string | null>(null);
-  const [resetReviewPending, setResetReviewPending] = useState(false);
+  const [resetListPending, setResetListPending] = useState(false);
   const pendingRemoveItem = useMemo(
     () => items.find((i) => i.productId === pendingRemoveId) || null,
     [items, pendingRemoveId],
@@ -212,12 +262,21 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     () => sortItemsByConfidence(reviewItems || [], confidenceSortDirection),
     [reviewItems, confidenceSortDirection],
   );
+  const visibleReviewItems = useMemo(
+    () => sortedReviewItems.filter((item) => {
+      if (reviewStatusFilter === 'All') return true;
+      if (reviewStatusFilter === 'AutoCreated') return isAutoCreatedRow(item.source);
+      return !isAutoCreatedRow(item.source) && item.source.matchStatus === reviewStatusFilter;
+    }),
+    [sortedReviewItems, reviewStatusFilter],
+  );
   const reviewDisplayIndexById = useMemo(
-    () => new Map(sortedReviewItems.map((item, index) => [item.id, index])),
-    [sortedReviewItems],
+    () => new Map(visibleReviewItems.map((item, index) => [item.id, index])),
+    [visibleReviewItems],
   );
 
   const hasPackaging = !!productUnits.packaging;
+  const canAutoCreateMissingProducts = canAutoCreateProductsFromFiles(pendingUploadFiles);
 
   const resetForm = () => {
     if (isLocked && lockedProduct) {
@@ -249,15 +308,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       setItems([]);
       setReviewItems(null);
       setConfidenceSortDirection(null);
+      setReviewStatusFilter('All');
+      setCreateUnmatchedProducts(false);
+      setMatchSummary(null);
       setReviewValidationError(null);
       setPendingRemoveId(null);
       setPendingReviewRemoveId(null);
-      setResetReviewPending(false);
+      setResetListPending(false);
       setUploadErrors([]);
       setMatchJob(null);
       setProductModalRowId(null);
       setCropFile(null);
       setCropQueue([]);
+      setPendingUploadFiles([]);
       setCropIndex(0);
       setCropUrl('');
       setReasonSelection('');
@@ -444,18 +507,22 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
 
   const applyMatchResult = (result: ProductMatchResult) => {
     const uploadedRows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
-        const candidate = row.candidates?.[0];
+        const candidate = row.candidates?.find(({ productId }) => productId === row.suggestedProductId)
+          || row.candidates?.[0];
+        const selectedProduct = row.suggestedProductId
+          ? candidateAsProduct(candidate, row.basicUnitPrice ?? null)
+          : null;
         return {
           id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
           source: row,
           productId: row.suggestedProductId || '',
-          productName: candidate?.name || row.extractedName || '',
-          basicUnitName: candidate?.basicUnitName || null,
-          packagingUnitName: candidate?.packagingUnitName || null,
+          productName: selectedProduct?.name || row.extractedName || '',
+          basicUnitName: selectedProduct?.basicUnitName || null,
+          packagingUnitName: selectedProduct?.packagingUnitName || null,
           basicQty: reviewBasicQuantity(row),
-          packagingQty: null,
+          packagingQty: row.packagingQty,
           basicUnitPrice: row.basicUnitPrice ?? null,
-          selectedProduct: null,
+          selectedProduct,
         };
     }));
     const manualRows: ReviewItem[] = items.map((item) => ({
@@ -507,8 +574,10 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error('No product rows were extracted from the selected files.');
       return false;
     }
-    setReviewItems([...manualRows, ...uploadedRows]);
+    setReviewItems(sortItemsForDefaultReview([...manualRows, ...uploadedRows]));
     setConfidenceSortDirection(null);
+    setReviewStatusFilter('All');
+    setMatchSummary(result.summary);
     setFormOpen(false);
     const failed = result.files.filter((file) => file.status !== 'Processed');
     if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
@@ -557,10 +626,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     matchAbortRef.current = controller;
     setUploading(true);
     setMatchJob(null);
+    setMatchSummary(null);
     try {
-      const accepted = await productsApi.matchFiles(files, undefined, controller.signal);
+      const accepted = await productsApi.matchFiles(
+        files,
+        undefined,
+        createUnmatchedProducts && canAutoCreateProductsFromFiles(files),
+        controller.signal,
+      );
       const result = await pollMatchJob(accepted, controller.signal);
-      applyMatchResult(result);
+      if (applyMatchResult(result)) {
+        setPendingUploadFiles([]);
+        setCreateUnmatchedProducts(false);
+      }
       setMatchJob(null);
     } catch (err: unknown) {
       if (isRequestCancelled(err)) return;
@@ -602,12 +680,27 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error(`${invalid.name} is not a supported document.`);
       return;
     }
-    const firstImage = files.findIndex((file) => file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name));
+    setPendingUploadFiles(files);
+    if (!canAutoCreateProductsFromFiles(files)) setCreateUnmatchedProducts(false);
+    setUploadErrors([]);
+  };
+
+  const handlePendingUpload = () => {
+    if (!pendingUploadFiles.length || uploading) return;
+    const firstImage = pendingUploadFiles.findIndex((file) => file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name));
     if (firstImage >= 0) {
-      beginCrop(files, firstImage);
+      beginCrop(pendingUploadFiles, firstImage);
     } else {
-      void processUploadFiles(files);
+      void processUploadFiles(pendingUploadFiles);
     }
+  };
+
+  const cancelPendingUpload = () => {
+    if (uploading) return;
+    setPendingUploadFiles([]);
+    setCreateUnmatchedProducts(false);
+    setUploadErrors([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCropConfirm = async () => {
@@ -626,6 +719,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         setCropFile(null);
         setCropUrl('');
         setCropQueue([]);
+        setPendingUploadFiles(nextFiles);
         await processUploadFiles(nextFiles);
       }
     } catch (err: unknown) {
@@ -647,6 +741,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     field: ReviewValidationError['field'],
     message: string,
   ) => {
+    setReviewStatusFilter('All');
     setReviewValidationError({ id: item.id, field, message });
     const productLabel = item.source.extractedName || item.productName || 'manually added product';
     const displayIndex = reviewDisplayIndexById.get(item.id) ?? index;
@@ -657,6 +752,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   };
 
   const appendReviewItem = () => {
+    setReviewStatusFilter('All');
     setReviewItems((current) => [
       ...(current || []),
       {
@@ -765,6 +861,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     matchAbortRef.current = null;
     setMatchJob(null);
     setUploading(false);
+    setPendingUploadFiles([]);
+    setCreateUnmatchedProducts(false);
     onHide();
   };
 
@@ -779,6 +877,20 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     ? (
       <div className="flex w-full items-center justify-end">
         <FlatButton variant="danger-outline" label="Close" onClick={closeModal} />
+      </div>
+    )
+    : pendingUploadFiles.length > 0
+    ? (
+      <div className="flex w-full items-center justify-end gap-3">
+        <FlatButton size="sm" variant="outline" label="Cancel" onClick={cancelPendingUpload} disabled={uploading} />
+        <FlatButton
+          size="sm"
+          variant="primary"
+          label={uploading ? 'Starting...' : 'Process documents'}
+          onClick={handlePendingUpload}
+          loading={uploading}
+          disabled={uploading || pendingUploadFiles.length === 0}
+        />
       </div>
     )
     : reviewItems
@@ -1021,11 +1133,11 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       <FlatModal
       visible={visible}
       onHide={submitting || (uploading && !matchJob) || !!cropFile ? () => {} : closeModal}
-      title={title}
-      size="xl"
+      title={pendingUploadFiles.length > 0 && !cropFile && !matchJob ? 'Upload documents' : title}
+      size={pendingUploadFiles.length > 0 && !cropFile && !matchJob ? 'md' : 'xl'}
       footer={footer}
     >
-      <div className="relative min-h-[380px] py-3">
+      <div className={`relative py-3 ${pendingUploadFiles.length > 0 && !cropFile && !matchJob ? '' : 'min-h-[380px]'}`}>
         {!isLocked && !isRemove && (
           <input ref={fileInputRef} type="file" multiple accept=".xlsx,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUpload} />
         )}
@@ -1058,16 +1170,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         ) : (
           <>
             <div className="space-y-3">
-              {!reviewItems && (
+              {!reviewItems && pendingUploadFiles.length === 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-wide text-portal-muted">
                     Products ({items.length})
                   </span>
                   <div className="flex items-center gap-2">
-                    {!isRemove && (
-                      <FlatButton size="sm" variant="outline" leftIcon="pi pi-upload" onClick={() => fileInputRef.current?.click()} loading={uploading} disabled={formOpen || uploading}>Upload</FlatButton>
+                    {items.length > 0 && (
+                      <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={formOpen || uploading}>Reset</FlatButton>
                     )}
-                    <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" onClick={() => { resetForm(); setFormOpen(true); }} disabled={formOpen || uploading}>Add item</FlatButton>
+                    {!isRemove && (
+                      <FlatButton size="sm" variant="accent-outline" leftIcon="pi pi-upload" onClick={() => { setCreateUnmatchedProducts(false); fileInputRef.current?.click(); }} loading={uploading} disabled={formOpen || uploading}>Upload</FlatButton>
+                    )}
+                    <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { resetForm(); setFormOpen(true); }} disabled={formOpen || uploading}>Add item</FlatButton>
                   </div>
                 </div>
               )}
@@ -1110,13 +1225,96 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                     You may close this window. Processing will continue on the server, but progress updates will stop here.
                   </p>
                 </div>
+              ) : pendingUploadFiles.length > 0 ? (
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-medium text-portal-text">
+                        {pendingUploadFiles.length} {pendingUploadFiles.length === 1 ? 'document' : 'documents'} selected
+                      </span>
+                      <FlatButton
+                        size="sm"
+                        variant="ghost"
+                        label="Change files"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      />
+                    </div>
+                    <ul className="mt-1 max-h-60 overflow-y-auto divide-y divide-portal-border/40" aria-label="Selected documents">
+                      {pendingUploadFiles.map((file, index) => {
+                        const extension = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+                        return (
+                          <li key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center gap-3 py-3">
+                            <i className={`pi ${extension === 'PDF' ? 'pi-file-pdf' : extension === 'XLSX' ? 'pi-file-excel' : 'pi-image'} shrink-0 text-base text-portal-muted`} aria-hidden="true" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-portal-text" title={file.name}>{file.name}</p>
+                              <p className="mt-0.5 text-[11px] text-portal-muted">{extension} · {formatUploadFileSize(file.size)}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {canAutoCreateMissingProducts && (
+                    <div className="border-t border-portal-border/60 pt-4">
+                      <FlatCheckbox
+                        id="create-unmatched-products"
+                        checked={createUnmatchedProducts}
+                        onChange={setCreateUnmatchedProducts}
+                        disabled={uploading}
+                        className="[&_label]:!items-start [&_.p-checkbox]:!mt-0.5"
+                        label={(
+                          <span className="block">
+                            <span className="block text-xs font-medium text-portal-text">Auto create missing products</span>
+                            <span className="mt-0.5 block text-[11px] font-normal text-portal-muted">
+                              Add products from these documents that aren’t in your catalogue.
+                            </span>
+                          </span>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
               ) : reviewItems ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review stock rows ({reviewItems.length})</span>
-                    <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetReviewPending(true)} disabled={uploading || submitting} />
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">
+                      Review stock rows ({reviewStatusFilter === 'All' ? reviewItems.length : `${visibleReviewItems.length} of ${reviewItems.length}`})
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="review-status-filter-input" className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">
+                          Filter
+                        </label>
+                        <FlatDropdown
+                          id="review-status-filter"
+                          inputId="review-status-filter-input"
+                          size="sm"
+                          fullWidth={false}
+                          value={reviewStatusFilter}
+                          options={REVIEW_STATUS_OPTIONS}
+                          optionLabel="label"
+                          optionValue="value"
+                          className="!w-[160px]"
+                          onChange={(value) => setReviewStatusFilter(value as ReviewStatusFilter)}
+                        />
+                      </div>
+                      <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={uploading || submitting} />
+                    </div>
                   </div>
+                  {matchSummary && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-portal-muted" aria-label="Document matching summary">
+                      <span>Rows <strong className="font-semibold text-portal-text">{matchSummary.totalRows}</strong></span>
+                      <span>Newly created <strong className="font-semibold text-portal-accent">{matchSummary.autoCreated ?? 0}</strong></span>
+                      <span>Exact <strong className="font-semibold text-portal-text">{matchSummary.exact}</strong></span>
+                      <span>Suggested <strong className="font-semibold text-portal-text">{matchSummary.suggested}</strong></span>
+                      <span>Ambiguous <strong className="font-semibold text-portal-text">{matchSummary.ambiguous}</strong></span>
+                      <span>Unmatched <strong className="font-semibold text-red-accent">{matchSummary.unmatched}</strong></span>
+                    </div>
+                  )}
                   <span className="sr-only" role="status">
+                    Showing {visibleReviewItems.length} of {reviewItems.length} review rows.{' '}
                     {confidenceSortDirection === 'ascending'
                       ? 'Extracted rows sorted by confidence, lowest first.'
                       : confidenceSortDirection === 'descending'
@@ -1128,18 +1326,23 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                       {uploadErrors.map((error) => <div key={error}>{error}</div>)}
                     </div>
                   )}
-                  <div className="overflow-x-auto rounded border border-portal-border/60">
+                  <div
+                    className="overflow-x-auto rounded border border-portal-border/60"
+                    role="region"
+                    aria-label="Vehicle stock review rows"
+                    tabIndex={0}
+                  >
                     <table className="w-full min-w-[830px] text-xs">
                       <thead className="bg-portal-canvas/40 text-portal-muted"><tr>
-                        <th className="w-[42px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">#</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Extracted Name</th>
+                        <th className="w-[42px] px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">#</th>
+                        <th className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">Extracted Name</th>
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Matched Product</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Qty</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Price</th>
                         <th
                           scope="col"
                           aria-sort={confidenceSortDirection || undefined}
-                          className="w-[110px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide"
+                          className="w-[110px] px-3 py-2 text-center align-middle text-[11px] font-medium uppercase tracking-wide"
                         >
                           <button
                             type="button"
@@ -1154,24 +1357,26 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                             />
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Action</th>
+                        <th className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">Action</th>
                       </tr></thead>
                       <tbody className="divide-y divide-portal-border/40">
-                        {reviewItems.length === 0 && (
+                        {visibleReviewItems.length === 0 && (
                           <tr>
                             <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-portal-muted">
-                              No stock rows remain. Add a product row to continue.
+                              {reviewItems.length === 0
+                                ? 'No stock rows remain. Add a product row to continue.'
+                                : 'No rows match this status.'}
                             </td>
                           </tr>
                         )}
-                        {sortedReviewItems.map((item, index) => (
+                        {visibleReviewItems.map((item, index) => (
                           <tr
                             key={item.id}
                             id={`stock-review-row-${item.id}`}
                             className={`align-top transition-colors ${reviewValidationError?.id === item.id ? 'bg-red-accent/5' : ''}`}
                           >
-                            <td className="w-[42px] px-3 py-2 font-mono text-[11px] text-portal-muted">{index + 1}</td>
-                            <td className="px-3 py-2 text-portal-text">
+                            <td className="w-[42px] px-3 py-2 text-center align-middle font-mono text-[11px] text-portal-muted">{index + 1}</td>
+                            <td className="px-3 py-2 text-start align-middle text-portal-text">
                               {item.source.matchStatus === 'Manual' ? (
                                 <span className="text-[11px] text-portal-muted">Added manually</span>
                               ) : item.source.extractedName ? (
@@ -1188,7 +1393,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 size="sm"
                                 placeholder="Select product"
                                 value={item.productId}
-                                initialSelectedItem={item.selectedProduct || item.source.candidates?.find((candidate) => candidate.productId === item.productId) as Product | undefined}
+                                initialSelectedItem={item.selectedProduct || undefined}
                                 endpointUrl="/products"
                                 defaultParams={{ isActive: true }}
                                 pageSize={10}
@@ -1246,13 +1451,15 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 </span>
                               )}
                             </td>
-                            <td className="w-[90px] px-3 py-2">
+                            <td className="w-[90px] px-3 py-2 text-center align-middle">
                               {(() => {
                                 const indicator = matchIndicator(item.source);
                                 const isUnmatched = item.source.matchStatus === 'Unmatched';
                                 const isManual = item.source.matchStatus === 'Manual';
+                                const isAutoCreated = isAutoCreatedRow(item.source);
                                 const details = [
                                   isManual ? 'Manually added product row' : null,
+                                  isAutoCreated ? 'Catalogue product created automatically during document processing' : null,
                                   item.source.page != null ? `Page ${item.source.page}` : null,
                                   item.source.row != null ? `Row ${item.source.row}` : null,
                                   item.source.ocrConfidence != null ? `OCR confidence: ${Math.round(item.source.ocrConfidence * 100)}%` : null,
@@ -1262,14 +1469,16 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                   <div className="group relative inline-flex cursor-help" title={details || 'No additional review information.'}>
                                     <div className="flex items-center gap-1.5 whitespace-nowrap">
                                       <span className={`text-[11px] font-semibold ${indicator.color}`}>
-                                        {isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
+                                        {isAutoCreated
+                                          ? <span className="inline-flex items-center gap-1 text-portal-accent"><i className="pi pi-plus text-[9px]" aria-hidden="true" />Newly created</span>
+                                          : isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
                                       </span>
                                     </div>
                                   </div>
                                 );
                               })()}
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-2 text-center align-middle">
                               <button
                                 type="button"
                                 onClick={() => setPendingReviewRemoveId(item.id)}
@@ -1414,23 +1623,26 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         }}
       />
       <FlatConfirmDialog
-        visible={resetReviewPending}
-        onHide={() => setResetReviewPending(false)}
-        title="Reset extracted rows"
-        message={items.length > 0
-          ? 'Discard the uploaded rows and review changes? Your manually added entries will remain.'
-          : 'Discard the extracted rows and your review changes? You will return to the initial Add Stock view.'}
+        visible={resetListPending}
+        onHide={() => setResetListPending(false)}
+        title="Reset stock rows"
+        message={reviewItems
+          ? 'Clear all manually added and uploaded rows, including your review changes?'
+          : 'Clear all manually added product rows?'}
         confirmLabel="Reset"
         variant="danger"
         onConfirm={() => {
+          setItems([]);
           setReviewItems(null);
+          setReviewStatusFilter('All');
           setReviewValidationError(null);
+          setMatchSummary(null);
           setUploadErrors([]);
           setPendingReviewRemoveId(null);
           setFormOpen(false);
           resetForm();
           if (fileInputRef.current) fileInputRef.current.value = '';
-          setResetReviewPending(false);
+          setResetListPending(false);
         }}
       />
       </FlatModal>
