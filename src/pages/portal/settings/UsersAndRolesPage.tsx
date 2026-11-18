@@ -27,7 +27,7 @@ import { GrantStaffAccessModal } from './components/GrantStaffAccessModal';
 import { EditRolePermissionsView } from './components/EditRolePermissionsView';
 import { CreateRoleModal } from './components/CreateRoleModal';
 import { FlatConfirmDialog } from '../../../components/overlay';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatTabs, type FlatTabItem } from '../../../components/flat-form';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../../hooks/usePermissions';
 
@@ -873,41 +873,16 @@ export const UsersAndRolesPage: React.FC = () => {
     <div className="space-y-6">
       {/* Tabs */}
       {!editingRole && (
-        <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
-          <button
-            type="button"
-            onClick={() => handleTabChange('users')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-              activeTab === 'users'
-                ? 'border-portal-accent text-portal-heading font-bold'
-                : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-          >
-            <span>User Accounts</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('staff')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-              activeTab === 'staff'
-                ? 'border-portal-accent text-portal-heading font-bold'
-                : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-          >
-            <span>Staff Directory</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('matrix')}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-              activeTab === 'matrix'
-                ? 'border-portal-accent text-portal-heading font-bold'
-                : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-          >
-            <span>Roles & Permission</span>
-          </button>
-        </div>
+        <FlatTabs<'users' | 'staff' | 'matrix'>
+          tabs={[
+            { value: 'users', label: 'User Accounts' },
+            { value: 'staff', label: 'Staff Directory' },
+            { value: 'matrix', label: 'Roles & Permission' },
+          ] as FlatTabItem<'users' | 'staff' | 'matrix'>[]}
+          value={activeTab}
+          onChange={handleTabChange}
+          ariaLabel="Users and roles sections"
+        />
       )}
 
       {activeTab === 'users' ? (

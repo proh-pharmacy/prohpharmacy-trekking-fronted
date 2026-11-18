@@ -6,7 +6,7 @@ import {
   type ColumnDef,
   type PaginatedDataResponse,
 } from '../../../components/data-table';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatTabs } from '../../../components/flat-form';
 import {
   fleetApi,
   getApiError,
@@ -509,28 +509,17 @@ export const VehicleInventory: React.FC<{
         </div>
       )}
 
-      {!embedded && <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => handleTabChange('stock')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${activeTab === 'stock'
-            ? 'border-portal-accent text-portal-heading font-bold'
-            : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-        >
-          <span>Stock</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange('history')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${activeTab === 'history'
-            ? 'border-portal-accent text-portal-heading font-bold'
-            : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-        >
-          <span>History</span>
-        </button>
-      </div>}
+      {!embedded && (
+        <FlatTabs<StockTab>
+          tabs={[
+            { value: 'stock', label: 'Stock' },
+            { value: 'history', label: 'History' },
+          ]}
+          value={activeTab}
+          onChange={handleTabChange}
+          ariaLabel="Vehicle stock sections"
+        />
+      )}
 
       {activeTab === 'stock' && (
         (headerTitle || headerSubtitle) ? (

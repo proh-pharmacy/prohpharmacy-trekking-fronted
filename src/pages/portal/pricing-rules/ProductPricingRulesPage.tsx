@@ -11,7 +11,7 @@ import {
 } from '../../../api-client';
 import apiClient from '../../../api-client/api';
 import { FlatDataTable, resetTableData, type ColumnDef } from '../../../components/data-table';
-import { FlatAsyncSelect, FlatButton, FlatDropdown, FlatInputNumber } from '../../../components/flat-form';
+import { FlatAsyncSelect, FlatButton, FlatDropdown, FlatInputNumber, FlatTabs } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { usePermissions } from '../../../hooks/usePermissions';
 
@@ -324,28 +324,15 @@ export const ProductPricingRulesPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <div
-        className="flex gap-6 overflow-x-auto whitespace-nowrap border-b border-portal-border/60 text-sm font-semibold"
-        role="tablist"
-        aria-label="Pricing rule scope"
-      >
-        {(['region', 'customer'] as RuleScope[]).map((item) => (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={scope === item}
-            onClick={() => handleScopeChange(item)}
-            className={`-mb-px cursor-pointer !rounded-none border-b-2 pb-3 transition ${
-              scope === item
-                ? 'border-portal-accent font-bold text-portal-heading'
-                : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-          >
-            {item === 'region' ? 'Regional Rules' : 'Customer Rules'}
-          </button>
-        ))}
-      </div>
+      <FlatTabs<RuleScope>
+        tabs={[
+          { value: 'region', label: 'Regional Rules' },
+          { value: 'customer', label: 'Customer Rules' },
+        ]}
+        value={scope}
+        onChange={handleScopeChange}
+        ariaLabel="Pricing rule scope"
+      />
 
       {isAllRegionsView && rulesLoading ? (
         <div className="flex min-h-44 items-center justify-center gap-2 border border-portal-border/60 bg-portal-surface text-xs text-portal-muted">

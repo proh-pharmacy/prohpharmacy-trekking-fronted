@@ -13,7 +13,7 @@ import {
   type PaginatedDataResponse,
   resetTableData,
 } from '../../../components/data-table';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatTabs, type FlatTabItem } from '../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../components/overlay';
 import { BranchModal } from './components/BranchModal';
 import { DistrictModal } from './components/DistrictModal';
@@ -417,46 +417,21 @@ export const OrganisationPage: React.FC = () => {
     []
   );
 
+  const organisationTabs: FlatTabItem<'branches' | 'districts' | 'regions'>[] = [
+    { value: 'branches', label: 'Branches' },
+    { value: 'districts', label: 'Districts' },
+    { value: 'regions', label: 'Regions' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Navigation Tabs (inferred from ?tab= query parameter) */}
-      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => handleTabChange('branches')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'branches'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Branches</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('districts')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'districts'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Districts</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('regions')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'regions'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Regions</span>
-        </button>
-      </div>
+      <FlatTabs
+        tabs={organisationTabs}
+        value={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Organisation sections"
+      />
 
       {/* Tab 1: Branches */}
       {activeTab === 'branches' ? (

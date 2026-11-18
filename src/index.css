@@ -631,6 +631,15 @@ button[class*="border-b-2"],
   border-bottom-right-radius: 0 !important;
 }
 
+/* Folder-style FlatTabs containment: 8px rounded top corners matching active tab crown, sharp bottom edge */
+.flat-tabs-shell {
+  border-radius: 8px 8px 0 0 !important;
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
 /* Driver application chrome must remain edge-to-edge despite the global 4px radius. */
 .driver-page-shell,
 .driver-dashboard-shell,

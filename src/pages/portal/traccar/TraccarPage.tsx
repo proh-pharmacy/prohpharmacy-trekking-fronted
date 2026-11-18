@@ -8,7 +8,7 @@ import {
   resetTableData,
 } from '../../../components/data-table';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatTabs } from '../../../components/flat-form';
 import { fleetApi, type TraccarUser, type FleetDriver, type TrackingDevice } from '../../../api-client';
 import { TraccarUserModal } from './components/TraccarUserModal';
 import { RegisterDriverModal } from './components/RegisterDriverModal';
@@ -583,28 +583,16 @@ export const TraccarPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ── Tab bar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-6 border-b border-portal-border/60 text-sm font-semibold overflow-x-auto whitespace-nowrap">
-        {(
-          [
-            { key: 'devices', label: 'Tracking Devices' },
-            { key: 'drivers', label: 'Drivers' },
-            { key: 'traccar-users', label: 'Traccar Users' },
-          ] as { key: ActiveTab; label: string }[]
-        ).map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => handleTabChange(key)}
-            className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-              activeTab === key
-                ? 'border-portal-accent text-portal-heading font-bold'
-                : 'border-transparent text-portal-muted hover:text-portal-heading'
-            }`}
-          >
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
+      <FlatTabs<ActiveTab>
+        tabs={[
+          { value: 'devices', label: 'Tracking Devices' },
+          { value: 'drivers', label: 'Drivers' },
+          { value: 'traccar-users', label: 'Traccar Users' },
+        ]}
+        value={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Traccar sections"
+      />
 
       {/* ── Tables ──────────────────────────────────────────────────── */}
       {activeTab === 'traccar-users' && (

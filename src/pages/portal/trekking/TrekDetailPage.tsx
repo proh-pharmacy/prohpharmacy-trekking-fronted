@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { InvoicePayments } from '../../../components/invoices/InvoicePayments';
 import { useParams, useNavigate } from 'react-router-dom';
 import { treksApi, type Trek, type TrekStop, type TrekStopProduct, type TrekStatus, type PaymentMethod, type TrekPriceDiffResponse, type TrekStockLoad, type TrekStockCheckItem, type TrekStockWarning, type DriverReturn, type RecordReturnPayload } from '../../../api-client';
-import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText } from '../../../components/flat-form';
+import { FlatButton, FlatDropdown, FlatInputNumber, FlatInputText, FlatTabs } from '../../../components/flat-form';
 import { FlatConfirmDialog, FlatModal } from '../../../components/overlay';
 import { FlatDataTable, resetTableData } from '../../../components/data-table';
 import { VehicleInventory } from '../fleet/VehicleStockPage';
@@ -616,11 +616,18 @@ export const TrekDetailPage: React.FC = () => {
       )}
 
       <p className="text-xs text-portal-muted"><i className="pi pi-info-circle mr-2" />Add customer stops below to automatically generate customer invoices.</p>
-      <div role="tablist" aria-label="Trek planning" className="flex gap-6 border-b border-portal-border">
-        {(['stops', 'inventory'] as const).map((tab) => <button key={tab} id={`planning-tab-${tab}`} type="button" role="tab" aria-selected={planningTab === tab} aria-controls={`planning-panel-${tab}`}
-          className={`pb-3 text-xs font-semibold border-b-2 ${planningTab === tab ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted'}`}
-          onClick={() => { setPlanningTab(tab); if (tab === 'inventory') setInventoryOpened(true); }}>{tab === 'stops' ? 'Stops' : 'Vehicle Inventory'}</button>)}
-      </div>
+      <FlatTabs<'stops' | 'inventory'>
+        tabs={[
+          { value: 'stops', label: 'Stops', id: 'planning-tab-stops', ariaControls: 'planning-panel-stops' },
+          { value: 'inventory', label: 'Vehicle Inventory', id: 'planning-tab-inventory', ariaControls: 'planning-panel-inventory' },
+        ]}
+        value={planningTab}
+        onChange={(tab) => {
+          setPlanningTab(tab);
+          if (tab === 'inventory') setInventoryOpened(true);
+        }}
+        ariaLabel="Trek planning"
+      />
       <div id="planning-panel-inventory" role="tabpanel" aria-labelledby="planning-tab-inventory" hidden={planningTab !== 'inventory'}>
         {inventoryOpened && <VehicleInventory key={trek.vehicleId} vehicleId={trek.vehicleId} embedded onChanged={() => { void loadStockReadiness(); }} />}
       </div>
@@ -1115,10 +1122,18 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
         <div className="min-h-0 overflow-hidden">
           {expanded && (
             <div className="mt-4 space-y-4">
-              <div className="ml-10 flex items-center gap-1 border-b border-portal-border/50" role="tablist" aria-label={`${stop.customerName} sections`}>
-                <button type="button" role="tab" aria-selected={activeStopTab === 'products'} onClick={() => setActiveStopTab('products')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'products' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Products{stop.products.length ? ` (${stop.products.length})` : ''}</button>
-                <button type="button" role="tab" aria-selected={activeStopTab === 'details'} onClick={() => setActiveStopTab('details')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'details' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Customer details</button>
-                <button type="button" role="tab" aria-selected={activeStopTab === 'returns'} onClick={() => setActiveStopTab('returns')} className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${activeStopTab === 'returns' ? 'border-portal-accent text-portal-accent' : 'border-transparent text-portal-muted hover:text-portal-text'}`}>Returns{stop.returns?.length ? ` (${stop.returns.length})` : ''}</button>
+              <div className="ml-10">
+                <FlatTabs<'products' | 'details' | 'returns'>
+                  tabs={[
+                    { value: 'products', label: 'Products', badge: stop.products.length || undefined },
+                    { value: 'details', label: 'Customer details' },
+                    { value: 'returns', label: 'Returns', badge: stop.returns?.length || undefined },
+                  ]}
+                  value={activeStopTab}
+                  onChange={setActiveStopTab}
+                  ariaLabel={`${stop.customerName} sections`}
+                  flowBackground="surface"
+                />
               </div>
               {/* Info grid */}
               {activeStopTab === 'details' && <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0 bg-portal-canvas/40 border border-portal-border/40 rounded px-4 py-2">

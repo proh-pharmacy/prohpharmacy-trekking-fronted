@@ -17,5 +17,6 @@ export * from './FlatInputOtp';
 export * from './FlatButton';
 export * from './FlatAsyncSelect';
 export * from './FlatStepper';
+export * from './FlatTabs';
 export * from './buttonVariants';
 export * from './inputVariants';

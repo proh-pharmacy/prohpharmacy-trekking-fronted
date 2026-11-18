@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse, resetTableData } from '../../../components/data-table';
-import { FlatButton } from '../../../components/flat-form';
+import { FlatButton, FlatTabs } from '../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../components/overlay';
 import { productsApi, type Product, type Unit } from '../../../api-client';
 import { ProductModal } from './components/ProductModal';
@@ -335,43 +335,16 @@ export const ProductsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-portal-border/60 gap-6 text-sm font-semibold overflow-x-auto whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => handleTabChange('products')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'products'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Products Catalog</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('units')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'units'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Basic Units</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('packaging')}
-          className={`pb-3 -mb-px border-b-2 transition cursor-pointer !rounded-none ${
-            activeTab === 'packaging'
-              ? 'border-portal-accent text-portal-heading font-bold'
-              : 'border-transparent text-portal-muted hover:text-portal-heading'
-          }`}
-        >
-          <span>Packaging Units</span>
-        </button>
-      </div>
+      <FlatTabs<'products' | 'units' | 'packaging'>
+        tabs={[
+          { value: 'products', label: 'Products Catalog' },
+          { value: 'units', label: 'Basic Units' },
+          { value: 'packaging', label: 'Packaging Units' },
+        ]}
+        value={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Products sections"
+      />
 
       {/* Tab 1: Products Catalog */}
       {activeTab === 'products' ? (
