@@ -309,7 +309,7 @@ export const VehicleInventory: React.FC<{
   vehicleId: string;
   embedded?: boolean;
   headerTitle?: string;
-  headerSubtitle?: string;
+  headerSubtitle?: React.ReactNode;
   onChanged?: () => void;
   onReviewReadyChange?: (ready: boolean) => void;
 }> = ({ vehicleId, embedded = false, headerTitle, headerSubtitle, onChanged, onReviewReadyChange }) => {
@@ -533,16 +533,18 @@ export const VehicleInventory: React.FC<{
       </div>}
 
       {activeTab === 'stock' && (
-        headerTitle ? (
-          <div className="border border-portal-border bg-portal-surface rounded overflow-hidden">
-            {/* Classic Desktop Title & Command Bar */}
-            <div className="bg-portal-surface border-b border-portal-border px-4 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        (headerTitle || headerSubtitle) ? (
+          <div className="space-y-5">
+            {/* Title & Command Bar */}
+            <div className="border-b border-portal-border/60 pb-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-sm font-bold uppercase tracking-wider text-portal-heading truncate">
-                  {headerTitle}
-                </h1>
+                {headerTitle && (
+                  <h1 className="text-sm font-bold uppercase tracking-wider text-portal-heading truncate">
+                    {headerTitle}
+                  </h1>
+                )}
                 {headerSubtitle && (
-                  <p className="text-xs text-portal-muted mt-0.5">{headerSubtitle}</p>
+                  <p className={`text-xs text-portal-muted ${headerTitle ? 'mt-0.5' : ''}`}>{headerSubtitle}</p>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -557,31 +559,31 @@ export const VehicleInventory: React.FC<{
               </div>
             </div>
 
-            {/* Flush 1px-Divided Desktop KPI Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-portal-border bg-portal-surface">
-              <div className="px-4 py-3.5 min-w-0 col-span-2 lg:col-span-1 flex flex-col justify-between">
-                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Vehicle</p>
-                <p className="text-sm font-semibold text-portal-heading truncate leading-snug" title={vehicleLabel}>
-                  {vehicleLabel}
-                </p>
-              </div>
-              <div className="px-4 py-3.5 min-w-0 flex flex-col justify-between">
-                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Products Tracked</p>
-                <p className="font-mono text-base font-bold text-portal-heading tabular-nums leading-none truncate">
-                  {(summary?.trackedProductCount ?? 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="px-4 py-3.5 min-w-0 border-l border-portal-border lg:border-l-0 flex flex-col justify-between">
-                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">In Stock</p>
-                <p className="font-mono text-base font-bold text-portal-accent tabular-nums leading-none truncate">
-                  {(summary?.inStockProductCount ?? 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="px-4 py-3.5 min-w-0 col-span-2 lg:col-span-1 flex flex-col justify-between">
-                <p className="text-[10px] text-portal-muted uppercase tracking-wider font-semibold mb-1.5">Out of Stock</p>
-                <p className={`font-mono text-base font-bold tabular-nums leading-none truncate ${(summary?.outOfStockProductCount ?? 0) > 0 ? 'text-portal-orange' : 'text-portal-muted'}`}>
-                  {(summary?.outOfStockProductCount ?? 0).toLocaleString()}
-                </p>
+            {/* Step 2-style Vehicle & Stock Summary (maintaining font sizes) */}
+            <div className="border-b border-portal-border/60 pb-5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted">Vehicle</p>
+              <p className="mt-1 text-sm font-semibold text-portal-heading truncate leading-snug" title={vehicleLabel}>
+                {vehicleLabel}
+              </p>
+              <div className="mt-3.5 grid grid-cols-3 gap-x-6 gap-y-2.5">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-portal-muted">Products Tracked</p>
+                  <p className="mt-1 font-mono text-base font-bold text-portal-heading tabular-nums leading-none truncate">
+                    {(summary?.trackedProductCount ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-portal-muted">In Stock</p>
+                  <p className="mt-1 font-mono text-base font-bold text-portal-accent tabular-nums leading-none truncate">
+                    {(summary?.inStockProductCount ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-portal-muted">Out of Stock</p>
+                  <p className={`mt-1 font-mono text-base font-bold tabular-nums leading-none truncate ${(summary?.outOfStockProductCount ?? 0) > 0 ? 'text-portal-orange' : 'text-portal-muted'}`}>
+                    {(summary?.outOfStockProductCount ?? 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

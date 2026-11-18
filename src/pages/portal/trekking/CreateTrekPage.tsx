@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fleetApi, treksApi, type CreateTrekPayload, type VehicleStockOverview } from '../../../api-client';
-import { FlatButton } from '../../../components/flat-form';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { fleetApi, treksApi, type CreateTrekPayload, type StaffItem, type Vehicle, type VehicleStockOverview } from '../../../api-client';
+import { FlatButton, FlatStepper, type FlatStepperStep } from '../../../components/flat-form';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
-import { CreateTrekForm, type CreateTrekDraft } from './components/CreateTrekForm';
+import { CreateTrekForm, type CreateTrekDraft, type CreateTrekFormHandle } from './components/CreateTrekForm';
 import { vehicleStockExtendedFilter, parseVehicleStockFilters } from '../fleet/vehicleStockFilters';
 import { AssignStaffModal } from '../fleet/components/AssignStaffModal';
 import { FlatConfirmDialog } from '../../../components/overlay';
@@ -11,22 +11,157 @@ import { usePermissions } from '../../../hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { VehicleInventory } from '../fleet/VehicleStockPage';
 
+const WIZARD_PARAM_KEYS = [
+  'trekStep',
+  'trekVehicleId',
+  'trekStaffId',
+  'trekRegionId',
+  'trekScheduledDate',
+  'trekBranchId',
+  'trekSalesStaffId',
+  'trekSalesStaffName',
+  'trekNotes',
+] as const;
+
+const readInitialDraftFromUrl = (params: URLSearchParams): {
+  vehicleId: string | null;
+  staffId: string | null;
+  isStockStep: boolean;
+  draft: CreateTrekDraft | null;
+} => {
+  const vehicleId = params.get('trekVehicleId')?.trim() || null;
+  const staffId = params.get('trekStaffId')?.trim() || null;
+  const isStockStep = params.get('trekStep') === 'stock';
+  if (!vehicleId) {
+    return { vehicleId: null, staffId: null, isStockStep: false, draft: null };
+  }
+  const regionId = params.get('trekRegionId') || '';
+  const scheduledDate = params.get('trekScheduledDate') || '';
+  const branchId = params.get('trekBranchId') || null;
+  const salesStaffId = params.get('trekSalesStaffId') || null;
+  const salesStaffName = params.get('trekSalesStaffName') || '';
+  const notes = params.get('trekNotes') || undefined;
+
+  const hasAnyDraftField = Boolean(regionId || scheduledDate || branchId || salesStaffId || notes);
+  if (!hasAnyDraftField) {
+    return { vehicleId, staffId, isStockStep: false, draft: null };
+  }
+
+  const salesStaff: StaffItem | undefined = salesStaffId && salesStaffName
+    ? ({ id: salesStaffId, fullName: salesStaffName } as StaffItem)
+    : undefined;
+
+  return {
+    vehicleId,
+    staffId,
+    isStockStep: Boolean(isStockStep && regionId && scheduledDate),
+    draft: {
+      vehicleId,
+      regionId,
+      scheduledDate,
+      branchId,
+      salesStaffId,
+      notes,
+      salesStaff,
+    },
+  };
+};
+
 export default function CreateTrekPage() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialUrlState = useMemo(() => readInitialDraftFromUrl(searchParams), []);
+
+  const [selected, setSelected] = useState<string | null>(initialUrlState.vehicleId);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [loadingSelectedVehicle, setLoadingSelectedVehicle] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [review, setReview] = useState<{ payload: CreateTrekPayload; vehicle: VehicleStockOverview } | null>(null);
+  const [review, setReview] = useState<{
+    payload: CreateTrekPayload;
+    vehicleId: string;
+    currentStaffId: string | null;
+  } | null>(() => (
+    initialUrlState.isStockStep && initialUrlState.vehicleId && initialUrlState.draft
+      ? {
+          payload: {
+            regionId: initialUrlState.draft.regionId,
+            branchId: initialUrlState.draft.branchId ?? null,
+            scheduledDate: initialUrlState.draft.scheduledDate,
+            vehicleId: initialUrlState.vehicleId,
+            salesStaffId: initialUrlState.draft.salesStaffId ?? null,
+            notes: initialUrlState.draft.notes,
+          },
+          vehicleId: initialUrlState.vehicleId,
+          currentStaffId: initialUrlState.staffId,
+        }
+      : null
+  ));
   const [reviewReady, setReviewReady] = useState(false);
-  const [reviewedDrafts, setReviewedDrafts] = useState<Record<string, CreateTrekDraft>>({});
+  const [formReady, setFormReady] = useState(false);
+  const trekFormRef = useRef<CreateTrekFormHandle | null>(null);
+  const [reviewedDrafts, setReviewedDrafts] = useState<Record<string, CreateTrekDraft>>(() => (
+    initialUrlState.vehicleId && initialUrlState.draft
+      ? { [initialUrlState.vehicleId]: initialUrlState.draft }
+      : {}
+  ));
   const submittingRef = useRef(false);
+
+  const syncWizardUrl = useCallback((nextState: {
+    step: 'details' | 'stock' | null;
+    vehicleId: string | null;
+    staffId?: string | null;
+    draft?: CreateTrekDraft | null;
+  }) => {
+    const params = new URLSearchParams(window.location.search);
+    if (!nextState.vehicleId || !nextState.step) {
+      WIZARD_PARAM_KEYS.forEach((key) => params.delete(key));
+    } else {
+      if (nextState.step === 'stock') {
+        params.set('trekStep', 'stock');
+      } else {
+        params.delete('trekStep');
+      }
+      params.set('trekVehicleId', nextState.vehicleId);
+      if (nextState.staffId) {
+        params.set('trekStaffId', nextState.staffId);
+      } else {
+        params.delete('trekStaffId');
+      }
+      const draft = nextState.draft;
+      if (draft) {
+        if (draft.regionId) params.set('trekRegionId', draft.regionId);
+        else params.delete('trekRegionId');
+        if (draft.scheduledDate) params.set('trekScheduledDate', draft.scheduledDate);
+        else params.delete('trekScheduledDate');
+        if (draft.branchId) params.set('trekBranchId', draft.branchId);
+        else params.delete('trekBranchId');
+        if (draft.salesStaffId) params.set('trekSalesStaffId', draft.salesStaffId);
+        else params.delete('trekSalesStaffId');
+        if (draft.salesStaffId && draft.salesStaff?.fullName) {
+          params.set('trekSalesStaffName', draft.salesStaff.fullName);
+        } else if (!draft.salesStaffId) {
+          params.delete('trekSalesStaffName');
+        }
+        if (draft.notes) params.set('trekNotes', draft.notes);
+        else params.delete('trekNotes');
+      }
+    }
+    if (params.toString() !== window.location.search.replace(/^\?/, '')) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [setSearchParams]);
 
   const handleCreateTrek = async () => {
     if (!review || !reviewReady || submittingRef.current) return;
     submittingRef.current = true;
     setSaving(true);
     try {
-      const currentVehicle = await fleetApi.getVehicle(review.vehicle.id);
-      if (currentVehicle.operationalStatus !== 'Active' || !currentVehicle.currentStaffId || currentVehicle.currentStaffId !== review.vehicle.currentStaffId) {
+      const currentVehicle = await fleetApi.getVehicle(review.vehicleId);
+      if (
+        currentVehicle.operationalStatus !== 'Active'
+        || !currentVehicle.currentStaffId
+        || (review.currentStaffId && currentVehicle.currentStaffId !== review.currentStaffId)
+      ) {
         toast.error('The vehicle status or driver has changed. Go back and review the vehicle details.');
         resetTableData();
         return;
@@ -54,7 +189,10 @@ export default function CreateTrekPage() {
     try {
       await fleetApi.unassignVehicleStaff(unassignVehicle.id);
       resetTableData();
-      setSelected((current) => current === unassignVehicle.id ? null : current);
+      if (selected === unassignVehicle.id) {
+        setSelected(null);
+        syncWizardUrl({ step: null, vehicleId: null });
+      }
       setUnassignVehicle(null);
       toast.success('Driver unassigned.');
     } catch (err: any) {
@@ -63,6 +201,27 @@ export default function CreateTrekPage() {
       setUnassigning(false);
     }
   };
+
+  useEffect(() => {
+    if (!selected || (selectedVehicle && selectedVehicle.id === selected)) return;
+    let active = true;
+    setLoadingSelectedVehicle(true);
+    fleetApi.getVehicle(selected)
+      .then((vehicle) => {
+        if (active) setSelectedVehicle(vehicle);
+      })
+      .catch(() => {
+        if (active) {
+          toast.error('Failed to load the selected vehicle.');
+          setSelected(null);
+          syncWizardUrl({ step: null, vehicleId: null });
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingSelectedVehicle(false);
+      });
+    return () => { active = false; };
+  }, [selected, selectedVehicle, syncWizardUrl]);
 
   const dataMapper = useCallback((response: any): PaginatedDataResponse<VehicleStockOverview> => ({
     data: response?.data ?? [],
@@ -110,66 +269,249 @@ export default function CreateTrekPage() {
     {
       field: 'actions', header: 'Actions',
       body: (vehicle) => <div className="flex items-center gap-2">
-        <FlatButton size="sm" variant={selected === vehicle.id ? 'outline' : 'primary'}
+        <FlatButton size="sm" variant="primary"
           disabled={vehicle.operationalStatus !== 'Active' || !vehicle.currentStaffId || saving}
-          aria-expanded={selected === vehicle.id} aria-controls={selected === vehicle.id ? `vehicle-${vehicle.id}` : undefined}
-          onClick={() => setSelected(selected === vehicle.id ? null : vehicle.id)}>
-          {selected === vehicle.id ? 'Deselect' : 'Select'}
+          onClick={() => {
+            setSelected(vehicle.id);
+            setSelectedVehicle(vehicle);
+            syncWizardUrl({
+              step: 'details',
+              vehicleId: vehicle.id,
+              staffId: vehicle.currentStaffId,
+              draft: reviewedDrafts[vehicle.id] ?? {
+                vehicleId: vehicle.id,
+                regionId: vehicle.regionId ?? '',
+                scheduledDate: '',
+                branchId: null,
+                salesStaffId: null,
+              },
+            });
+          }}>
+          Select
         </FlatButton>
       </div>,
     },
-  ], [selected, saving, navigate, canAssignDriver, unassigning]);
+  ], [saving, navigate, canAssignDriver, unassigning, reviewedDrafts, syncWizardUrl]);
 
-  return <div className="space-y-5">
-    {!review && (
-      <div className="flex px-2 border-b pb-2 rounded-none border-portal-border/60 items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-white">Choose Trekking Vehicle</h1>
-        <FlatButton size="sm" variant="danger" disabled={saving} onClick={() => navigate('/portal/trekking')}>Cancel Trek</FlatButton>
+  const isStockStep = Boolean(review);
+  const currentStep: 1 | 2 | 3 = isStockStep ? 3 : selected ? 2 : 1;
+
+  const handleBackToVehicleSelection = useCallback(() => {
+    if (saving) return;
+    setSelected(null);
+    setSelectedVehicle(null);
+    setReview(null);
+    setReviewReady(false);
+    syncWizardUrl({ step: null, vehicleId: null });
+  }, [saving, syncWizardUrl]);
+
+  const handleBackToDetails = useCallback(() => {
+    if (!review || saving) return;
+    const vehicleId = review.vehicleId;
+    const staffId = review.currentStaffId;
+    setSelected(vehicleId);
+    setReview(null);
+    setReviewReady(false);
+    syncWizardUrl({
+      step: 'details',
+      vehicleId,
+      staffId,
+      draft: reviewedDrafts[vehicleId] ?? {
+        ...review.payload,
+      },
+    });
+  }, [review, saving, reviewedDrafts, syncWizardUrl]);
+
+  const stepperSteps: FlatStepperStep[] = [
+    {
+      title: 'Choose Vehicle',
+      status: currentStep > 1 ? 'completed' : 'current',
+      onClick: currentStep > 1 ? handleBackToVehicleSelection : undefined,
+      disabled: saving,
+    },
+    {
+      title: 'Trek Details',
+      status: currentStep > 2 ? 'completed' : currentStep === 2 ? 'current' : 'upcoming',
+      onClick: currentStep === 3 ? handleBackToDetails : undefined,
+      disabled: saving,
+    },
+    {
+      title: 'Confirm Stock',
+      status: currentStep === 3 ? 'current' : 'upcoming',
+      disabled: saving,
+    },
+  ];
+
+  const stepperFooter = currentStep === 1 ? (
+    <FlatButton
+      size="sm"
+      variant="danger"
+      disabled={saving}
+      onClick={() => navigate('/portal/trekking', { replace: true })}
+    >
+      Cancel Trek
+    </FlatButton>
+  ) : currentStep === 2 ? (
+    <>
+      <FlatButton
+        size="sm"
+        variant="danger"
+        leftIcon="pi pi-arrow-left"
+        disabled={saving}
+        onClick={handleBackToVehicleSelection}
+      >
+        Back to Vehicles
+      </FlatButton>
+      <FlatButton
+        size="sm"
+        disabled={saving || loadingSelectedVehicle || !selectedVehicle || !formReady}
+        onClick={() => trekFormRef.current?.submit()}
+      >
+        Continue
+      </FlatButton>
+    </>
+  ) : (
+    <>
+      <FlatButton
+        size="sm"
+        variant="danger"
+        leftIcon="pi pi-arrow-left"
+        disabled={saving}
+        onClick={handleBackToDetails}
+      >
+        Back to Details
+      </FlatButton>
+      <FlatButton
+        size="sm"
+        loading={saving}
+        disabled={saving || !reviewReady}
+        onClick={handleCreateTrek}
+      >
+        Confirm &amp; Create Trek
+      </FlatButton>
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="inline-flex items-center gap-2 text-xl font-semibold text-portal-muted">
+          <i className="pi pi-plus text-sm" aria-hidden="true" />
+          <span>Create New Trek</span>
+        </h1>
       </div>
-    )}
-    <div hidden={!!review}>
-      <FlatDataTable<VehicleStockOverview>
-        dataSourceUrl="/fleet/vehicles/stock-overview"
-        dataMapper={dataMapper}
-        columns={columns}
-        dataKey="id"
-        expandedRowKeys={selected ? { [selected]: true } : {}}
-        rowExpansionTemplate={(vehicle) => <div id={`vehicle-${vehicle.id}`} className="bg-portal-canvas p-5">
-          <CreateTrekForm key={vehicle.id} vehicle={vehicle} initialValues={reviewedDrafts[vehicle.id]}
-            onReview={(payload, draft) => {
-              setReviewedDrafts((drafts) => ({ ...drafts, [vehicle.id]: draft }));
-              setReviewReady(false);
-              setReview({ payload, vehicle });
-            }} />
-        </div>}
-        controlsDisabled={!!selected || saving}
-        filterable="search"
-        filterablePlaceholder="Search registration, vehicle name, make or model..."
-        extendedFilter={vehicleStockExtendedFilter}
-        parsePayload={parseVehicleStockFilters}
-        persistFiltersInUrl
-        enableTableFilter
-        enablePaginator
-        initialPageSize={20}
-        postData={{ sort: 'createdAt_desc' }}
-        emptyDataText="No vehicles found."
-      />
-    </div>
-    {review && <section className="space-y-4" aria-label="Confirm vehicle stock">
-      <div inert={saving}>
-        <VehicleInventory
-          vehicleId={review.vehicle.id}
-          embedded
-          headerTitle="Confirm Vehicle Stock"
-          headerSubtitle="Confirm the products and quantities currently on this vehicle before creating the trek."
-          onReviewReadyChange={setReviewReady}
-        />
-      </div>
-      <div className="bg-portal-surface border border-portal-border rounded px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        <FlatButton size="sm" variant="outline" leftIcon="pi pi-arrow-left" disabled={saving} onClick={() => { setReview(null); setReviewReady(false); }}>Back to Details</FlatButton>
-        <FlatButton size="sm" loading={saving} disabled={saving || !reviewReady} onClick={handleCreateTrek}>Confirm &amp; Create Trek</FlatButton>
-      </div>
-    </section>}
+
+      <FlatStepper
+        steps={stepperSteps}
+        ariaLabel="Create trek steps"
+        footer={stepperFooter}
+      >
+        {/* Step 1 Content: Choose Trekking Vehicle */}
+        <div hidden={currentStep !== 1}>
+          <FlatDataTable<VehicleStockOverview>
+            dataSourceUrl="/fleet/vehicles/stock-overview"
+            dataMapper={dataMapper}
+            columns={columns}
+            dataKey="id"
+            controlsDisabled={saving}
+            filterable="search"
+            filterablePlaceholder="Search registration, vehicle name, make or model..."
+            extendedFilter={vehicleStockExtendedFilter}
+            parsePayload={parseVehicleStockFilters}
+            persistFiltersInUrl
+            enableTableFilter
+            enablePaginator
+            initialPageSize={20}
+            postData={{ sort: 'createdAt_desc' }}
+            emptyDataText="No vehicles found."
+          />
+        </div>
+
+        {/* Step 2 Content: Provide Details for This Trek */}
+        {currentStep === 2 && selected && (
+          <section aria-label="Provide Details for This Trek" className="space-y-6">
+            {loadingSelectedVehicle || !selectedVehicle ? (
+              <div className="py-8 text-center text-xs text-portal-muted">
+                <i className="pi pi-spin pi-spinner mr-2" />
+                Loading selected vehicle details...
+              </div>
+            ) : (
+              <>
+                <div className="border-b border-portal-border/60 pb-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted">Vehicle</p>
+                  <p className="mt-1 text-xs font-semibold text-portal-heading">{selectedVehicle.displayName}</p>
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2.5 text-[11px]">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-portal-muted">Registration</p>
+                      <p className="mt-0.5 font-mono text-portal-text">{selectedVehicle.registrationNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-portal-muted">Driver</p>
+                      <p className="mt-0.5 text-portal-text">{selectedVehicle.currentStaffName || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-portal-muted">Default Region</p>
+                      <p className="mt-0.5 text-portal-text">{selectedVehicle.regionName || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <CreateTrekForm
+                  ref={trekFormRef}
+                  key={selectedVehicle.id}
+                  vehicle={selectedVehicle}
+                  initialValues={reviewedDrafts[selectedVehicle.id]}
+                  hideActions
+                  onReadyChange={setFormReady}
+                  onDraftChange={(draft) => {
+                    setReviewedDrafts((drafts) => ({ ...drafts, [selectedVehicle.id]: draft }));
+                    syncWizardUrl({
+                      step: 'details',
+                      vehicleId: selectedVehicle.id,
+                      staffId: selectedVehicle.currentStaffId,
+                      draft,
+                    });
+                  }}
+                  onReview={(payload, draft) => {
+                    setReviewedDrafts((drafts) => ({ ...drafts, [selectedVehicle.id]: draft }));
+                    setReviewReady(false);
+                    setReview({
+                      payload,
+                      vehicleId: selectedVehicle.id,
+                      currentStaffId: selectedVehicle.currentStaffId ?? null,
+                    });
+                    syncWizardUrl({
+                      step: 'stock',
+                      vehicleId: selectedVehicle.id,
+                      staffId: selectedVehicle.currentStaffId,
+                      draft,
+                    });
+                  }}
+                />
+              </>
+            )}
+          </section>
+        )}
+
+        {/* Step 3 Content: Confirm Vehicle Stock */}
+        {currentStep === 3 && review && (
+          <section className="space-y-4" aria-label="Confirm vehicle stock">
+            <div inert={saving}>
+              <VehicleInventory
+                vehicleId={review.vehicleId}
+                embedded
+                headerSubtitle={(
+                  <span className="inline-flex items-center gap-1.5">
+                    <i className="pi pi-exclamation-circle text-red-accent shrink-0" aria-hidden="true" />
+                    <span>Confirm the products and quantities currently on this vehicle before creating the trek.</span>
+                  </span>
+                )}
+                onReviewReadyChange={setReviewReady}
+              />
+            </div>
+          </section>
+        )}
+      </FlatStepper>
     <AssignStaffModal
       visible={!!assignVehicle}
       onHide={() => setAssignVehicle(null)}
@@ -186,5 +528,6 @@ export default function CreateTrekPage() {
       onConfirm={handleUnassign}
       loading={unassigning}
     />
-  </div>;
+  </div>
+  );
 }

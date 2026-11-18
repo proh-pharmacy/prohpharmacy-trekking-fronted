@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import ReactCrop, { type Crop, type PercentCrop, type PixelCrop } from 'react-image-crop';
@@ -44,16 +45,6 @@ const REDUCTION_REASON_OPTIONS = [
   { label: 'Returned to warehouse', value: 'Returned to warehouse' },
   { label: 'Lost or missing stock', value: 'Lost or missing stock' },
   { label: 'Other', value: 'Other' },
-];
-
-const REVIEW_STATUS_OPTIONS: Array<{ label: string; value: ReviewStatusFilter }> = [
-  { label: 'All statuses', value: 'All' },
-  { label: 'Newly created', value: 'AutoCreated' },
-  { label: 'Unmatched', value: 'Unmatched' },
-  { label: 'Ambiguous', value: 'Ambiguous' },
-  { label: 'Suggested', value: 'Suggested' },
-  { label: 'Exact', value: 'Exact' },
-  { label: 'Manual', value: 'Manual' },
 ];
 
 interface StagedItem {
@@ -149,7 +140,9 @@ const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElemen
 const matchIndicator = (row: ProductMatchRow) => {
   const score = row.candidates?.[0]?.similarityScore;
   if (row.matchStatus === 'Unmatched') return { score: null, color: 'text-red-accent' };
+  if (row.matchStatus === 'Ambiguous') return { score: score ?? null, color: 'text-red-accent' };
   if (score == null) return { score: null, color: 'text-portal-muted' };
+  if (row.matchStatus === 'Suggested') return { score, color: score >= 85 ? 'text-portal-orange' : 'text-red-accent' };
   if (score >= 95) return { score, color: 'text-portal-accent' };
   if (score >= 85) return { score, color: 'text-portal-orange' };
   return { score, color: 'text-red-accent' };
@@ -175,6 +168,236 @@ const candidateAsProduct = (
   packagingUnitPrice: null,
   isActive: true,
 } : null;
+
+interface ReviewTableTooltipHandle {
+  show: (item: ReviewItem, target: HTMLElement) => void;
+  scheduleHide: () => void;
+  hideImmediate: () => void;
+}
+
+const ReviewTableTooltip = React.forwardRef<ReviewTableTooltipHandle>((_, ref) => {
+  const [item, setItem] = useState<ReviewItem | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [animateMove, setAnimateMove] = useState(false);
+  const [coords, setCoords] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const tooltipElRef = useRef<HTMLDivElement | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const activeTargetRef = useRef<HTMLElement | null>(null);
+  const visibleRef = useRef(false);
+
+  const computeWindowSafeCoords = (target: HTMLElement, measuredEl?: HTMLDivElement | null) => {
+    const MARGIN = 12;
+    const GAP = 8;
+    const rect = target.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const tooltipWidth = measuredEl?.offsetWidth || Math.min(280, viewportWidth - MARGIN * 2);
+    const tooltipHeight = measuredEl?.offsetHeight || 140;
+
+    const x = Math.min(
+      Math.max(MARGIN, rect.left),
+      Math.max(MARGIN, viewportWidth - tooltipWidth - MARGIN),
+    );
+
+    const spaceAbove = rect.top - GAP - MARGIN;
+    const spaceBelow = viewportHeight - rect.bottom - GAP - MARGIN;
+    const placeBelow = spaceAbove < tooltipHeight && spaceBelow > spaceAbove;
+    const rawY = placeBelow
+      ? rect.bottom + GAP
+      : rect.top - GAP - tooltipHeight;
+    const y = Math.min(
+      Math.max(MARGIN, rawY),
+      Math.max(MARGIN, viewportHeight - tooltipHeight - MARGIN),
+    );
+
+    return { x, y };
+  };
+
+  const clearTimers = () => {
+    if (hideTimerRef.current != null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  };
+
+  const hideNow = () => {
+    clearTimers();
+    activeTargetRef.current = null;
+    visibleRef.current = false;
+    setVisible(false);
+    setAnimateMove(false);
+  };
+
+  useEffect(() => () => clearTimers(), []);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    const handleScrollOrWheel = () => {
+      hideNow();
+    };
+    window.addEventListener('scroll', handleScrollOrWheel, { capture: true, passive: true });
+    window.addEventListener('wheel', handleScrollOrWheel, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrWheel, { capture: true });
+      window.removeEventListener('wheel', handleScrollOrWheel, { capture: true });
+    };
+  }, [visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || !activeTargetRef.current || !tooltipElRef.current) return;
+    const next = computeWindowSafeCoords(activeTargetRef.current, tooltipElRef.current);
+    setCoords((prev) => (prev.x === next.x && prev.y === next.y ? prev : next));
+  }, [item, visible]);
+
+  useImperativeHandle(ref, () => ({
+    show: (nextItem: ReviewItem, target: HTMLElement) => {
+      if (hideTimerRef.current != null) {
+        window.clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+
+      const wasVisible = visibleRef.current;
+      activeTargetRef.current = target;
+      setItem(nextItem);
+      setCoords(computeWindowSafeCoords(target, tooltipElRef.current));
+
+      if (!wasVisible) {
+        setAnimateMove(false);
+        setVisible(true);
+        visibleRef.current = true;
+        if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = window.requestAnimationFrame(() => {
+          setAnimateMove(true);
+          rafRef.current = null;
+        });
+      } else {
+        setAnimateMove(true);
+        setVisible(true);
+      }
+    },
+    scheduleHide: () => {
+      if (hideTimerRef.current != null) window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = window.setTimeout(() => {
+        activeTargetRef.current = null;
+        visibleRef.current = false;
+        setVisible(false);
+        setAnimateMove(false);
+        hideTimerRef.current = null;
+      }, 90);
+    },
+    hideImmediate: () => {
+      hideNow();
+    },
+  }), []);
+
+  if (!item || typeof document === 'undefined') return null;
+
+  const row = item.source;
+  const isAutoCreated = isAutoCreatedRow(row);
+  const isManual = row.matchStatus === 'Manual';
+  const indicator = matchIndicator(row);
+  const statusText = isAutoCreated
+    ? 'Newly created'
+    : isManual
+      ? 'Added manually'
+      : row.matchStatus === 'Ambiguous'
+        ? 'Ambiguous match'
+        : row.matchStatus === 'Suggested'
+          ? 'Suggested match'
+          : row.matchStatus === 'Unmatched'
+            ? 'Unmatched'
+            : 'Exact match';
+  const statusColor = isAutoCreated
+    ? 'text-portal-accent'
+    : isManual
+      ? 'text-portal-muted'
+      : indicator.color;
+
+  const locationParts = [
+    row.page != null ? `Page ${row.page}` : null,
+    row.row != null ? `Row ${row.row}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const showCandidates = !isAutoCreated && !isManual && (
+    row.candidates?.length > 1
+    || ((row.matchStatus === 'Ambiguous' || row.matchStatus === 'Suggested') && row.candidates?.length > 0)
+  );
+  const topCandidates = showCandidates ? row.candidates.slice(0, 3) : [];
+  const warnings = row.warnings?.filter(Boolean) || [];
+
+  return createPortal(
+    <div
+      ref={tooltipElRef}
+      role="tooltip"
+      aria-hidden={!visible}
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        width: 280,
+        maxWidth: 'calc(100vw - 24px)',
+        maxHeight: 'calc(100vh - 24px)',
+        transform: `translate3d(${Math.round(coords.x)}px, ${Math.round(coords.y)}px, 0)`,
+        transition: animateMove
+          ? 'transform 170ms cubic-bezier(0.22, 1, 0.36, 1), opacity 130ms ease'
+          : 'opacity 130ms ease',
+        willChange: 'transform, opacity',
+        zIndex: 9999,
+      }}
+      className={`pointer-events-none overflow-hidden rounded border border-portal-border bg-portal-surface px-3 py-2.5 shadow-xl ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <p className="break-words text-xs font-semibold leading-snug text-portal-heading">
+        {row.extractedName || item.productName || 'Added manually'}
+      </p>
+      <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+        <span className={`font-medium ${statusColor}`}>
+          {statusText}
+          {indicator.score != null && !isAutoCreated && !isManual ? ` · ${Math.round(indicator.score)}%` : ''}
+        </span>
+        {locationParts && (
+          <span className="shrink-0 text-portal-muted">{locationParts}</span>
+        )}
+      </div>
+
+      {topCandidates.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-portal-border/50 pt-2">
+          {topCandidates.map((candidate) => (
+            <div key={candidate.productId} className="flex items-center justify-between gap-3 text-[11px]">
+              <span className="truncate text-portal-text">{candidate.name}</span>
+              <span className="shrink-0 font-mono tabular-nums text-portal-muted">
+                {Math.round(candidate.similarityScore)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="-mx-3 -mb-2.5 mt-2.5 divide-y divide-portal-border/50 border-t border-portal-border/60 text-[11px] leading-snug text-portal-muted">
+          {warnings.map((warning, index) => (
+            <div
+              key={`${warning}-${index}`}
+              className="px-3 py-2 odd:bg-portal-canvas/60"
+            >
+              {warning}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+});
 
 interface VehicleStockModalProps {
   visible: boolean;
@@ -246,6 +469,24 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [pendingReviewRemoveId, setPendingReviewRemoveId] = useState<string | null>(null);
   const [resetListPending, setResetListPending] = useState(false);
+  const reviewTooltipRef = useRef<ReviewTableTooltipHandle | null>(null);
+  const reviewItemById = useMemo(
+    () => new Map((reviewItems || []).map((item) => [item.id, item])),
+    [reviewItems],
+  );
+
+  const handleReviewTableTriggerEnter = (event: React.SyntheticEvent<HTMLElement>) => {
+    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-review-tooltip-id]');
+    if (!target) {
+      reviewTooltipRef.current?.scheduleHide();
+      return;
+    }
+    const id = target.getAttribute('data-review-tooltip-id');
+    const item = id ? reviewItemById.get(id) : undefined;
+    if (item) {
+      reviewTooltipRef.current?.show(item, target);
+    }
+  };
   const pendingRemoveItem = useMemo(
     () => items.find((i) => i.productId === pendingRemoveId) || null,
     [items, pendingRemoveId],
@@ -274,6 +515,52 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     () => new Map(visibleReviewItems.map((item, index) => [item.id, index])),
     [visibleReviewItems],
   );
+  const reviewFilterChips = useMemo(() => {
+    const rows = reviewItems || [];
+    let autoCreated = 0;
+    let exact = 0;
+    let suggested = 0;
+    let ambiguous = 0;
+    let unmatched = 0;
+    let manual = 0;
+
+    for (const item of rows) {
+      if (isAutoCreatedRow(item.source)) {
+        autoCreated += 1;
+      } else if (item.source.matchStatus === 'Exact') {
+        exact += 1;
+      } else if (item.source.matchStatus === 'Suggested') {
+        suggested += 1;
+      } else if (item.source.matchStatus === 'Ambiguous') {
+        ambiguous += 1;
+      } else if (item.source.matchStatus === 'Unmatched') {
+        unmatched += 1;
+      } else if (item.source.matchStatus === 'Manual') {
+        manual += 1;
+      }
+    }
+
+    const chips: Array<{
+      label: string;
+      value: ReviewStatusFilter;
+      count: number;
+      countTone: string;
+      activeTone: string;
+    }> = [
+      { label: 'All', value: 'All', count: rows.length || (matchSummary?.totalRows ?? 0), countTone: 'text-portal-text', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Newly created', value: 'AutoCreated', count: rows.length ? autoCreated : (matchSummary?.autoCreated ?? 0), countTone: 'text-portal-accent', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Exact', value: 'Exact', count: rows.length ? exact : (matchSummary?.exact ?? 0), countTone: 'text-portal-accent', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Suggested', value: 'Suggested', count: rows.length ? suggested : (matchSummary?.suggested ?? 0), countTone: 'text-portal-orange', activeTone: 'bg-portal-orange/20 text-portal-orange' },
+      { label: 'Ambiguous', value: 'Ambiguous', count: rows.length ? ambiguous : (matchSummary?.ambiguous ?? 0), countTone: 'text-red-accent', activeTone: 'bg-red-accent/20 text-red-accent' },
+      { label: 'Unmatched', value: 'Unmatched', count: rows.length ? unmatched : (matchSummary?.unmatched ?? 0), countTone: 'text-red-accent', activeTone: 'bg-red-accent/20 text-red-accent' },
+    ];
+
+    if (manual > 0 || reviewStatusFilter === 'Manual') {
+      chips.push({ label: 'Manual', value: 'Manual', count: manual, countTone: 'text-blue-400', activeTone: 'bg-blue-400/20 text-blue-400' });
+    }
+
+    return chips;
+  }, [reviewItems, matchSummary, reviewStatusFilter]);
 
   const hasPackaging = !!productUnits.packaging;
   const canAutoCreateMissingProducts = canAutoCreateProductsFromFiles(pendingUploadFiles);
@@ -297,6 +584,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   };
 
   useEffect(() => {
+    reviewTooltipRef.current?.hideImmediate();
     if (!visible) {
       matchAbortRef.current?.abort();
       matchAbortRef.current = null;
@@ -509,13 +797,16 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     const uploadedRows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
         const candidate = row.candidates?.find(({ productId }) => productId === row.suggestedProductId)
           || row.candidates?.[0];
-        const selectedProduct = row.suggestedProductId
+        const matchedProductId = row.suggestedProductId
+          || (row.matchStatus !== 'Unmatched' ? candidate?.productId : '')
+          || '';
+        const selectedProduct = matchedProductId
           ? candidateAsProduct(candidate, row.basicUnitPrice ?? null)
           : null;
         return {
           id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
           source: row,
-          productId: row.suggestedProductId || '',
+          productId: matchedProductId,
           productName: selectedProduct?.name || row.extractedName || '',
           basicUnitName: selectedProduct?.basicUnitName || null,
           packagingUnitName: selectedProduct?.packagingUnitName || null,
@@ -1266,9 +1557,9 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                         className="[&_label]:!items-start [&_.p-checkbox]:!mt-0.5"
                         label={(
                           <span className="block">
-                            <span className="block text-xs font-medium text-portal-text">Auto create missing products</span>
-                            <span className="mt-0.5 block text-[11px] font-normal text-portal-muted">
-                              Add products from these documents that aren’t in your catalogue.
+                            <span className="block text-xs font-medium !text-red-accent">Automatically Create Missing Products</span>
+                            <span className="mt-0.5 block text-[11px] font-normal !text-red-accent">
+                              Add any product that is detected in this document but missing from this system product catalogue.
                             </span>
                           </span>
                         )}
@@ -1278,41 +1569,37 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                 </div>
               ) : reviewItems ? (
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[11px] uppercase tracking-wide text-portal-muted">
                       Review stock rows ({reviewStatusFilter === 'All' ? reviewItems.length : `${visibleReviewItems.length} of ${reviewItems.length}`})
                     </span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2">
-                        <label htmlFor="review-status-filter-input" className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">
-                          Filter
-                        </label>
-                        <FlatDropdown
-                          id="review-status-filter"
-                          inputId="review-status-filter-input"
-                          size="sm"
-                          fullWidth={false}
-                          value={reviewStatusFilter}
-                          options={REVIEW_STATUS_OPTIONS}
-                          optionLabel="label"
-                          optionValue="value"
-                          className="!w-[160px]"
-                          onChange={(value) => setReviewStatusFilter(value as ReviewStatusFilter)}
-                        />
-                      </div>
-                      <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={uploading || submitting} />
-                    </div>
+                    <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={uploading || submitting} />
                   </div>
-                  {matchSummary && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-portal-muted" aria-label="Document matching summary">
-                      <span>Rows <strong className="font-semibold text-portal-text">{matchSummary.totalRows}</strong></span>
-                      <span>Newly created <strong className="font-semibold text-portal-accent">{matchSummary.autoCreated ?? 0}</strong></span>
-                      <span>Exact <strong className="font-semibold text-portal-text">{matchSummary.exact}</strong></span>
-                      <span>Suggested <strong className="font-semibold text-portal-text">{matchSummary.suggested}</strong></span>
-                      <span>Ambiguous <strong className="font-semibold text-portal-text">{matchSummary.ambiguous}</strong></span>
-                      <span>Unmatched <strong className="font-semibold text-red-accent">{matchSummary.unmatched}</strong></span>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 py-2" role="group" aria-label="Document matching summary">
+                    {reviewFilterChips.map((chip) => {
+                      const isActive = reviewStatusFilter === chip.value;
+                      return (
+                        <button
+                          key={chip.value}
+                          type="button"
+                          aria-pressed={isActive}
+                          onClick={() => setReviewStatusFilter((current) => (current === chip.value && chip.value !== 'All' ? 'All' : chip.value))}
+                          className={`inline-flex cursor-pointer items-center gap-1.5 !rounded-full px-3.5 py-1.5 text-xs transition-colors focus-visible:outline-none ${
+                            isActive
+                              ? `font-semibold ${chip.activeTone}`
+                              : 'text-portal-muted hover:bg-white/[0.05] hover:text-portal-text'
+                          }`}
+                        >
+                          <span className={isActive ? '' : 'underline decoration-dotted decoration-portal-muted/70 underline-offset-4'}>
+                            {chip.label}
+                          </span>
+                          <strong className={`font-mono font-semibold tabular-nums ${isActive ? 'text-current' : chip.countTone}`}>
+                            {chip.count}
+                          </strong>
+                        </button>
+                      );
+                    })}
+                  </div>
                   <span className="sr-only" role="status">
                     Showing {visibleReviewItems.length} of {reviewItems.length} review rows.{' '}
                     {confidenceSortDirection === 'ascending'
@@ -1331,6 +1618,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                     role="region"
                     aria-label="Vehicle stock review rows"
                     tabIndex={0}
+                    onScroll={() => reviewTooltipRef.current?.hideImmediate()}
                   >
                     <table className="w-full min-w-[830px] text-xs">
                       <thead className="bg-portal-canvas/40 text-portal-muted"><tr>
@@ -1359,7 +1647,13 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                         </th>
                         <th className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">Action</th>
                       </tr></thead>
-                      <tbody className="divide-y divide-portal-border/40">
+                      <tbody
+                        className="divide-y divide-portal-border/40"
+                        onMouseOver={handleReviewTableTriggerEnter}
+                        onMouseLeave={() => reviewTooltipRef.current?.scheduleHide()}
+                        onFocus={handleReviewTableTriggerEnter}
+                        onBlur={() => reviewTooltipRef.current?.scheduleHide()}
+                      >
                         {visibleReviewItems.length === 0 && (
                           <tr>
                             <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-portal-muted">
@@ -1379,14 +1673,29 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                             <td className="px-3 py-2 text-start align-middle text-portal-text">
                               {item.source.matchStatus === 'Manual' ? (
                                 <span className="text-[11px] text-portal-muted">Added manually</span>
-                              ) : item.source.extractedName ? (
-                                <abbr
-                                  title={item.source.extractedName}
-                                  className="block max-w-[150px] cursor-help truncate no-underline"
-                                >
-                                  {item.source.extractedName}
-                                </abbr>
-                              ) : '—'}
+                              ) : item.source.extractedName ? (() => {
+                                const isAutoCreated = isAutoCreatedRow(item.source);
+                                const isExact = !isAutoCreated && item.source.matchStatus === 'Exact';
+                                const indicator = matchIndicator(item.source);
+                                const needsAttention = !isAutoCreated && !isExact;
+                                const showAlertIcon = !isAutoCreated && (
+                                  item.source.matchStatus === 'Ambiguous' || item.source.matchStatus === 'Unmatched'
+                                );
+                                return (
+                                  <span
+                                    tabIndex={0}
+                                    data-review-tooltip-id={item.id}
+                                    className={`inline-flex max-w-[165px] cursor-help items-center gap-1.5 focus-visible:outline-none ${
+                                      needsAttention ? `${indicator.color} font-medium` : 'text-portal-text'
+                                    }`}
+                                  >
+                                    {showAlertIcon && (
+                                      <i className="pi pi-exclamation-circle shrink-0 text-[11px]" aria-hidden="true" />
+                                    )}
+                                    <span className="truncate">{item.source.extractedName}</span>
+                                  </span>
+                                );
+                              })() : '—'}
                             </td>
                             <td className="w-[260px] px-3 py-2">
                               <FlatAsyncSelect<Product>
@@ -1457,24 +1766,18 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 const isUnmatched = item.source.matchStatus === 'Unmatched';
                                 const isManual = item.source.matchStatus === 'Manual';
                                 const isAutoCreated = isAutoCreatedRow(item.source);
-                                const details = [
-                                  isManual ? 'Manually added product row' : null,
-                                  isAutoCreated ? 'Catalogue product created automatically during document processing' : null,
-                                  item.source.page != null ? `Page ${item.source.page}` : null,
-                                  item.source.row != null ? `Row ${item.source.row}` : null,
-                                  item.source.ocrConfidence != null ? `OCR confidence: ${Math.round(item.source.ocrConfidence * 100)}%` : null,
-                                  ...(item.source.warnings || []),
-                                ].filter(Boolean).join('\n');
                                 return (
-                                  <div className="group relative inline-flex cursor-help" title={details || 'No additional review information.'}>
-                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                      <span className={`text-[11px] font-semibold ${indicator.color}`}>
-                                        {isAutoCreated
-                                          ? <span className="inline-flex items-center gap-1 text-portal-accent"><i className="pi pi-plus text-[9px]" aria-hidden="true" />Newly created</span>
-                                          : isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
-                                      </span>
-                                    </div>
-                                  </div>
+                                  <span
+                                    tabIndex={0}
+                                    data-review-tooltip-id={item.id}
+                                    className="inline-flex cursor-help items-center gap-1.5 whitespace-nowrap focus-visible:outline-none"
+                                  >
+                                    <span className={`text-[11px] font-semibold ${indicator.color}`}>
+                                      {isAutoCreated
+                                        ? <span className="inline-flex items-center gap-1 text-portal-accent"><i className="pi pi-plus text-[9px]" aria-hidden="true" />Newly created</span>
+                                        : isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
+                                    </span>
+                                  </span>
                                 );
                               })()}
                             </td>
@@ -1667,6 +1970,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           void queryClient.invalidateQueries({ queryKey: ['flat-async-select', '/products'] });
         }}
       />
+
+      <ReviewTableTooltip ref={reviewTooltipRef} />
     </>
   );
 };
