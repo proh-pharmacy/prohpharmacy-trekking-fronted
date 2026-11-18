@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { createProductMatchFormData } from './productMatchForm';
 
 export interface Unit {
   id: string;
@@ -95,11 +96,24 @@ export interface ProductMatchRow {
   priceText?: string | null;
   basicUnitPrice?: number | null;
   ocrConfidence?: number | null;
-  matchStatus: 'Exact' | 'Suggested' | 'Ambiguous' | 'Unmatched' | string;
+  matchStatus: 'Exact' | 'Suggested' | 'Ambiguous' | 'Unmatched' | 'AutoCreated' | string;
+  autoCreated?: boolean;
   suggestedProductId?: string | null;
   candidates: ProductMatchCandidate[];
   requiresReview: boolean;
   warnings: string[];
+}
+
+export interface ProductMatchSummary {
+  totalFiles: number;
+  failedFiles: number;
+  partialFiles: number;
+  totalRows: number;
+  exact: number;
+  suggested: number;
+  ambiguous: number;
+  unmatched: number;
+  autoCreated: number;
 }
 
 export interface ProductMatchFileResult {
@@ -136,7 +150,7 @@ export interface ProductMatchAggregatedRow {
 }
 
 export interface ProductMatchResult {
-  summary: Record<string, number>;
+  summary: ProductMatchSummary;
   files: ProductMatchFileResult[];
   aggregatedProducts?: ProductMatchAggregatedRow[];
 }
@@ -254,11 +268,10 @@ export const productsApi = {
   matchFiles: async (
     files: File[],
     excelMappings?: ExcelColumnMapping[],
+    createUnmatchedProducts = false,
     signal?: AbortSignal,
   ): Promise<ProductMatchJobAccepted> => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
-    if (excelMappings?.length) formData.append('excelMappings', JSON.stringify(excelMappings));
+    const formData = createProductMatchFormData(files, excelMappings, createUnmatchedProducts);
     const res = await apiClient.post<ProductMatchJobAccepted>('/products/match-files', formData, {
       signal,
     });

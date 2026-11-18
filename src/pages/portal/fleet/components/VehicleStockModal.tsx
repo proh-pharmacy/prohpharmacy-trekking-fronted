@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import ReactCrop, { type Crop, type PercentCrop, type PixelCrop } from 'react-image-crop';
@@ -8,6 +9,7 @@ import { resetTableData } from '../../../../components/data-table';
 import {
   FlatAsyncSelect,
   FlatButton,
+  FlatCheckbox,
   FlatDropdown,
   FlatInputNumber,
   FlatTextarea,
@@ -16,9 +18,11 @@ import {
   getApiError,
   vehicleStockApi,
   type Product,
+  type ProductMatchCandidate,
   type ProductMatchJobAccepted,
   type ProductMatchJobStatus,
   type ProductMatchResult,
+  type ProductMatchSummary,
   productsApi,
   type ProductMatchRow,
   type StockLineItem,
@@ -26,11 +30,13 @@ import {
 import { ProductModal } from '../../products/components/ProductModal';
 import {
   sortItemsByConfidence,
+  sortItemsForDefaultReview,
   type ConfidenceSortDirection,
 } from './confidenceSort';
 import { reviewBasicQuantity } from './matchReviewQuantity';
 
 type Mode = 'load' | 'remove';
+type ReviewStatusFilter = 'All' | 'AutoCreated' | 'Unmatched' | 'Ambiguous' | 'Suggested' | 'Exact' | 'Manual';
 
 const REDUCTION_REASON_OPTIONS = [
   { label: 'Damaged goods', value: 'Damaged goods' },
@@ -107,6 +113,16 @@ const responseStatus = (error: unknown) => (
     : undefined
 );
 
+const formatUploadFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const canAutoCreateProductsFromFiles = (files: File[]) => (
+  files.length > 0 && files.every((file) => /\.(xlsx|pdf)$/i.test(file.name))
+);
+
 const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElement): Promise<File> => {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
@@ -124,11 +140,264 @@ const cropImageFile = async (file: File, crop: PixelCrop, image: HTMLImageElemen
 const matchIndicator = (row: ProductMatchRow) => {
   const score = row.candidates?.[0]?.similarityScore;
   if (row.matchStatus === 'Unmatched') return { score: null, color: 'text-red-accent' };
+  if (row.matchStatus === 'Ambiguous') return { score: score ?? null, color: 'text-red-accent' };
   if (score == null) return { score: null, color: 'text-portal-muted' };
+  if (row.matchStatus === 'Suggested') return { score, color: score >= 85 ? 'text-portal-orange' : 'text-red-accent' };
   if (score >= 95) return { score, color: 'text-portal-accent' };
   if (score >= 85) return { score, color: 'text-portal-orange' };
   return { score, color: 'text-red-accent' };
 };
+
+const isAutoCreatedRow = (row: ProductMatchRow) => (
+  row.autoCreated === true || row.matchStatus === 'AutoCreated'
+);
+
+const candidateAsProduct = (
+  candidate: ProductMatchCandidate | undefined,
+  basicUnitPrice: number | null,
+): Product | null => candidate ? {
+  id: candidate.productId,
+  name: candidate.name,
+  description: null,
+  basicUnitId: candidate.basicUnitId || '',
+  basicUnitName: candidate.basicUnitName || '',
+  basicUnitPrice: basicUnitPrice ?? 0,
+  vehicleBasicUnitPrice: basicUnitPrice,
+  packagingUnitId: candidate.packagingUnitId || null,
+  packagingUnitName: candidate.packagingUnitName || null,
+  packagingUnitPrice: null,
+  isActive: true,
+} : null;
+
+interface ReviewTableTooltipHandle {
+  show: (item: ReviewItem, target: HTMLElement) => void;
+  scheduleHide: () => void;
+  hideImmediate: () => void;
+}
+
+const ReviewTableTooltip = React.forwardRef<ReviewTableTooltipHandle>((_, ref) => {
+  const [item, setItem] = useState<ReviewItem | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [animateMove, setAnimateMove] = useState(false);
+  const [coords, setCoords] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const tooltipElRef = useRef<HTMLDivElement | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const activeTargetRef = useRef<HTMLElement | null>(null);
+  const visibleRef = useRef(false);
+
+  const computeWindowSafeCoords = (target: HTMLElement, measuredEl?: HTMLDivElement | null) => {
+    const MARGIN = 12;
+    const GAP = 8;
+    const rect = target.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const tooltipWidth = measuredEl?.offsetWidth || Math.min(280, viewportWidth - MARGIN * 2);
+    const tooltipHeight = measuredEl?.offsetHeight || 140;
+
+    const x = Math.min(
+      Math.max(MARGIN, rect.left),
+      Math.max(MARGIN, viewportWidth - tooltipWidth - MARGIN),
+    );
+
+    const spaceAbove = rect.top - GAP - MARGIN;
+    const spaceBelow = viewportHeight - rect.bottom - GAP - MARGIN;
+    const placeBelow = spaceAbove < tooltipHeight && spaceBelow > spaceAbove;
+    const rawY = placeBelow
+      ? rect.bottom + GAP
+      : rect.top - GAP - tooltipHeight;
+    const y = Math.min(
+      Math.max(MARGIN, rawY),
+      Math.max(MARGIN, viewportHeight - tooltipHeight - MARGIN),
+    );
+
+    return { x, y };
+  };
+
+  const clearTimers = () => {
+    if (hideTimerRef.current != null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  };
+
+  const hideNow = () => {
+    clearTimers();
+    activeTargetRef.current = null;
+    visibleRef.current = false;
+    setVisible(false);
+    setAnimateMove(false);
+  };
+
+  useEffect(() => () => clearTimers(), []);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    const handleScrollOrWheel = () => {
+      hideNow();
+    };
+    window.addEventListener('scroll', handleScrollOrWheel, { capture: true, passive: true });
+    window.addEventListener('wheel', handleScrollOrWheel, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrWheel, { capture: true });
+      window.removeEventListener('wheel', handleScrollOrWheel, { capture: true });
+    };
+  }, [visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || !activeTargetRef.current || !tooltipElRef.current) return;
+    const next = computeWindowSafeCoords(activeTargetRef.current, tooltipElRef.current);
+    setCoords((prev) => (prev.x === next.x && prev.y === next.y ? prev : next));
+  }, [item, visible]);
+
+  useImperativeHandle(ref, () => ({
+    show: (nextItem: ReviewItem, target: HTMLElement) => {
+      if (hideTimerRef.current != null) {
+        window.clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+
+      const wasVisible = visibleRef.current;
+      activeTargetRef.current = target;
+      setItem(nextItem);
+      setCoords(computeWindowSafeCoords(target, tooltipElRef.current));
+
+      if (!wasVisible) {
+        setAnimateMove(false);
+        setVisible(true);
+        visibleRef.current = true;
+        if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = window.requestAnimationFrame(() => {
+          setAnimateMove(true);
+          rafRef.current = null;
+        });
+      } else {
+        setAnimateMove(true);
+        setVisible(true);
+      }
+    },
+    scheduleHide: () => {
+      if (hideTimerRef.current != null) window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = window.setTimeout(() => {
+        activeTargetRef.current = null;
+        visibleRef.current = false;
+        setVisible(false);
+        setAnimateMove(false);
+        hideTimerRef.current = null;
+      }, 90);
+    },
+    hideImmediate: () => {
+      hideNow();
+    },
+  }), []);
+
+  if (!item || typeof document === 'undefined') return null;
+
+  const row = item.source;
+  const isAutoCreated = isAutoCreatedRow(row);
+  const isManual = row.matchStatus === 'Manual';
+  const indicator = matchIndicator(row);
+  const statusText = isAutoCreated
+    ? 'Newly created'
+    : isManual
+      ? 'Added manually'
+      : row.matchStatus === 'Ambiguous'
+        ? 'Ambiguous match'
+        : row.matchStatus === 'Suggested'
+          ? 'Suggested match'
+          : row.matchStatus === 'Unmatched'
+            ? 'Unmatched'
+            : 'Exact match';
+  const statusColor = isAutoCreated
+    ? 'text-portal-accent'
+    : isManual
+      ? 'text-portal-muted'
+      : indicator.color;
+
+  const locationParts = [
+    row.page != null ? `Page ${row.page}` : null,
+    row.row != null ? `Row ${row.row}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const showCandidates = !isAutoCreated && !isManual && (
+    row.candidates?.length > 1
+    || ((row.matchStatus === 'Ambiguous' || row.matchStatus === 'Suggested') && row.candidates?.length > 0)
+  );
+  const topCandidates = showCandidates ? row.candidates.slice(0, 3) : [];
+  const warnings = row.warnings?.filter(Boolean) || [];
+
+  return createPortal(
+    <div
+      ref={tooltipElRef}
+      role="tooltip"
+      aria-hidden={!visible}
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        width: 280,
+        maxWidth: 'calc(100vw - 24px)',
+        maxHeight: 'calc(100vh - 24px)',
+        transform: `translate3d(${Math.round(coords.x)}px, ${Math.round(coords.y)}px, 0)`,
+        transition: animateMove
+          ? 'transform 170ms cubic-bezier(0.22, 1, 0.36, 1), opacity 130ms ease'
+          : 'opacity 130ms ease',
+        willChange: 'transform, opacity',
+        zIndex: 9999,
+      }}
+      className={`pointer-events-none overflow-hidden rounded border border-portal-border bg-portal-surface px-3 py-2.5 shadow-xl ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <p className="break-words text-xs font-semibold leading-snug text-portal-heading">
+        {row.extractedName || item.productName || 'Added manually'}
+      </p>
+      <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+        <span className={`font-medium ${statusColor}`}>
+          {statusText}
+          {indicator.score != null && !isAutoCreated && !isManual ? ` · ${Math.round(indicator.score)}%` : ''}
+        </span>
+        {locationParts && (
+          <span className="shrink-0 text-portal-muted">{locationParts}</span>
+        )}
+      </div>
+
+      {topCandidates.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-portal-border/50 pt-2">
+          {topCandidates.map((candidate) => (
+            <div key={candidate.productId} className="flex items-center justify-between gap-3 text-[11px]">
+              <span className="truncate text-portal-text">{candidate.name}</span>
+              <span className="shrink-0 font-mono tabular-nums text-portal-muted">
+                {Math.round(candidate.similarityScore)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="-mx-3 -mb-2.5 mt-2.5 divide-y divide-portal-border/50 border-t border-portal-border/60 text-[11px] leading-snug text-portal-muted">
+          {warnings.map((warning, index) => (
+            <div
+              key={`${warning}-${index}`}
+              className="px-3 py-2 odd:bg-portal-canvas/60"
+            >
+              {warning}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+});
 
 interface VehicleStockModalProps {
   visible: boolean;
@@ -167,6 +436,9 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [excludeTracked, setExcludeTracked] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[] | null>(null);
   const [confidenceSortDirection, setConfidenceSortDirection] = useState<ConfidenceSortDirection | null>(null);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>('All');
+  const [createUnmatchedProducts, setCreateUnmatchedProducts] = useState(false);
+  const [matchSummary, setMatchSummary] = useState<ProductMatchSummary | null>(null);
   const [reviewValidationError, setReviewValidationError] = useState<ReviewValidationError | null>(null);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -175,6 +447,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropUrl, setCropUrl] = useState('');
   const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
   const [cropIndex, setCropIndex] = useState(0);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
@@ -195,7 +468,25 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
 
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [pendingReviewRemoveId, setPendingReviewRemoveId] = useState<string | null>(null);
-  const [resetReviewPending, setResetReviewPending] = useState(false);
+  const [resetListPending, setResetListPending] = useState(false);
+  const reviewTooltipRef = useRef<ReviewTableTooltipHandle | null>(null);
+  const reviewItemById = useMemo(
+    () => new Map((reviewItems || []).map((item) => [item.id, item])),
+    [reviewItems],
+  );
+
+  const handleReviewTableTriggerEnter = (event: React.SyntheticEvent<HTMLElement>) => {
+    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-review-tooltip-id]');
+    if (!target) {
+      reviewTooltipRef.current?.scheduleHide();
+      return;
+    }
+    const id = target.getAttribute('data-review-tooltip-id');
+    const item = id ? reviewItemById.get(id) : undefined;
+    if (item) {
+      reviewTooltipRef.current?.show(item, target);
+    }
+  };
   const pendingRemoveItem = useMemo(
     () => items.find((i) => i.productId === pendingRemoveId) || null,
     [items, pendingRemoveId],
@@ -212,12 +503,67 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     () => sortItemsByConfidence(reviewItems || [], confidenceSortDirection),
     [reviewItems, confidenceSortDirection],
   );
-  const reviewDisplayIndexById = useMemo(
-    () => new Map(sortedReviewItems.map((item, index) => [item.id, index])),
-    [sortedReviewItems],
+  const visibleReviewItems = useMemo(
+    () => sortedReviewItems.filter((item) => {
+      if (reviewStatusFilter === 'All') return true;
+      if (reviewStatusFilter === 'AutoCreated') return isAutoCreatedRow(item.source);
+      return !isAutoCreatedRow(item.source) && item.source.matchStatus === reviewStatusFilter;
+    }),
+    [sortedReviewItems, reviewStatusFilter],
   );
+  const reviewDisplayIndexById = useMemo(
+    () => new Map(visibleReviewItems.map((item, index) => [item.id, index])),
+    [visibleReviewItems],
+  );
+  const reviewFilterChips = useMemo(() => {
+    const rows = reviewItems || [];
+    let autoCreated = 0;
+    let exact = 0;
+    let suggested = 0;
+    let ambiguous = 0;
+    let unmatched = 0;
+    let manual = 0;
+
+    for (const item of rows) {
+      if (isAutoCreatedRow(item.source)) {
+        autoCreated += 1;
+      } else if (item.source.matchStatus === 'Exact') {
+        exact += 1;
+      } else if (item.source.matchStatus === 'Suggested') {
+        suggested += 1;
+      } else if (item.source.matchStatus === 'Ambiguous') {
+        ambiguous += 1;
+      } else if (item.source.matchStatus === 'Unmatched') {
+        unmatched += 1;
+      } else if (item.source.matchStatus === 'Manual') {
+        manual += 1;
+      }
+    }
+
+    const chips: Array<{
+      label: string;
+      value: ReviewStatusFilter;
+      count: number;
+      countTone: string;
+      activeTone: string;
+    }> = [
+      { label: 'All', value: 'All', count: rows.length || (matchSummary?.totalRows ?? 0), countTone: 'text-portal-text', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Newly created', value: 'AutoCreated', count: rows.length ? autoCreated : (matchSummary?.autoCreated ?? 0), countTone: 'text-portal-accent', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Exact', value: 'Exact', count: rows.length ? exact : (matchSummary?.exact ?? 0), countTone: 'text-portal-accent', activeTone: 'bg-portal-accent/20 text-portal-accent' },
+      { label: 'Suggested', value: 'Suggested', count: rows.length ? suggested : (matchSummary?.suggested ?? 0), countTone: 'text-portal-orange', activeTone: 'bg-portal-orange/20 text-portal-orange' },
+      { label: 'Ambiguous', value: 'Ambiguous', count: rows.length ? ambiguous : (matchSummary?.ambiguous ?? 0), countTone: 'text-red-accent', activeTone: 'bg-red-accent/20 text-red-accent' },
+      { label: 'Unmatched', value: 'Unmatched', count: rows.length ? unmatched : (matchSummary?.unmatched ?? 0), countTone: 'text-red-accent', activeTone: 'bg-red-accent/20 text-red-accent' },
+    ];
+
+    if (manual > 0 || reviewStatusFilter === 'Manual') {
+      chips.push({ label: 'Manual', value: 'Manual', count: manual, countTone: 'text-blue-400', activeTone: 'bg-blue-400/20 text-blue-400' });
+    }
+
+    return chips;
+  }, [reviewItems, matchSummary, reviewStatusFilter]);
 
   const hasPackaging = !!productUnits.packaging;
+  const canAutoCreateMissingProducts = canAutoCreateProductsFromFiles(pendingUploadFiles);
 
   const resetForm = () => {
     if (isLocked && lockedProduct) {
@@ -238,6 +584,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   };
 
   useEffect(() => {
+    reviewTooltipRef.current?.hideImmediate();
     if (!visible) {
       matchAbortRef.current?.abort();
       matchAbortRef.current = null;
@@ -249,15 +596,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       setItems([]);
       setReviewItems(null);
       setConfidenceSortDirection(null);
+      setReviewStatusFilter('All');
+      setCreateUnmatchedProducts(false);
+      setMatchSummary(null);
       setReviewValidationError(null);
       setPendingRemoveId(null);
       setPendingReviewRemoveId(null);
-      setResetReviewPending(false);
+      setResetListPending(false);
       setUploadErrors([]);
       setMatchJob(null);
       setProductModalRowId(null);
       setCropFile(null);
       setCropQueue([]);
+      setPendingUploadFiles([]);
       setCropIndex(0);
       setCropUrl('');
       setReasonSelection('');
@@ -444,18 +795,25 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
 
   const applyMatchResult = (result: ProductMatchResult) => {
     const uploadedRows: ReviewItem[] = result.files.flatMap((file) => file.rows.map((row, index) => {
-        const candidate = row.candidates?.[0];
+        const candidate = row.candidates?.find(({ productId }) => productId === row.suggestedProductId)
+          || row.candidates?.[0];
+        const matchedProductId = row.suggestedProductId
+          || (row.matchStatus !== 'Unmatched' ? candidate?.productId : '')
+          || '';
+        const selectedProduct = matchedProductId
+          ? candidateAsProduct(candidate, row.basicUnitPrice ?? null)
+          : null;
         return {
           id: `${file.fileIndex}-${row.page ?? row.row ?? index}-${index}`,
           source: row,
-          productId: row.suggestedProductId || '',
-          productName: candidate?.name || row.extractedName || '',
-          basicUnitName: candidate?.basicUnitName || null,
-          packagingUnitName: candidate?.packagingUnitName || null,
+          productId: matchedProductId,
+          productName: selectedProduct?.name || row.extractedName || '',
+          basicUnitName: selectedProduct?.basicUnitName || null,
+          packagingUnitName: selectedProduct?.packagingUnitName || null,
           basicQty: reviewBasicQuantity(row),
-          packagingQty: null,
+          packagingQty: row.packagingQty,
           basicUnitPrice: row.basicUnitPrice ?? null,
-          selectedProduct: null,
+          selectedProduct,
         };
     }));
     const manualRows: ReviewItem[] = items.map((item) => ({
@@ -507,8 +865,10 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error('No product rows were extracted from the selected files.');
       return false;
     }
-    setReviewItems([...manualRows, ...uploadedRows]);
+    setReviewItems(sortItemsForDefaultReview([...manualRows, ...uploadedRows]));
     setConfidenceSortDirection(null);
+    setReviewStatusFilter('All');
+    setMatchSummary(result.summary);
     setFormOpen(false);
     const failed = result.files.filter((file) => file.status !== 'Processed');
     if (failed.length) toast(`Some files need attention (${failed.length}).`, { icon: '⚠️' });
@@ -557,10 +917,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     matchAbortRef.current = controller;
     setUploading(true);
     setMatchJob(null);
+    setMatchSummary(null);
     try {
-      const accepted = await productsApi.matchFiles(files, undefined, controller.signal);
+      const accepted = await productsApi.matchFiles(
+        files,
+        undefined,
+        createUnmatchedProducts && canAutoCreateProductsFromFiles(files),
+        controller.signal,
+      );
       const result = await pollMatchJob(accepted, controller.signal);
-      applyMatchResult(result);
+      if (applyMatchResult(result)) {
+        setPendingUploadFiles([]);
+        setCreateUnmatchedProducts(false);
+      }
       setMatchJob(null);
     } catch (err: unknown) {
       if (isRequestCancelled(err)) return;
@@ -602,12 +971,27 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       toast.error(`${invalid.name} is not a supported document.`);
       return;
     }
-    const firstImage = files.findIndex((file) => file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name));
+    setPendingUploadFiles(files);
+    if (!canAutoCreateProductsFromFiles(files)) setCreateUnmatchedProducts(false);
+    setUploadErrors([]);
+  };
+
+  const handlePendingUpload = () => {
+    if (!pendingUploadFiles.length || uploading) return;
+    const firstImage = pendingUploadFiles.findIndex((file) => file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name));
     if (firstImage >= 0) {
-      beginCrop(files, firstImage);
+      beginCrop(pendingUploadFiles, firstImage);
     } else {
-      void processUploadFiles(files);
+      void processUploadFiles(pendingUploadFiles);
     }
+  };
+
+  const cancelPendingUpload = () => {
+    if (uploading) return;
+    setPendingUploadFiles([]);
+    setCreateUnmatchedProducts(false);
+    setUploadErrors([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCropConfirm = async () => {
@@ -626,6 +1010,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         setCropFile(null);
         setCropUrl('');
         setCropQueue([]);
+        setPendingUploadFiles(nextFiles);
         await processUploadFiles(nextFiles);
       }
     } catch (err: unknown) {
@@ -647,6 +1032,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     field: ReviewValidationError['field'],
     message: string,
   ) => {
+    setReviewStatusFilter('All');
     setReviewValidationError({ id: item.id, field, message });
     const productLabel = item.source.extractedName || item.productName || 'manually added product';
     const displayIndex = reviewDisplayIndexById.get(item.id) ?? index;
@@ -657,6 +1043,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   };
 
   const appendReviewItem = () => {
+    setReviewStatusFilter('All');
     setReviewItems((current) => [
       ...(current || []),
       {
@@ -765,6 +1152,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     matchAbortRef.current = null;
     setMatchJob(null);
     setUploading(false);
+    setPendingUploadFiles([]);
+    setCreateUnmatchedProducts(false);
     onHide();
   };
 
@@ -779,6 +1168,20 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     ? (
       <div className="flex w-full items-center justify-end">
         <FlatButton variant="danger-outline" label="Close" onClick={closeModal} />
+      </div>
+    )
+    : pendingUploadFiles.length > 0
+    ? (
+      <div className="flex w-full items-center justify-end gap-3">
+        <FlatButton size="sm" variant="outline" label="Cancel" onClick={cancelPendingUpload} disabled={uploading} />
+        <FlatButton
+          size="sm"
+          variant="primary"
+          label={uploading ? 'Starting...' : 'Process documents'}
+          onClick={handlePendingUpload}
+          loading={uploading}
+          disabled={uploading || pendingUploadFiles.length === 0}
+        />
       </div>
     )
     : reviewItems
@@ -1021,11 +1424,11 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
       <FlatModal
       visible={visible}
       onHide={submitting || (uploading && !matchJob) || !!cropFile ? () => {} : closeModal}
-      title={title}
-      size="xl"
+      title={pendingUploadFiles.length > 0 && !cropFile && !matchJob ? 'Upload documents' : title}
+      size={pendingUploadFiles.length > 0 && !cropFile && !matchJob ? 'md' : 'xl'}
       footer={footer}
     >
-      <div className="relative min-h-[380px] py-3">
+      <div className={`relative py-3 ${pendingUploadFiles.length > 0 && !cropFile && !matchJob ? '' : 'min-h-[380px]'}`}>
         {!isLocked && !isRemove && (
           <input ref={fileInputRef} type="file" multiple accept=".xlsx,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUpload} />
         )}
@@ -1058,16 +1461,19 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         ) : (
           <>
             <div className="space-y-3">
-              {!reviewItems && (
+              {!reviewItems && pendingUploadFiles.length === 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-wide text-portal-muted">
                     Products ({items.length})
                   </span>
                   <div className="flex items-center gap-2">
-                    {!isRemove && (
-                      <FlatButton size="sm" variant="outline" leftIcon="pi pi-upload" onClick={() => fileInputRef.current?.click()} loading={uploading} disabled={formOpen || uploading}>Upload</FlatButton>
+                    {items.length > 0 && (
+                      <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={formOpen || uploading}>Reset</FlatButton>
                     )}
-                    <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" onClick={() => { resetForm(); setFormOpen(true); }} disabled={formOpen || uploading}>Add item</FlatButton>
+                    {!isRemove && (
+                      <FlatButton size="sm" variant="accent-outline" leftIcon="pi pi-upload" onClick={() => { setCreateUnmatchedProducts(false); fileInputRef.current?.click(); }} loading={uploading} disabled={formOpen || uploading}>Upload</FlatButton>
+                    )}
+                    <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { resetForm(); setFormOpen(true); }} disabled={formOpen || uploading}>Add item</FlatButton>
                   </div>
                 </div>
               )}
@@ -1110,13 +1516,92 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                     You may close this window. Processing will continue on the server, but progress updates will stop here.
                   </p>
                 </div>
+              ) : pendingUploadFiles.length > 0 ? (
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-medium text-portal-text">
+                        {pendingUploadFiles.length} {pendingUploadFiles.length === 1 ? 'document' : 'documents'} selected
+                      </span>
+                      <FlatButton
+                        size="sm"
+                        variant="ghost"
+                        label="Change files"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      />
+                    </div>
+                    <ul className="mt-1 max-h-60 overflow-y-auto divide-y divide-portal-border/40" aria-label="Selected documents">
+                      {pendingUploadFiles.map((file, index) => {
+                        const extension = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+                        return (
+                          <li key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center gap-3 py-3">
+                            <i className={`pi ${extension === 'PDF' ? 'pi-file-pdf' : extension === 'XLSX' ? 'pi-file-excel' : 'pi-image'} shrink-0 text-base text-portal-muted`} aria-hidden="true" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-portal-text" title={file.name}>{file.name}</p>
+                              <p className="mt-0.5 text-[11px] text-portal-muted">{extension} · {formatUploadFileSize(file.size)}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {canAutoCreateMissingProducts && (
+                    <div className="border-t border-portal-border/60 pt-4">
+                      <FlatCheckbox
+                        id="create-unmatched-products"
+                        checked={createUnmatchedProducts}
+                        onChange={setCreateUnmatchedProducts}
+                        disabled={uploading}
+                        className="[&_label]:!items-start [&_.p-checkbox]:!mt-0.5"
+                        label={(
+                          <span className="block">
+                            <span className="block text-xs font-medium !text-red-accent">Automatically Create Missing Products</span>
+                            <span className="mt-0.5 block text-[11px] font-normal !text-red-accent">
+                              Add any product that is detected in this document but missing from this system product catalogue.
+                            </span>
+                          </span>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
               ) : reviewItems ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">Review stock rows ({reviewItems.length})</span>
-                    <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetReviewPending(true)} disabled={uploading || submitting} />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-wide text-portal-muted">
+                      Review stock rows ({reviewStatusFilter === 'All' ? reviewItems.length : `${visibleReviewItems.length} of ${reviewItems.length}`})
+                    </span>
+                    <FlatButton size="sm" variant="danger-outline" label="Reset" icon="pi pi-refresh" onClick={() => setResetListPending(true)} disabled={uploading || submitting} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 py-2" role="group" aria-label="Document matching summary">
+                    {reviewFilterChips.map((chip) => {
+                      const isActive = reviewStatusFilter === chip.value;
+                      return (
+                        <button
+                          key={chip.value}
+                          type="button"
+                          aria-pressed={isActive}
+                          onClick={() => setReviewStatusFilter((current) => (current === chip.value && chip.value !== 'All' ? 'All' : chip.value))}
+                          className={`inline-flex cursor-pointer items-center gap-1.5 !rounded-full px-3.5 py-1.5 text-xs transition-colors focus-visible:outline-none ${
+                            isActive
+                              ? `font-semibold ${chip.activeTone}`
+                              : 'text-portal-muted hover:bg-white/[0.05] hover:text-portal-text'
+                          }`}
+                        >
+                          <span className={isActive ? '' : 'underline decoration-dotted decoration-portal-muted/70 underline-offset-4'}>
+                            {chip.label}
+                          </span>
+                          <strong className={`font-mono font-semibold tabular-nums ${isActive ? 'text-current' : chip.countTone}`}>
+                            {chip.count}
+                          </strong>
+                        </button>
+                      );
+                    })}
                   </div>
                   <span className="sr-only" role="status">
+                    Showing {visibleReviewItems.length} of {reviewItems.length} review rows.{' '}
                     {confidenceSortDirection === 'ascending'
                       ? 'Extracted rows sorted by confidence, lowest first.'
                       : confidenceSortDirection === 'descending'
@@ -1128,18 +1613,24 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                       {uploadErrors.map((error) => <div key={error}>{error}</div>)}
                     </div>
                   )}
-                  <div className="overflow-x-auto rounded border border-portal-border/60">
+                  <div
+                    className="overflow-x-auto rounded border border-portal-border/60"
+                    role="region"
+                    aria-label="Vehicle stock review rows"
+                    tabIndex={0}
+                    onScroll={() => reviewTooltipRef.current?.hideImmediate()}
+                  >
                     <table className="w-full min-w-[830px] text-xs">
                       <thead className="bg-portal-canvas/40 text-portal-muted"><tr>
-                        <th className="w-[42px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">#</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Extracted Name</th>
+                        <th className="w-[42px] px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">#</th>
+                        <th className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">Extracted Name</th>
                         <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Matched Product</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Qty</th>
                         <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Price</th>
                         <th
                           scope="col"
                           aria-sort={confidenceSortDirection || undefined}
-                          className="w-[110px] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide"
+                          className="w-[110px] px-3 py-2 text-center align-middle text-[11px] font-medium uppercase tracking-wide"
                         >
                           <button
                             type="button"
@@ -1154,41 +1645,64 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                             />
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Action</th>
+                        <th className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide align-middle">Action</th>
                       </tr></thead>
-                      <tbody className="divide-y divide-portal-border/40">
-                        {reviewItems.length === 0 && (
+                      <tbody
+                        className="divide-y divide-portal-border/40"
+                        onMouseOver={handleReviewTableTriggerEnter}
+                        onMouseLeave={() => reviewTooltipRef.current?.scheduleHide()}
+                        onFocus={handleReviewTableTriggerEnter}
+                        onBlur={() => reviewTooltipRef.current?.scheduleHide()}
+                      >
+                        {visibleReviewItems.length === 0 && (
                           <tr>
                             <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-portal-muted">
-                              No stock rows remain. Add a product row to continue.
+                              {reviewItems.length === 0
+                                ? 'No stock rows remain. Add a product row to continue.'
+                                : 'No rows match this status.'}
                             </td>
                           </tr>
                         )}
-                        {sortedReviewItems.map((item, index) => (
+                        {visibleReviewItems.map((item, index) => (
                           <tr
                             key={item.id}
                             id={`stock-review-row-${item.id}`}
                             className={`align-top transition-colors ${reviewValidationError?.id === item.id ? 'bg-red-accent/5' : ''}`}
                           >
-                            <td className="w-[42px] px-3 py-2 font-mono text-[11px] text-portal-muted">{index + 1}</td>
-                            <td className="px-3 py-2 text-portal-text">
+                            <td className="w-[42px] px-3 py-2 text-center align-middle font-mono text-[11px] text-portal-muted">{index + 1}</td>
+                            <td className="px-3 py-2 text-start align-middle text-portal-text">
                               {item.source.matchStatus === 'Manual' ? (
                                 <span className="text-[11px] text-portal-muted">Added manually</span>
-                              ) : item.source.extractedName ? (
-                                <abbr
-                                  title={item.source.extractedName}
-                                  className="block max-w-[150px] cursor-help truncate no-underline"
-                                >
-                                  {item.source.extractedName}
-                                </abbr>
-                              ) : '—'}
+                              ) : item.source.extractedName ? (() => {
+                                const isAutoCreated = isAutoCreatedRow(item.source);
+                                const isExact = !isAutoCreated && item.source.matchStatus === 'Exact';
+                                const indicator = matchIndicator(item.source);
+                                const needsAttention = !isAutoCreated && !isExact;
+                                const showAlertIcon = !isAutoCreated && (
+                                  item.source.matchStatus === 'Ambiguous' || item.source.matchStatus === 'Unmatched'
+                                );
+                                return (
+                                  <span
+                                    tabIndex={0}
+                                    data-review-tooltip-id={item.id}
+                                    className={`inline-flex max-w-[165px] cursor-help items-center gap-1.5 focus-visible:outline-none ${
+                                      needsAttention ? `${indicator.color} font-medium` : 'text-portal-text'
+                                    }`}
+                                  >
+                                    {showAlertIcon && (
+                                      <i className="pi pi-exclamation-circle shrink-0 text-[11px]" aria-hidden="true" />
+                                    )}
+                                    <span className="truncate">{item.source.extractedName}</span>
+                                  </span>
+                                );
+                              })() : '—'}
                             </td>
                             <td className="w-[260px] px-3 py-2">
                               <FlatAsyncSelect<Product>
                                 size="sm"
                                 placeholder="Select product"
                                 value={item.productId}
-                                initialSelectedItem={item.selectedProduct || item.source.candidates?.find((candidate) => candidate.productId === item.productId) as Product | undefined}
+                                initialSelectedItem={item.selectedProduct || undefined}
                                 endpointUrl="/products"
                                 defaultParams={{ isActive: true }}
                                 pageSize={10}
@@ -1246,30 +1760,28 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 </span>
                               )}
                             </td>
-                            <td className="w-[90px] px-3 py-2">
+                            <td className="w-[90px] px-3 py-2 text-center align-middle">
                               {(() => {
                                 const indicator = matchIndicator(item.source);
                                 const isUnmatched = item.source.matchStatus === 'Unmatched';
                                 const isManual = item.source.matchStatus === 'Manual';
-                                const details = [
-                                  isManual ? 'Manually added product row' : null,
-                                  item.source.page != null ? `Page ${item.source.page}` : null,
-                                  item.source.row != null ? `Row ${item.source.row}` : null,
-                                  item.source.ocrConfidence != null ? `OCR confidence: ${Math.round(item.source.ocrConfidence * 100)}%` : null,
-                                  ...(item.source.warnings || []),
-                                ].filter(Boolean).join('\n');
+                                const isAutoCreated = isAutoCreatedRow(item.source);
                                 return (
-                                  <div className="group relative inline-flex cursor-help" title={details || 'No additional review information.'}>
-                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                      <span className={`text-[11px] font-semibold ${indicator.color}`}>
-                                        {isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
-                                      </span>
-                                    </div>
-                                  </div>
+                                  <span
+                                    tabIndex={0}
+                                    data-review-tooltip-id={item.id}
+                                    className="inline-flex cursor-help items-center gap-1.5 whitespace-nowrap focus-visible:outline-none"
+                                  >
+                                    <span className={`text-[11px] font-semibold ${indicator.color}`}>
+                                      {isAutoCreated
+                                        ? <span className="inline-flex items-center gap-1 text-portal-accent"><i className="pi pi-plus text-[9px]" aria-hidden="true" />Newly created</span>
+                                        : isManual ? 'Manual' : isUnmatched ? 'Unmatched' : indicator.score == null ? '—' : `${Math.round(indicator.score)}%`}
+                                    </span>
+                                  </span>
                                 );
                               })()}
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-2 text-center align-middle">
                               <button
                                 type="button"
                                 onClick={() => setPendingReviewRemoveId(item.id)}
@@ -1414,23 +1926,26 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
         }}
       />
       <FlatConfirmDialog
-        visible={resetReviewPending}
-        onHide={() => setResetReviewPending(false)}
-        title="Reset extracted rows"
-        message={items.length > 0
-          ? 'Discard the uploaded rows and review changes? Your manually added entries will remain.'
-          : 'Discard the extracted rows and your review changes? You will return to the initial Add Stock view.'}
+        visible={resetListPending}
+        onHide={() => setResetListPending(false)}
+        title="Reset stock rows"
+        message={reviewItems
+          ? 'Clear all manually added and uploaded rows, including your review changes?'
+          : 'Clear all manually added product rows?'}
         confirmLabel="Reset"
         variant="danger"
         onConfirm={() => {
+          setItems([]);
           setReviewItems(null);
+          setReviewStatusFilter('All');
           setReviewValidationError(null);
+          setMatchSummary(null);
           setUploadErrors([]);
           setPendingReviewRemoveId(null);
           setFormOpen(false);
           resetForm();
           if (fileInputRef.current) fileInputRef.current.value = '';
-          setResetReviewPending(false);
+          setResetListPending(false);
         }}
       />
       </FlatModal>
@@ -1455,6 +1970,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           void queryClient.invalidateQueries({ queryKey: ['flat-async-select', '/products'] });
         }}
       />
+
+      <ReviewTableTooltip ref={reviewTooltipRef} />
     </>
   );
 };

@@ -1370,15 +1370,38 @@ div.p-icon-field {
 }
 
 /* Checkbox & RadioButton Dynamic Theme */
-.p-checkbox .p-checkbox-box {
-  background: var(--color-portal-canvas) !important;
-  border-color: var(--color-portal-border) !important;
+.p-checkbox {
+  width: 18px !important;
+  height: 18px !important;
 }
 
-.p-checkbox .p-checkbox-box.p-highlight {
+.p-checkbox .p-checkbox-box {
+  width: 18px !important;
+  height: 18px !important;
+  background: var(--color-portal-canvas) !important;
+  border: 1px solid var(--color-portal-muted) !important;
+}
+
+.p-checkbox.p-highlight .p-checkbox-box,
+.p-checkbox[data-p-highlight='true'] .p-checkbox-box {
   background: var(--color-portal-accent) !important;
   border-color: var(--color-portal-accent) !important;
-  color: #ffffff !important;
+  color: var(--color-light-green) !important;
+}
+
+.p-checkbox .p-checkbox-icon {
+  width: 11px !important;
+  height: 11px !important;
+  color: var(--color-light-green) !important;
+}
+
+.p-checkbox:not(.p-disabled):has(.p-checkbox-input:hover) .p-checkbox-box {
+  border-color: var(--color-portal-accent) !important;
+}
+
+.p-checkbox:not(.p-disabled):has(.p-checkbox-input:focus-visible) .p-checkbox-box {
+  outline: 2px solid var(--color-portal-accent) !important;
+  outline-offset: 2px !important;
 }
 
 .p-radiobutton .p-radiobutton-box {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { z } from 'zod';
 import { FlatButton, FlatDatePicker, FlatDropdown, FlatTextarea } from '../../../../components/flat-form';
 import { FlatAsyncSelect } from '../../../../components/flat-form/FlatAsyncSelect';
@@ -17,16 +17,32 @@ export interface CreateTrekDraft extends CreateTrekPayload {
   salesStaff?: StaffItem;
 }
 
+export interface CreateTrekFormHandle {
+  submit: () => void;
+}
+
 const fetchSalesStaff = (params: { pageNumber: number; pageSize: number; search?: string }) =>
   staffApi.getStaff(params);
 
 interface Props {
   vehicle: Vehicle;
   initialValues?: CreateTrekDraft;
+  onDraftChange?: (draft: CreateTrekDraft) => void;
+  onReadyChange?: (ready: boolean) => void;
+  hideActions?: boolean;
+  onBack?: () => void;
   onReview: (payload: CreateTrekPayload, draft: CreateTrekDraft) => void;
 }
 
-export const CreateTrekForm: React.FC<Props> = ({ onReview, vehicle, initialValues }) => {
+export const CreateTrekForm = forwardRef<CreateTrekFormHandle, Props>(({
+  onReview,
+  onDraftChange,
+  onReadyChange,
+  hideActions = false,
+  onBack,
+  vehicle,
+  initialValues,
+}, ref) => {
   const [regionId, setRegionId]           = useState(initialValues?.regionId ?? vehicle.regionId ?? '');
   const [branchId, setBranchId]           = useState(initialValues?.branchId ?? '');
   const [scheduledDate, setScheduledDate] = useState(initialValues?.scheduledDate ?? '');
@@ -37,6 +53,18 @@ export const CreateTrekForm: React.FC<Props> = ({ onReview, vehicle, initialValu
   const [errors, setErrors]               = useState<Errors>({});
   const [branches, setBranches]           = useState<Branch[]>([]);
   const [regions, setRegions]             = useState<Region[]>([]);
+
+  useEffect(() => {
+    onDraftChange?.({
+      regionId,
+      branchId: branchId || null,
+      scheduledDate,
+      vehicleId,
+      salesStaffId: salesStaffId || null,
+      notes: notes.trim() || undefined,
+      salesStaff: salesStaffId ? salesStaff : undefined,
+    });
+  }, [regionId, branchId, scheduledDate, vehicleId, salesStaffId, salesStaff, notes]);
 
   const clearError = (field: keyof Errors) =>
     setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
@@ -54,6 +82,10 @@ export const CreateTrekForm: React.FC<Props> = ({ onReview, vehicle, initialValu
       .finally(() => { if (active) setLookupLoading(false); });
     return () => { active = false; };
   }, [lookupAttempt]);
+
+  useEffect(() => {
+    onReadyChange?.(!lookupLoading && !lookupError);
+  }, [lookupLoading, lookupError, onReadyChange]);
 
   const handleSubmit = () => {
     if (lookupLoading || lookupError) return;
@@ -78,35 +110,47 @@ export const CreateTrekForm: React.FC<Props> = ({ onReview, vehicle, initialValu
     onReview(payload, { ...payload, salesStaff: salesStaffId ? salesStaff : undefined });
   };
 
+  useImperativeHandle(ref, () => ({
+    submit: handleSubmit,
+  }));
+
   const regionOptions = regions.map((region) => ({ label: region.name, value: region.id }));
   const branchOptions = branches.filter((branch) => branch.isActive && branch.regionId === regionId)
     .map((branch) => ({ label: branch.name, value: branch.id }));
 
-  const content = (
-      <fieldset disabled={lookupLoading} className="trek-particulars-form min-w-0 space-y-4 border-0 p-0">
+  return (
+    <fieldset disabled={lookupLoading} className="min-w-0 space-y-5 border-0 p-0">
       <div className="border-b border-portal-border/60 pb-3">
-        <h2 className="text-xs font-normal text-portal-muted">Provide Details for This Trek</h2>
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted">Trek Particulars</h2>
       </div>
-      <div className="space-y-4 py-1 text-xs">
+      <div className="space-y-5 pt-1 text-xs">
         {lookupError && <div role="alert" className="text-xs text-portal-text">{lookupError} <FlatButton size="sm" variant="outline" onClick={() => setLookupAttempt((n) => n + 1)}>Retry</FlatButton></div>}
         {lookupLoading && <p role="status" className="text-xs text-portal-muted">Loading regions and branches...</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FlatDropdown background="surface" className="trek-form-control" label="Trekking Region" required options={regionOptions} value={regionId} size="sm" errorMessage={errors.regionId}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+          <FlatDropdown label="Trekking Region" required options={regionOptions} value={regionId} size="sm" errorMessage={errors.regionId}
             onChange={(v: any) => { setRegionId(v?.value !== undefined ? v.value : v); setBranchId(''); clearError('regionId'); }} />
-          <FlatDatePicker background="surface" className="trek-form-control" label="Scheduled Date" required value={parseTrekDate(scheduledDate)} size="sm" dateFormat="yy-mm-dd" errorMessage={errors.scheduledDate}
+          <FlatDatePicker label="Scheduled Date" required value={parseTrekDate(scheduledDate)} size="sm" dateFormat="yy-mm-dd" errorMessage={errors.scheduledDate}
             onChange={(date) => { setScheduledDate(formatTrekDate(date)); clearError('scheduledDate'); }} />
-          <FlatDropdown background="surface" className="trek-form-control" label="Branch (Optional)" options={branchOptions} value={branchId} size="sm" showClear disabled={!regionId}
+          <FlatDropdown label="Branch (Optional)" options={branchOptions} value={branchId} size="sm" showClear disabled={!regionId}
             onChange={(v: any) => setBranchId(v?.value !== undefined ? v.value : v || '')} />
-          <FlatAsyncSelect<StaffItem> className="trek-form-control" label="Sales Staff (Optional)" value={salesStaffId} initialSelectedItem={salesStaff} onChange={(v, item) => { setSalesStaffId(v || ''); setSalesStaff(item); }} fetchFn={fetchSalesStaff} optionValue="id" optionLabel="fullName" clearable size="sm" />
+          <FlatAsyncSelect<StaffItem> label="Sales Staff (Optional)" value={salesStaffId} initialSelectedItem={salesStaff} onChange={(v, item) => { setSalesStaffId(v || ''); setSalesStaff(item); }} fetchFn={fetchSalesStaff} optionValue="id" optionLabel="fullName" clearable size="sm" />
         </div>
-        <p className="text-xs text-portal-text">Driver: {vehicle?.currentStaffName || 'Assigned driver'}</p>
-        <FlatTextarea background="surface" className="trek-form-control" label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} rows={2} size="sm" />
-        <div className="flex justify-end"><FlatButton size="sm" disabled={lookupLoading || !!lookupError} onClick={handleSubmit}>Continue</FlatButton></div>
+        <FlatTextarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} rows={3} size="sm" />
+        {!hideActions && (
+          <div className={`flex flex-wrap items-center gap-3 pt-2 ${onBack ? 'justify-between' : 'justify-end'}`}>
+            {onBack && (
+              <FlatButton size="sm" variant="danger" leftIcon="pi pi-arrow-left" onClick={onBack}>
+                Back to Vehicles
+              </FlatButton>
+            )}
+            <FlatButton size="sm" disabled={lookupLoading || !!lookupError} onClick={handleSubmit}>
+              Continue
+            </FlatButton>
+          </div>
+        )}
       </div>
-      </fieldset>
+    </fieldset>
   );
-
-  return content;
-};
+});
 
 export default CreateTrekForm;
