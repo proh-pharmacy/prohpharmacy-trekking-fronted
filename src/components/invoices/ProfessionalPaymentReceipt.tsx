@@ -125,16 +125,10 @@ export const ProfessionalPaymentReceipt = forwardRef<HTMLElement, Props>(({
                 </div>
               </div>
             )}
-            <div className="border-t-[1.5px] border-slate-900 pt-2">
+            <div className="border-t-[1.5px] border-slate-900 pb-1 pt-2">
               <div className="flex items-center justify-between text-[14px] font-bold">
                 <span className="text-[10px] uppercase tracking-widest">Amount received</span>
                 <span className="tabular-nums">{fmtGhs(receipt.amount)}</span>
-              </div>
-            </div>
-            <div className="border-t-[1.5px] border-slate-900 pb-1 pt-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[10px] font-semibold uppercase tracking-wider">Balance</span>
-                <span className="font-medium tabular-nums">{fmtGhs(receipt.balanceAfterPayment)}</span>
               </div>
             </div>
           </div>
