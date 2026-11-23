@@ -130,7 +130,6 @@ export const ProfessionalInvoiceDocument = forwardRef<HTMLElement, ProfessionalI
   lines,
   totalAmount,
   totalPaid,
-  balance,
   paymentMethods,
   qrCode,
   qrCaption,
@@ -318,16 +317,10 @@ export const ProfessionalInvoiceDocument = forwardRef<HTMLElement, ProfessionalI
                     <span className="text-[10px] font-semibold uppercase tracking-wider">Invoice total</span>
                     <span className="font-medium tabular-nums">{fmtGhs(totalAmount)}</span>
                   </div>
-                  <div className="border-t-[1.5px] border-slate-900 pt-2">
+                  <div className="border-t-[1.5px] border-slate-900 pb-1 pt-2">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-[10px] font-semibold uppercase tracking-wider">Paid</span>
                       <span className="font-medium tabular-nums">{fmtGhs(totalPaid)}</span>
-                    </div>
-                  </div>
-                  <div className="border-t-[1.5px] border-slate-900 pb-1 pt-2">
-                    <div className="flex items-center justify-between text-[14px] font-bold">
-                      <span className="text-[10px] uppercase tracking-widest">Balance due</span>
-                      <span className="tabular-nums">{fmtGhs(balance)}</span>
                     </div>
                   </div>
                 </div>
