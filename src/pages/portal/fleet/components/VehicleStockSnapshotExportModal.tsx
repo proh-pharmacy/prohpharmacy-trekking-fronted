@@ -54,7 +54,7 @@ export const VehicleStockSnapshotExportModal: React.FC<Props> = ({ visible, vehi
       footer={(
         <>
           <FlatButton size="sm" variant="outline" onClick={close} disabled={exporting}>Cancel</FlatButton>
-          <FlatButton size="sm" variant="primary" leftIcon="pi pi-download" onClick={() => void download()} loading={exporting} disabled={exporting}>Download</FlatButton>
+          <FlatButton size="sm" permission="VehicleStock.Export" variant="primary" leftIcon="pi pi-download" onClick={() => void download()} loading={exporting} disabled={exporting}>Download</FlatButton>
         </>
       )}
     >

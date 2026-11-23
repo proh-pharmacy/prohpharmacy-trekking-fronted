@@ -28,6 +28,7 @@ import {
   type StockLineItem,
 } from '../../../../api-client';
 import { ProductModal } from '../../products/components/ProductModal';
+import { useActionPermission } from '../../../../components/auth/PermissionButton';
 import {
   sortItemsByConfidence,
   sortItemsForDefaultReview,
@@ -563,7 +564,8 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
   }, [reviewItems, matchSummary, reviewStatusFilter]);
 
   const hasPackaging = !!productUnits.packaging;
-  const canAutoCreateMissingProducts = canAutoCreateProductsFromFiles(pendingUploadFiles);
+  const canCreateProducts = useActionPermission('Products.Create');
+  const canAutoCreateMissingProducts = canCreateProducts && canAutoCreateProductsFromFiles(pendingUploadFiles);
 
   const resetForm = () => {
     if (isLocked && lockedProduct) {
@@ -1188,7 +1190,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
     ? (
       <div className="flex items-center justify-end gap-3 w-full">
         <FlatButton variant="danger-outline" label="Cancel" onClick={closeModal} disabled={submitting} />
-        <FlatButton variant="primary" label={submitting ? 'Loading...' : 'Confirm stock'} icon="pi pi-check" onClick={submitReview} loading={submitting} disabled={submitting || reviewItems.length === 0} />
+        <FlatButton variant="primary" label={submitting ? 'Loading...' : 'Confirm stock'} icon="pi pi-check" permission="VehicleStock.Load" onClick={submitReview} loading={submitting} disabled={submitting || reviewItems.length === 0} />
       </div>
     )
     : isLocked
@@ -1204,7 +1206,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           variant={isRemove ? 'danger' : 'primary'}
           label={submitting ? 'Saving...' : (isRemove ? 'Reduce Stock' : 'Add Stock')}
           icon={isRemove ? 'pi pi-minus' : 'pi pi-plus'}
-          onClick={handleLockedSubmit}
+          permission={isRemove ? 'VehicleStock.Remove' : 'VehicleStock.Load'} onClick={handleLockedSubmit}
           loading={submitting}
           disabled={submitting}
         />
@@ -1220,7 +1222,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
           variant={isRemove ? 'danger' : 'primary'}
           label={submitting ? 'Saving...' : (isRemove ? 'Reduce Stock' : 'Add Stock')}
           icon={isRemove ? 'pi pi-minus' : 'pi pi-plus'}
-          onClick={handleSubmit}
+          permission={isRemove ? 'VehicleStock.Remove' : 'VehicleStock.Load'} onClick={handleSubmit}
           loading={submitting}
           disabled={submitting || items.length === 0}
         />
@@ -1710,7 +1712,7 @@ export const VehicleStockModal: React.FC<VehicleStockModalProps> = ({
                                 optionValue="id"
                                 optionLabel={(product) => product.name}
                                 errorMessage={reviewValidationError?.id === item.id && reviewValidationError.field === 'productId' ? reviewValidationError.message : undefined}
-                                footerAction={!item.productId ? {
+                                footerAction={!item.productId && canCreateProducts ? {
                                   label: item.source.extractedName
                                     ? `Create “${item.source.extractedName}”`
                                     : 'Create new product',

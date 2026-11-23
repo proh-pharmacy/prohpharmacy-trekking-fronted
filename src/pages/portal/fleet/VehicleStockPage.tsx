@@ -17,7 +17,8 @@ import {
   type StockSummary,
   type Vehicle,
 } from '../../../api-client';
-import { usePermissions } from '../../../hooks/usePermissions';
+import { useAuth } from '../../../context';
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import { VehicleStockModal } from './components/VehicleStockModal';
 import { VehicleStockExportModal } from './components/VehicleStockExportModal';
 import { VehicleStockSnapshotExportModal } from './components/VehicleStockSnapshotExportModal';
@@ -79,6 +80,7 @@ interface StockLedgerTableProps {
 }
 
 const StockLedgerTable: React.FC<StockLedgerTableProps> = ({ vehicleId, onExport, onViewTrend }) => {
+  const { can } = useAuth();
   const dataMapper = useCallback(
     (response: any): PaginatedDataResponse<StockLedgerEntry> => {
       if (Array.isArray(response)) {
@@ -241,7 +243,7 @@ const StockLedgerTable: React.FC<StockLedgerTableProps> = ({ vehicleId, onExport
       dataSourceUrl={`/vehicles/${vehicleId}/stock/ledger`}
       columns={columns}
       heading="Stock history"
-      hasAction
+      hasAction={can('VehicleStock.Export')}
       actionName="Export"
       actionIcon="pi pi-download"
       onAction={onExport}
@@ -316,9 +318,18 @@ export const VehicleInventory: React.FC<{
   const [searchParams, setSearchParams] = useSearchParams();
   const [localTab, setLocalTab] = useState<StockTab>('stock');
   const rawTab = embedded ? localTab : searchParams.get('tab');
-  const activeTab: StockTab = rawTab === 'history' ? 'history' : 'stock';
-  const { hasAnyPermission } = usePermissions();
-  const canManage = hasAnyPermission('Vehicles.Manage', 'Vehicles.Edit');
+  const { can } = useAuth();
+  const canViewStock = can('VehicleStock.View');
+  const canViewLedger = can('VehicleStock.ViewLedger');
+  const activeTab: StockTab = rawTab === 'history' && canViewLedger
+    ? 'history'
+    : canViewStock
+      ? 'stock'
+      : canViewLedger
+        ? 'history'
+        : 'stock';
+  const canManage = can('VehicleStock.Load') || can('VehicleStock.Remove') || can('VehicleStock.Reset');
+  const canAdjustStock = can('VehicleStock.Load') || can('VehicleStock.Remove');
 
   const handleTabChange = (tab: StockTab) => {
     if (embedded) { setLocalTab(tab); return; }
@@ -383,17 +394,20 @@ export const VehicleInventory: React.FC<{
   }, [vehicleId]);
 
   const loadSummary = useCallback(async () => {
-    if (!vehicleId) return;
+    if (!vehicleId || !canViewStock) return;
     try {
       const data = await vehicleStockApi.getStockSummary(vehicleId);
       setSummary(data);
     } catch {
       setSummary(null);
     }
-  }, [vehicleId]);
+  }, [vehicleId, canViewStock]);
 
   const loadStock = useCallback(async () => {
-    if (!vehicleId) return;
+    if (!vehicleId || !canViewStock) {
+      setStockLoading(false);
+      return;
+    }
     setStockLoading(true);
     setStockError(null);
     try {
@@ -404,7 +418,7 @@ export const VehicleInventory: React.FC<{
     } finally {
       setStockLoading(false);
     }
-  }, [vehicleId]);
+  }, [vehicleId, canViewStock]);
 
   useEffect(() => {
     loadVehicle();
@@ -464,7 +478,7 @@ export const VehicleInventory: React.FC<{
       headerStyle: { width: '20%', whiteSpace: 'nowrap' },
       body: (row) => <UpdatedAtCell value={row.updatedAt} />,
     },
-    ...(canManage ? [{
+    ...(canAdjustStock ? [{
       field: 'actions',
       header: 'Actions',
       headerStyle: { width: '8%', textAlign: 'right' as const },
@@ -493,7 +507,7 @@ export const VehicleInventory: React.FC<{
         );
       },
     }] : []),
-  ], [canManage, rowMenu]);
+  ], [canAdjustStock, rowMenu]);
 
   const vehicleLabel = summary?.vehicleInfo
     || (vehicle ? [vehicle.regionName, vehicle.displayName].filter(Boolean).join(' - ') : '')
@@ -512,8 +526,8 @@ export const VehicleInventory: React.FC<{
       {!embedded && (
         <FlatTabs<StockTab>
           tabs={[
-            { value: 'stock', label: 'Stock' },
-            { value: 'history', label: 'History' },
+            ...(canViewStock ? [{ value: 'stock' as const, label: 'Stock' }] : []),
+            ...(canViewLedger ? [{ value: 'history' as const, label: 'History' }] : []),
           ]}
           value={activeTab}
           onChange={handleTabChange}
@@ -521,7 +535,7 @@ export const VehicleInventory: React.FC<{
         />
       )}
 
-      {activeTab === 'stock' && (
+      {activeTab === 'stock' && canViewStock && (
         (headerTitle || headerSubtitle) ? (
           <div className="space-y-5">
             {/* Title & Command Bar */}
@@ -537,12 +551,12 @@ export const VehicleInventory: React.FC<{
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
+                <FlatButton permission="VehicleStock.Export" size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
                 {canManage && (
                   <>
                     <span aria-hidden="true" className="hidden sm:inline-block h-5 w-px bg-portal-border mx-0.5" />
-                    <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
-                    <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
+                    <FlatButton permission="VehicleStock.Reset" size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
+                    <FlatButton permission="VehicleStock.Load" size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
                   </>
                 )}
               </div>
@@ -579,11 +593,11 @@ export const VehicleInventory: React.FC<{
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <FlatButton size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
+              <FlatButton permission="VehicleStock.Export" size="sm" variant="outline" leftIcon="pi pi-download" onClick={() => setSnapshotExportVisible(true)} disabled={vehicleLoading || !vehicle}>Export</FlatButton>
               {canManage && (
                 <>
-                  <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
-                  <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
+                  <FlatButton permission="VehicleStock.Reset" size="sm" variant="danger-outline" leftIcon="pi pi-trash" onClick={() => setResetVisible(true)} disabled={stockLoading || stock.length === 0}>Reset stock</FlatButton>
+                  <FlatButton permission="VehicleStock.Load" size="sm" variant="primary" leftIcon="pi pi-plus" onClick={() => { setLockedProduct(null); setMode('load'); }} disabled={vehicleLoading || !vehicle}>Add Stock</FlatButton>
                 </>
               )}
             </div>
@@ -691,7 +705,8 @@ export const VehicleInventory: React.FC<{
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton
+                permission="VehicleStock.Load"
                 type="button"
                 onClick={() => {
                   const target = {
@@ -708,8 +723,9 @@ export const VehicleInventory: React.FC<{
               >
                 <i className="pi pi-plus text-portal-accent text-xs w-4" />
                 <span>Increase stock</span>
-              </button>
-              <button
+              </PermissionButton>
+              <PermissionButton
+                permission="VehicleStock.Remove"
                 type="button"
                 onClick={() => {
                   const target = {
@@ -726,7 +742,7 @@ export const VehicleInventory: React.FC<{
               >
                 <i className="pi pi-minus text-red-400 text-xs w-4" />
                 <span>Reduce stock</span>
-              </button>
+              </PermissionButton>
             </div>
           </div>,
           document.body,

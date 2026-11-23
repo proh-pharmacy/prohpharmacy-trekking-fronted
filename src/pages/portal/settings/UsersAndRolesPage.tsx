@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -27,7 +28,7 @@ import { GrantStaffAccessModal } from './components/GrantStaffAccessModal';
 import { EditRolePermissionsView } from './components/EditRolePermissionsView';
 import { CreateRoleModal } from './components/CreateRoleModal';
 import { FlatConfirmDialog } from '../../../components/overlay';
-import { FlatButton, FlatTabs, type FlatTabItem } from '../../../components/flat-form';
+import { FlatButton, FlatTabs } from '../../../components/flat-form';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../../hooks/usePermissions';
 
@@ -44,16 +45,20 @@ const SEEDED_ROLES: Role[] = [
 export const UsersAndRolesPage: React.FC = () => {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const canManageUsers = hasAnyPermission('Users.Invite', 'Users.Edit', 'Staff.Manage');
-  const canManageStaff = hasAnyPermission('Staff.Create', 'Staff.Edit', 'Staff.Manage');
-  const canManageRoles = hasAnyPermission('Roles.Create', 'Roles.Edit', 'Roles.Manage', 'Roles.ManagePermissions');
+  const canManageUsers = hasAnyPermission('Users.Invite');
+  const canManageStaff = hasAnyPermission('Staff.Create');
+  const canManageRoles = hasAnyPermission('Roles.ManagePermissions');
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   // URL-driven active tab
+  const allowedTabs = ([
+    { value: 'users', label: 'User Accounts', permission: 'Users.View' },
+    { value: 'staff', label: 'Staff Directory', permission: 'Staff.View' },
+    { value: 'matrix', label: 'Roles & Permission', permission: 'Roles.View' },
+  ] as const).filter(tab => hasAnyPermission(tab.permission));
   const rawTab = searchParams.get('tab');
-  const activeTab: 'users' | 'staff' | 'matrix' =
-    rawTab === 'staff' || rawTab === 'matrix' ? rawTab : 'users';
+  const activeTab: 'users' | 'staff' | 'matrix' = allowedTabs.find(tab => tab.value === rawTab)?.value ?? allowedTabs[0]?.value ?? 'users';
 
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [createRoleVisible, setCreateRoleVisible] = useState(false);
@@ -172,7 +177,7 @@ export const UsersAndRolesPage: React.FC = () => {
   // Load available roles & branches
   const loadInitialData = useCallback(async () => {
     try {
-      const fetchedRoles = await usersApi.getRoles();
+      const fetchedRoles = hasAnyPermission('Roles.View', 'Users.AssignRoles', 'Users.RemoveRoles', 'Users.Invite', 'Staff.GrantAccess') ? await usersApi.getRoles() : [];
       if (fetchedRoles && fetchedRoles.length > 0) {
         setRoles(fetchedRoles);
       }
@@ -181,7 +186,7 @@ export const UsersAndRolesPage: React.FC = () => {
     }
 
     try {
-      const fetchedBranches = await organisationApi.getBranches();
+      const fetchedBranches = hasAnyPermission('Staff.View', 'Staff.Create', 'Staff.Edit', 'Branches.View') ? await organisationApi.getBranches() : [];
       if (fetchedBranches && fetchedBranches.length > 0) {
         setBranches(fetchedBranches);
       }
@@ -623,8 +628,10 @@ export const UsersAndRolesPage: React.FC = () => {
         body: (user) => {
           const userId = user.id || (user as any).userId;
           return (
-            <div
-              className="cursor-pointer group min-w-0"
+            <PermissionButton
+              permission="Users.ViewDetails"
+              type="button"
+              className="w-full text-left group min-w-0"
               onClick={() => navigate(`/portal/settings/users/${userId}`)}
               title="Click to view & edit user details"
             >
@@ -632,7 +639,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 {user.fullName}
               </div>
               <div className="text-[11px] text-portal-muted font-mono truncate">{user.email}</div>
-            </div>
+            </PermissionButton>
           );
         },
       },
@@ -750,8 +757,10 @@ export const UsersAndRolesPage: React.FC = () => {
         header: 'Staff Member',
         sortable: true,
         body: (staff) => (
-          <div
-            className="cursor-pointer group min-w-0"
+          <PermissionButton
+            permission="Staff.Edit"
+            type="button"
+            className="w-full text-left group min-w-0"
             onClick={() => setEditStaffTarget(staff)}
             title="Click to view & edit staff member details"
           >
@@ -761,7 +770,7 @@ export const UsersAndRolesPage: React.FC = () => {
             <div className="text-[11px] text-portal-muted font-mono truncate">
               {staff.emailAddress || staff.phoneNumber || '—'}
             </div>
-          </div>
+          </PermissionButton>
         ),
       },
       {
@@ -874,11 +883,7 @@ export const UsersAndRolesPage: React.FC = () => {
       {/* Tabs */}
       {!editingRole && (
         <FlatTabs<'users' | 'staff' | 'matrix'>
-          tabs={[
-            { value: 'users', label: 'User Accounts' },
-            { value: 'staff', label: 'Staff Directory' },
-            { value: 'matrix', label: 'Roles & Permission' },
-          ] as FlatTabItem<'users' | 'staff' | 'matrix'>[]}
+          tabs={allowedTabs}
           value={activeTab}
           onChange={handleTabChange}
           ariaLabel="Users and roles sections"
@@ -1000,7 +1005,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 </button>
               </div>
 
-              {canManageRoles && <FlatButton
+              {hasAnyPermission('Roles.Create') && <FlatButton permission={'Roles.Create'}
                   type="button"
                   variant="primary"
                   size="sm"
@@ -1027,7 +1032,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 { field: 'name', header: 'Role', body: (role) => <span className="text-xs text-portal-text">{role.name}</span> },
                 { field: 'description', header: 'Scope & Description', body: (role) => <p className="max-w-xl text-xs leading-relaxed text-portal-muted">{role.description || 'System authority scope.'}</p> },
                 { field: 'type', header: 'Type', body: (role) => { const isSystem = role.isSystem ?? ['SuperAdmin', 'Admin', 'BranchManager', 'OperationsManager', 'Driver', 'FieldStaff', 'CreditOfficer', 'Auditor'].includes(role.name); return <span className={`text-[11px] font-mono ${isSystem ? 'text-portal-muted' : 'text-portal-accent'}`}>{isSystem ? 'System' : 'Custom'}</span>; } },
-                ...(canManageRoles ? [{ field: 'actions', header: 'Actions', body: (role: Role) => <FlatButton type="button" variant="outline" size="sm" leftIcon="pi pi-sliders-h" onClick={() => setEditingRole(role)}>Edit Permissions</FlatButton> }] : []),
+                ...(canManageRoles ? [{ field: 'actions', header: 'Actions', body: (role: Role) => <FlatButton permission={'Roles.ManagePermissions'} type="button" variant="outline" size="sm" leftIcon="pi pi-sliders-h" onClick={() => setEditingRole(role)}>Edit Permissions</FlatButton> }] : []),
               ]}
             />
           ) : (
@@ -1069,7 +1074,7 @@ export const UsersAndRolesPage: React.FC = () => {
                     </div>
 
                     <div className="pt-3 border-t border-portal-border/40">
-                      <FlatButton
+                      <FlatButton permission={'Roles.ManagePermissions'}
                         type="button"
                         variant="outline"
                         size="sm"
@@ -1152,7 +1157,7 @@ export const UsersAndRolesPage: React.FC = () => {
         onHide={() => setCreateRoleVisible(false)}
         onSuccess={(newRole) => {
           setRoles((prev) => [...prev, newRole]);
-          setEditingRole(newRole);
+          if (hasAnyPermission('Roles.ManagePermissions')) setEditingRole(newRole);
         }}
       />
 
@@ -1170,7 +1175,7 @@ export const UsersAndRolesPage: React.FC = () => {
           >
             {getDisplayStatus(menuState.user) === 'Pending' ? (
               <div className="py-0.5">
-                <button
+                <PermissionButton permission={'Users.ResendInvitation'}
                   type="button"
                   onClick={() => {
                     const u = menuState.user;
@@ -1181,12 +1186,12 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-send text-portal-accent text-xs w-4" />
                   <span>Resend Invitation</span>
-                </button>
+                </PermissionButton>
               </div>
             ) : (
               <>
                 <div className="py-0.5">
-                  <button
+                  <PermissionButton permission={'Users.ViewDetails'}
                     type="button"
                     onClick={() => {
                       const u = menuState.user;
@@ -1198,8 +1203,8 @@ export const UsersAndRolesPage: React.FC = () => {
                   >
                     <i className="pi pi-user-edit text-portal-accent text-xs w-4" />
                     <span>View Details & Roles</span>
-                  </button>
-                  <button
+                  </PermissionButton>
+                  <PermissionButton permission={['Users.AssignRoles', 'Users.RemoveRoles']}
                     type="button"
                     onClick={() => {
                       const u = menuState.user;
@@ -1210,11 +1215,11 @@ export const UsersAndRolesPage: React.FC = () => {
                   >
                     <i className="pi pi-shield text-portal-accent text-xs w-4" />
                     <span>Manage Roles</span>
-                  </button>
+                  </PermissionButton>
                 </div>
 
                 <div className="py-0.5">
-                  <button
+                  <PermissionButton permission={getDisplayStatus(menuState.user) === 'Active' ? 'Users.Suspend' : 'Users.Activate'}
                     type="button"
                     onClick={() => {
                       const u = menuState.user;
@@ -1235,8 +1240,8 @@ export const UsersAndRolesPage: React.FC = () => {
                         ? 'Suspend Account'
                         : 'Activate Account'}
                     </span>
-                  </button>
-                  <button
+                  </PermissionButton>
+                  <PermissionButton permission={'Users.RevokeSessions'}
                     type="button"
                     onClick={() => {
                       const u = menuState.user;
@@ -1247,8 +1252,8 @@ export const UsersAndRolesPage: React.FC = () => {
                   >
                     <i className="pi pi-sign-out text-white/70 text-xs w-4" />
                     <span>Revoke Sessions</span>
-                  </button>
-                  <button
+                  </PermissionButton>
+                  <PermissionButton permission={'Users.ResetPassword'}
                     type="button"
                     onClick={() => {
                       const u = menuState.user;
@@ -1259,7 +1264,7 @@ export const UsersAndRolesPage: React.FC = () => {
                   >
                     <i className="pi pi-key text-amber-400 text-xs w-4" />
                     <span>Reset Password</span>
-                  </button>
+                  </PermissionButton>
                 </div>
               </>
             )}
@@ -1280,7 +1285,7 @@ export const UsersAndRolesPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'Staff.Edit'}
                 type="button"
                 onClick={() => {
                   const s = staffMenuState.staff;
@@ -1291,9 +1296,9 @@ export const UsersAndRolesPage: React.FC = () => {
               >
                 <i className="pi pi-user-edit text-portal-accent text-xs w-4" />
                 <span>Edit Details</span>
-              </button>
+              </PermissionButton>
               {!staffMenuState.staff.hasAppAccess && (
-                <button
+                <PermissionButton permission={'Staff.GrantAccess'}
                   type="button"
                   onClick={() => {
                     const s = staffMenuState.staff;
@@ -1304,13 +1309,13 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-key text-portal-accent text-xs w-4" />
                   <span>Grant Platform Access</span>
-                </button>
+                </PermissionButton>
               )}
             </div>
 
             <div className="py-0.5">
               {staffMenuState.staff.employmentStatus === 'Suspended' ? (
-                <button
+                <PermissionButton permission={'Staff.ChangeStatus'}
                   type="button"
                   onClick={() => {
                     const s = staffMenuState.staff;
@@ -1321,9 +1326,9 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-check text-portal-accent text-xs w-4" />
                   <span>Activate Staff</span>
-                </button>
+                </PermissionButton>
               ) : staffMenuState.staff.employmentStatus === 'Offboarded' ? (
-                <button
+                <PermissionButton permission={'Staff.ChangeStatus'}
                   type="button"
                   onClick={() => {
                     const s = staffMenuState.staff;
@@ -1334,9 +1339,9 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-user-plus text-portal-accent text-xs w-4" />
                   <span>Reactivate & Onboard</span>
-                </button>
+                </PermissionButton>
               ) : (
-                <button
+                <PermissionButton permission={'Staff.ChangeStatus'}
                   type="button"
                   onClick={() => {
                     const s = staffMenuState.staff;
@@ -1347,11 +1352,11 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-ban text-red-accent text-xs w-4" />
                   <span>Suspend Staff</span>
-                </button>
+                </PermissionButton>
               )}
 
               {staffMenuState.staff.employmentStatus !== 'Offboarded' && (
-                <button
+                <PermissionButton permission={'Staff.ChangeStatus'}
                   type="button"
                   onClick={() => {
                     const s = staffMenuState.staff;
@@ -1362,7 +1367,7 @@ export const UsersAndRolesPage: React.FC = () => {
                 >
                   <i className="pi pi-user-minus text-red-accent text-xs w-4" />
                   <span>Offboard Staff</span>
-                </button>
+                </PermissionButton>
               )}
             </div>
           </div>,

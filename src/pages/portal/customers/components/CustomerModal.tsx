@@ -1,3 +1,6 @@
+import { PermissionButton } from '../../../../components/auth/PermissionButton';
+import type { Permission } from '../../../../lib/permissions/catalogue';
+import { useActionPermission } from '../../../../components/auth/PermissionButton';
 import { CustomerIdCapture } from './CustomerIdCapture';
 import { validateIdDocument, type CustomerPhotos, type IdDocumentType } from '../../../../api-client/customerDocuments';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -101,6 +104,18 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [idPhotos, setIdPhotos] = useState<CustomerPhotos>({});
   useEffect(() => { if (!visible) setCreatedCustomer(null); }, [visible]);
   const isEditing = Boolean(customer);
+  const representativePermission = useActionPermission('CustomerRepresentatives.Edit');
+  const locationPermission = useActionPermission('CustomerLocations.Edit');
+  const identificationPermission = useActionPermission('CustomerKyc.Manage');
+  const ledgerPermission = useActionPermission('Ledger.CreateEntry');
+  const photoUploadPermission = useActionPermission('CustomerPhotos.Upload');
+  const photoReplacePermission = useActionPermission('CustomerPhotos.Replace');
+  const canEditRepresentative = !!driverMode || !customer || representativePermission;
+  const canEditLocation = !!driverMode || !customer || locationPermission;
+  const canEditIdentification = !!driverMode || identificationPermission;
+  const canUploadPremises = !!driverMode || (customer?.premisesPhotoUrl ? photoReplacePermission : photoUploadPermission);
+  const canUploadPortrait = !!driverMode || (customer?.primaryPerson?.portraitUrl ? photoReplacePermission : photoUploadPermission);
+
   const additionalLocations = customer?.additionalLocations ?? customer?.locations ?? [];
   const [showAdditionalLocations, setShowAdditionalLocations] = useState(false);
 
@@ -151,6 +166,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const premisesPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePremisesPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canUploadPremises) return;
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -168,6 +184,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   };
 
   const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canUploadPortrait) return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size === 0) { toast.error('Choose a non-empty photo.'); return; }
@@ -367,6 +384,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+    if ((!canUploadPremises && premisesPhotoFile) || (!canUploadPortrait && portraitFile) || (!canEditIdentification && (idPhotos.idFront || idPhotos.idBack))) {
+      toast.error('You do not have permission to upload these customer photos.');
+      return;
+    }
 
     if (!businessName.trim()) { toast.error('Business name is required.'); return; }
     if (!customerType) { toast.error('Customer type is required.'); return; }
@@ -376,18 +397,18 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       toast.error('Opening balance must be greater than zero.');
       return;
     }
-    if (!repFirstName.trim() || !repLastName.trim()) {
+    if (canEditRepresentative && (!repFirstName.trim() || !repLastName.trim())) {
       toast.error('Representative first and last name are required.');
       return;
     }
-    if (!repRelationship) { toast.error('Representative relationship type is required.'); return; }
-    if (!repPhone.trim()) { toast.error('Representative phone number is required.'); return; }
-    if (!driverMode && !districtId) { toast.error('District is required.'); return; }
+    if (canEditRepresentative && !repRelationship) { toast.error('Representative relationship type is required.'); return; }
+    if (canEditRepresentative && !repPhone.trim()) { toast.error('Representative phone number is required.'); return; }
+    if (!driverMode && canEditLocation && !districtId) { toast.error('District is required.'); return; }
 
     const documentChanged = idType !== (customer?.idDocumentType || '')
       || idNumber.trim() !== (customer?.idDocumentNumber || '');
     const hasDocumentDetails = Boolean(idType || idNumber.trim());
-    if (hasDocumentDetails || documentChanged) {
+    if (canEditIdentification && (hasDocumentDetails || documentChanged)) {
       const validation = validateIdDocument(idType, idNumber);
       if (validation) { toast.error(validation); return; }
     }
@@ -422,22 +443,22 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           regionId,
           primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone),
           whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) || undefined,
-          representative: {
+          representative: canEditRepresentative ? {
             firstName: repFirstName.trim(),
             middleName: repMiddleName.trim() || null,
             lastName: repLastName.trim(),
             relationshipType: repRelationship as RelationshipType,
             primaryPhoneNumber: normalizeGhanaPhoneNumber(repPhone),
             ghanaCardNumber: repGhanaCard.trim() || undefined,
-          },
-          location: {
+          } : undefined,
+          location: canEditLocation ? {
             districtId,
             streetAddress: streetAddress.trim() || undefined,
             landmarkAndDirections: landmark.trim() || undefined,
             ...(latitude !== null && longitude !== null && accuracy !== null
               ? { latitude, longitude, accuracyMetres: accuracy }
               : {}),
-          },
+          } : undefined,
         });
         resetTableData();
       } else if (!targetCustomer) {
@@ -448,7 +469,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           regionId,
           primaryPhoneNumber: normalizeGhanaPhoneNumber(primaryPhone),
           whatsAppNumber: normalizeGhanaPhoneNumber(whatsAppNumber) || undefined,
-          ...(!driverMode && openingBalance !== null ? { openingBalance } : {}),
+          ...(!driverMode && ledgerPermission && openingBalance !== null ? { openingBalance } : {}),
           representative: {
             firstName: repFirstName.trim(),
             middleName: repMiddleName.trim() || null,
@@ -473,7 +494,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
       if (!targetCustomer) throw new Error('Customer could not be saved.');
 
-      if (hasDocumentDetails && (documentChanged || createdDuringSubmit || createdCustomer)) {
+      if (canEditIdentification && hasDocumentDetails && (documentChanged || createdDuringSubmit || createdCustomer)) {
         await customersApi.setIdDocument(targetCustomer.id, {
           idDocumentType: idType as IdDocumentType,
           idDocumentNumber: idNumber.trim(),
@@ -573,7 +594,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             variant="primary"
             label={submitting ? 'Saving...' : isEditing || createdCustomer ? 'Save Changes' : 'Create Customer'}
             icon={isEditing || createdCustomer ? 'pi pi-check' : 'pi pi-plus'}
-            onClick={handleSubmit}
+            permission={driverMode ? undefined : customer ? 'Customers.Edit' : 'Customers.Register'} onClick={handleSubmit}
             loading={submitting}
             disabled={submitting || !businessName.trim()}
           />
@@ -615,7 +636,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             maxLength={200}
           />
           {!isEditing && !driverMode && (
-            <FlatInputNumber
+            <FlatInputNumber disabled={!ledgerPermission}
               label="Opening Balance (GHS)"
               value={openingBalance}
               onChange={setOpeningBalance}
@@ -654,7 +675,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             <SectionLabel>Representative</SectionLabel>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <FlatInputText
+              <FlatInputText disabled={!canEditRepresentative}
                 label="First Name"
                 placeholder="First name"
                 value={repFirstName}
@@ -663,7 +684,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 maxLength={80}
                 required
               />
-              <FlatInputText
+              <FlatInputText disabled={!canEditRepresentative}
                 label="Middle Name"
                 placeholder="Middle name"
                 value={repMiddleName}
@@ -671,7 +692,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 size="sm"
                 maxLength={80}
               />
-              <FlatInputText
+              <FlatInputText disabled={!canEditRepresentative}
                 label="Last Name"
                 placeholder="Last name"
                 value={repLastName}
@@ -683,7 +704,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <FlatDropdown
+              <FlatDropdown disabled={!canEditRepresentative}
                 label="Relationship"
                 value={repRelationship}
                 options={RELATIONSHIP_TYPE_OPTIONS}
@@ -694,7 +715,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 size="sm"
                 required
               />
-              <FlatInputText
+              <FlatInputText disabled={!canEditRepresentative}
                 label="Phone"
                 placeholder="+233 24 123 4567"
                 value={repPhone}
@@ -713,7 +734,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 {customer?.primaryLocation?.id && pendingLocationIds.includes(customer.primaryLocation.id) && <span className="ml-2 normal-case tracking-normal text-portal-accent">Update awaiting sync</span>}
               </span>
               {driverMode && isEditing && customer?.primaryLocation?.id && onEditLocation && (
-                <button type="button" onClick={() => onEditLocation(customer.primaryLocation!)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit location</button>
+                <PermissionButton permission={driverMode ? undefined : 'CustomerLocations.Edit'} type="button" onClick={() => onEditLocation(customer.primaryLocation!)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit location</PermissionButton>
               )}
             </div>
 
@@ -721,7 +742,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               {driverMode ? (
                 <FlatInputText label="Region" value={customer?.primaryLocation?.regionName || driverMode.region?.name || ''} disabled size="sm" />
               ) : (
-                <FlatDropdown
+                <FlatDropdown disabled={!canEditLocation}
                   label="Region"
                   value={locationRegionId}
                   options={regionOptions}
@@ -747,7 +768,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 filter
                 filterPlaceholder="Search district..."
                 size="sm"
-                disabled={!locationRegionId && !driverMode}
+                disabled={(!locationRegionId && !driverMode) || (!canEditLocation)}
               />
             </div>
             {driverMode && districts.length === 0 && (
@@ -756,7 +777,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               </p>
             )}
 
-            <FlatTextarea
+            <FlatTextarea disabled={!canEditLocation}
               label="Street Address"
               placeholder="12 Liberation Road, Accra"
               value={streetAddress}
@@ -766,7 +787,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               maxLength={300}
             />
 
-            <FlatTextarea
+            <FlatTextarea disabled={!canEditLocation}
               label="Landmark & Directions"
               placeholder="Next to Accra Mall, ground floor..."
               value={landmark}
@@ -802,7 +823,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                         leftIcon="pi pi-refresh"
                         onClick={handleCaptureGps}
                         loading={capturingGps}
-                        disabled={capturingGps}
+                        disabled={(capturingGps) || (!canEditLocation)}
                         className="w-full sm:w-auto"
                       >
                         Recapture
@@ -854,7 +875,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   leftIcon={capturingGps ? undefined : 'pi pi-map-marker'}
                   onClick={handleCaptureGps}
                   loading={capturingGps}
-                  disabled={capturingGps}
+                  disabled={(capturingGps) || (!canEditLocation)}
                 >
                   {capturingGps ? 'Capturing...' : 'Capture GPS Location'}
                 </FlatButton>
@@ -868,9 +889,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                     <i className={`pi ${showAdditionalLocations ? 'pi-chevron-down' : 'pi-chevron-right'} text-[10px]`} />
                     {showAdditionalLocations ? 'Hide additional locations' : `View additional locations (${additionalLocations.length})`}
                   </button>}
-                  {onAddLocation && <button type="button" onClick={onAddLocation} className="flex items-center gap-1 text-[11px] text-portal-accent hover:text-portal-accent-hover">
+                  {onAddLocation && <PermissionButton permission={driverMode ? undefined : 'CustomerLocations.Add'} type="button" onClick={onAddLocation} className="flex items-center gap-1 text-[11px] text-portal-accent hover:text-portal-accent-hover">
                     <i className="pi pi-plus text-[10px]" /> Add additional location
-                  </button>}
+                  </PermissionButton>}
                 </div>
                 {showAdditionalLocations && additionalLocations.length > 0 && <div className="mt-3 space-y-3">
                   {additionalLocations.map((location, index) => {
@@ -881,8 +902,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                           {pendingLocationIds.includes(location.locationId || location.id) && <span className="ml-2 text-[11px] font-normal text-portal-accent">Update awaiting sync</span>}
                         </p>
                         {(onEditLocation || onDeleteLocation) && <div className="flex shrink-0 gap-3">
-                          {onEditLocation && <button type="button" onClick={() => onEditLocation(location)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit</button>}
-                          {onDeleteLocation && <button type="button" onClick={() => onDeleteLocation(location)} className="text-[11px] text-red-400 hover:text-red-300">Delete</button>}
+                          {onEditLocation && <PermissionButton permission={driverMode ? undefined : 'CustomerLocations.Edit'} type="button" onClick={() => onEditLocation(location)} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">Edit</PermissionButton>}
+                          {onDeleteLocation && <PermissionButton permission={driverMode ? undefined : 'CustomerLocations.Delete'} type="button" onClick={() => onDeleteLocation(location)} className="text-[11px] text-red-400 hover:text-red-300">Delete</PermissionButton>}
                         </div>}
                       </div>
                       <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -909,17 +930,17 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             ? <p className="text-xs text-portal-muted">Identification can only be edited for customer accounts registered in this trek’s region.</p>
             : <CustomerIdCapture type={idType} number={idNumber} onType={setIdType} onNumber={setIdNumber}
                 photos={idPhotos} onPhotos={setIdPhotos} pendingPhotos={driverMode?.pendingPhotos}
-                frontUrl={customer?.idCardFrontUrl} backUrl={customer?.idCardBackUrl} disabled={submitting} />}
+                frontUrl={customer?.idCardFrontUrl} backUrl={customer?.idCardBackUrl} disabled={submitting || !canEditIdentification} />}
         </div>
 
         {/* ── Additional Attachments ──────────────────────────────── */}
         <SectionLabel>Additional Attachments</SectionLabel>
 
         <div className="flex items-center gap-4 mb-4">
-          <button
+          <button disabled={!(premisesPreview || customer?.premisesPhotoUrl) && !canUploadPremises}
             type="button"
-            onClick={() => (premisesPreview || customer?.premisesPhotoUrl) ? setShowPremisesViewer(true) : premisesPhotoInputRef.current?.click()}
-            className="relative h-16 w-16 shrink-0 overflow-hidden rounded border-2 border-dashed border-portal-border bg-portal-canvas transition-colors hover:border-portal-accent group"
+            onClick={() => (premisesPreview || customer?.premisesPhotoUrl) ? setShowPremisesViewer(true) : canUploadPremises && premisesPhotoInputRef.current?.click()}
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded border-2 border-dashed border-portal-border bg-portal-canvas transition-colors hover:border-portal-accent group disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Choose business premises photo"
           >
             {(premisesPreview || customer?.premisesPhotoUrl) ? <img src={premisesPreview || customer?.premisesPhotoUrl || ''} alt={`${customer?.businessName || 'Business'} premises`} className="h-full w-full object-cover" /> : <i className="pi pi-camera text-lg text-portal-muted transition-colors group-hover:text-portal-accent" />}
@@ -929,7 +950,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             <p className="text-xs font-medium text-portal-text">{premisesPhotoFile ? premisesPhotoFile.name : 'Business premises photo'}</p>
             <p className="text-[11px] text-portal-muted">JPEG, PNG or WebP · Max 5 MB · Optional</p>
             <div className="mt-0.5 flex items-center gap-3">
-              <button type="button" onClick={() => premisesPhotoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">{premisesPreview || customer?.premisesPhotoUrl ? 'Change photo' : 'Upload photo'}</button>
+              <button disabled={!canUploadPremises} type="button" onClick={() => premisesPhotoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover disabled:opacity-40 disabled:cursor-not-allowed">{premisesPreview || customer?.premisesPhotoUrl ? 'Change photo' : 'Upload photo'}</button>
               {premisesPhotoFile && <button type="button" onClick={() => { setPremisesPhotoFile(null); setPremisesPreview(customer?.premisesPhotoUrl ?? null); }} className="text-[11px] text-red-400 hover:text-red-300">Remove</button>}
             </div>
           </div>
@@ -949,10 +970,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             {/* Portrait upload */}
             <div className="flex items-center gap-4 mb-4">
               {/* Avatar — click to view if photo exists, else click to upload */}
-              <button
+              <button disabled={!portraitPreview && !canUploadPortrait}
                 type="button"
-                onClick={() => portraitPreview ? setShowPortraitViewer(true) : portraitInputRef.current?.click()}
-                className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
+                onClick={() => portraitPreview ? setShowPortraitViewer(true) : canUploadPortrait && portraitInputRef.current?.click()}
+                className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {portraitPreview ? (
                   <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
@@ -972,10 +993,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   JPEG, PNG or WebP · Max 5 MB · Optional
                 </p>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <button
+                  <button disabled={!canUploadPortrait}
                     type="button"
                     onClick={() => portraitInputRef.current?.click()}
-                    className="text-[11px] text-portal-accent hover:text-portal-accent-hover"
+                    className="text-[11px] text-portal-accent hover:text-portal-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {portraitPreview ? 'Change photo' : 'Upload photo'}
                   </button>
@@ -1036,12 +1057,15 @@ export interface CustomerLocationModalProps {
   includeRegion?: boolean;
   regionLocked?: boolean;
   driverEdit?: boolean;
+  permission?: Permission;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }
 
 export const CustomerLocationModal: React.FC<CustomerLocationModalProps> = ({
-  visible, onHide, customerName, location, region, districts, online = true, districtRequired = true, includeRegion = true, regionLocked = false, driverEdit = false, onSubmit,
+  visible, onHide, customerName, location, region, districts, online = true, districtRequired = true, includeRegion = true, regionLocked = false, driverEdit = false, permission, onSubmit,
 }) => {
+  const canEditLocation = useActionPermission(permission);
+  const canSetPrimaryLocation = useActionPermission(driverEdit ? undefined : 'CustomerLocations.SetPrimary');
   const [locationType, setLocationType] = useState<LocationType>('BusinessPremises');
   const [regionId, setRegionId] = useState(region?.id || '');
   const [regions, setRegions] = useState<Region[]>([]);
@@ -1156,22 +1180,22 @@ export const CustomerLocationModal: React.FC<CustomerLocationModalProps> = ({
   };
 
   return <FlatModal visible={visible} onHide={() => !saving && onHide()} title={`${location ? 'Edit location' : 'Add additional location'}${customerName ? ` · ${customerName}` : ''}`} size="md"
-    footer={<><FlatButton variant="ghost" size="sm" onClick={onHide} disabled={saving}>Cancel</FlatButton><FlatButton size="sm" onClick={submit} loading={saving} disabled={saving || capturing}>Save location</FlatButton></>}>
+    footer={<><FlatButton variant="ghost" size="sm" onClick={onHide} disabled={saving}>Cancel</FlatButton><FlatButton size="sm" permission={permission} onClick={submit} loading={saving} disabled={saving || capturing}>Save location</FlatButton></>}>
     <div className="space-y-3">
-      {!driverEdit && <FlatDropdown label="Location type" value={locationType} options={[{ label: 'Business premises', value: 'BusinessPremises' }, { label: 'Delivery location', value: 'DeliveryLocation' }, { label: 'Residential', value: 'Residential' }, { label: 'Other', value: 'Other' }]} onChange={(value: any) => setLocationType((value?.value ?? value) as LocationType)} size="sm" />}
+      {!driverEdit && <FlatDropdown disabled={!canEditLocation} label="Location type" value={locationType} options={[{ label: 'Business premises', value: 'BusinessPremises' }, { label: 'Delivery location', value: 'DeliveryLocation' }, { label: 'Residential', value: 'Residential' }, { label: 'Other', value: 'Other' }]} onChange={(value: any) => setLocationType((value?.value ?? value) as LocationType)} size="sm" />}
       {regionLocked ? (
         <FlatInputText label="Region" value={location?.regionName || region?.name || ''} disabled size="sm" />
       ) : (
-        <FlatDropdown label={`Region${districtRequired && !location ? ' *' : ''}`} value={regionId} options={regions.map((item) => ({ label: item.name, value: item.id }))} onChange={(value: any) => { setRegionId(value?.value ?? value ?? ''); setDistrictId(''); }} placeholder="Select region" filter size="sm" />
+        <FlatDropdown disabled={!canEditLocation} label={`Region${districtRequired && !location ? ' *' : ''}`} value={regionId} options={regions.map((item) => ({ label: item.name, value: item.id }))} onChange={(value: any) => { setRegionId(value?.value ?? value ?? ''); setDistrictId(''); }} placeholder="Select region" filter size="sm" />
       )}
-      <FlatDropdown label={`District${districtRequired && !location ? ' *' : ''}`} value={districtId} options={availableDistricts.map((district) => ({ label: district.name, value: district.id }))} onChange={(value: any) => setDistrictId(value?.value ?? value ?? '')} placeholder="Select district" filter size="sm" disabled={!regionId && districtRequired} />
-      <FlatTextarea label="Street Address" value={streetAddress} onChange={(event) => setStreetAddress(event.target.value)} rows={2} maxLength={300} size="sm" />
-      <FlatTextarea label="Landmark & Directions" value={landmark} onChange={(event) => setLandmark(event.target.value)} rows={2} maxLength={500} size="sm" />
+      <FlatDropdown label={`District${districtRequired && !location ? ' *' : ''}`} value={districtId} options={availableDistricts.map((district) => ({ label: district.name, value: district.id }))} onChange={(value: any) => setDistrictId(value?.value ?? value ?? '')} placeholder="Select district" filter size="sm" disabled={(!regionId && districtRequired) || (!canEditLocation)} />
+      <FlatTextarea disabled={!canEditLocation} label="Street Address" value={streetAddress} onChange={(event) => setStreetAddress(event.target.value)} rows={2} maxLength={300} size="sm" />
+      <FlatTextarea disabled={!canEditLocation} label="Landmark & Directions" value={landmark} onChange={(event) => setLandmark(event.target.value)} rows={2} maxLength={500} size="sm" />
       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-portal-border/60 bg-portal-canvas/40 p-3">
         <span className="text-[11px] text-portal-muted">{latitude !== null && longitude !== null ? `GPS captured · ±${(accuracy ?? 0).toFixed(1)}m` : online ? 'GPS is optional for an additional location.' : 'Saved offline and queued for sync.'}</span>
-        <FlatButton variant="outline" size="sm" leftIcon="pi pi-map-marker" onClick={capture} loading={capturing} disabled={capturing}>{capturing ? 'Capturing...' : latitude !== null ? 'Recapture GPS' : 'Capture GPS'}</FlatButton>
+        <FlatButton variant="outline" size="sm" leftIcon="pi pi-map-marker" onClick={capture} loading={capturing} disabled={capturing || !canEditLocation}>{capturing ? 'Capturing...' : latitude !== null ? 'Recapture GPS' : 'Capture GPS'}</FlatButton>
       </div>
-      {!driverEdit && <FlatCheckbox checked={isPrimary} onChange={setIsPrimary} label="Make this the primary location" />}
+      {!driverEdit && <FlatCheckbox checked={isPrimary} onChange={setIsPrimary} disabled={!canEditLocation || !canSetPrimaryLocation} label="Make this the primary location" />}
     </div>
   </FlatModal>;
 };

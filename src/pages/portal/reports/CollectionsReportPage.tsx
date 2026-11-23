@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../hooks/usePermissions';
 import React, { useState, useEffect, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
@@ -35,6 +36,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export const CollectionsReportPage: React.FC = () => {
+  const { can } = usePermissions();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState(todayStr());
   const [branchId, setBranchId] = useState('');
@@ -81,6 +83,7 @@ export const CollectionsReportPage: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const handleExport = async () => {
+    if (!can('Reports.Export')) return;
     setExporting(true);
     try {
       const { blob, filename } = await reportsApi.exportCollectionsReport({
@@ -108,7 +111,7 @@ export const CollectionsReportPage: React.FC = () => {
             variant="primary"
             label={exporting ? 'Generating...' : 'Export Report'}
             icon="pi pi-download"
-            onClick={handleExport}
+            permission="Reports.Export" onClick={handleExport}
             loading={exporting}
             disabled={exporting || loading}
           />

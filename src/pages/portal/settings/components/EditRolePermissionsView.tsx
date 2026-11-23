@@ -1,3 +1,5 @@
+import { PERMISSION_MODULES } from '../../../../lib/permissions/catalogue';
+import { resetTableData } from '../../../../components/data-table';
 import React, { useState, useEffect, useMemo } from 'react';
 import { usersApi, type Role, type SystemModulePermissions } from '../../../../api-client';
 import { FlatButton } from '../../../../components/flat-form';
@@ -10,21 +12,7 @@ interface EditRolePermissionsViewProps {
 }
 
 // Canonical fallback modules in case master API is temporarily unavailable
-const FALLBACK_MODULES: SystemModulePermissions[] = [
-  { module: 'Customers', permissions: ['Customers.Register', 'Customers.Edit', 'Customers.Approve'] },
-  { module: 'CustomerKyc', permissions: ['CustomerKyc.View', 'CustomerKyc.Manage'] },
-  { module: 'CustomerCredit', permissions: ['CustomerCredit.View', 'CustomerCredit.Manage'] },
-  { module: 'Staff', permissions: ['Staff.View', 'Staff.Manage'] },
-  { module: 'Treks', permissions: ['Treks.ViewAll', 'Treks.Create', 'Treks.Assign', 'Treks.Start', 'Treks.Complete'] },
-  { module: 'Vehicles', permissions: ['Vehicles.Manage'] },
-  { module: 'Tracking', permissions: ['Tracking.ViewAll'] },
-  { module: 'TrackingDevices', permissions: ['TrackingDevices.Manage'] },
-  { module: 'Visits', permissions: ['Visits.Record', 'Visits.Verify'] },
-  { module: 'Roles', permissions: ['Roles.Manage'] },
-  { module: 'Branches', permissions: ['Branches.Manage'] },
-  { module: 'Reports', permissions: ['Reports.Export'] },
-  { module: 'Audit', permissions: ['Audit.View'] },
-];
+const FALLBACK_MODULES: SystemModulePermissions[] = PERMISSION_MODULES;
 
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
   Audit: 'Audit',
@@ -151,6 +139,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
     try {
       const payload = Array.from(enabledKeys);
       await usersApi.syncRolePermissions(role.id, payload);
+      resetTableData();
       setOriginalKeys(new Set(enabledKeys));
 
       const updated = { ...role, permissions: payload };
@@ -231,7 +220,7 @@ export const EditRolePermissionsView: React.FC<EditRolePermissionsViewProps> = (
             </FlatButton>
           )}
 
-          <FlatButton
+          <FlatButton permission={'Roles.ManagePermissions'}
             type="button"
             variant="primary"
             size="sm"

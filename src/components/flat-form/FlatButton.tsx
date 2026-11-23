@@ -2,6 +2,8 @@ import React from 'react';
 import { Button as PrimeButton, type ButtonProps as PrimeButtonProps } from 'primereact/button';
 import { cn } from '../../lib/utils';
 import { buttonVariants, type ButtonVariantProps } from './buttonVariants';
+import { useActionPermission } from '../auth/PermissionButton';
+import type { Permission } from '../../lib/permissions/catalogue';
 
 export type { ButtonVariantProps };
 
@@ -12,6 +14,7 @@ export interface FlatButtonProps
   rightIcon?: string | React.ReactNode;
   className?: string;
   children?: React.ReactNode;
+  permission?: Permission | readonly Permission[];
 }
 
 const getButtonIconSize = (size?: string | null) => {
@@ -66,9 +69,11 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
   children,
   label,
   type = 'button',
+  permission,
   ...props
 }) => {
-  const isDisabled = disabled || loading;
+  const allowed = useActionPermission(permission);
+  const isDisabled = disabled || loading || !allowed;
   const content = children || label;
   const iconConfig = getButtonIconSize(size);
   const effectiveLeftIcon = leftIcon || icon;
@@ -82,6 +87,7 @@ export const FlatButton: React.FC<FlatButtonProps> = ({
         className
       )}
       {...props}
+      title={allowed ? props.title : 'You do not have permission for this action.'}
     >
       {loading ? (
         <span

@@ -3,6 +3,7 @@ import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
 import { dataExportsApi, getApiError, organisationApi } from '../../../api-client';
 import { FlatButton, FlatDropdown, FlatInputText } from '../../../components/flat-form';
+import type { Permission } from '../../../lib/permissions/catalogue';
 
 type ExportKind = 'customers' | 'products' | 'staff' | 'regionalMarkups' | 'customerMarkups';
 
@@ -12,6 +13,7 @@ interface ExportCardProps {
   buttonLabel: string;
   loading: boolean;
   disabled: boolean;
+  permission?: Permission | readonly Permission[];
   onExport: () => void;
   children?: ReactNode;
 }
@@ -22,6 +24,7 @@ const ExportCard: React.FC<ExportCardProps> = ({
   buttonLabel,
   loading,
   disabled,
+  permission,
   onExport,
   children,
 }) => (
@@ -36,6 +39,7 @@ const ExportCard: React.FC<ExportCardProps> = ({
         leftIcon="pi pi-download"
         loading={loading}
         disabled={disabled}
+        permission={permission}
         onClick={onExport}
         className="shrink-0"
       >
@@ -142,6 +146,7 @@ export const DataExportPage: React.FC = () => {
         buttonLabel="Export customers"
         loading={exporting === 'customers'}
         disabled={busy}
+        permission={['Customers.Export', 'Reports.Export']}
         onExport={() => void runExport('customers', () => dataExportsApi.exportCustomers({
           search: customerSearch.trim() || undefined,
           regionId: customerRegionId || undefined,
@@ -165,6 +170,7 @@ export const DataExportPage: React.FC = () => {
         buttonLabel="Export products"
         loading={exporting === 'products'}
         disabled={busy}
+        permission={['Products.Export', 'Reports.Export']}
         onExport={() => void runExport('products', () => dataExportsApi.exportProducts(productMode))}
       >
         <div className="max-w-sm">
@@ -178,6 +184,7 @@ export const DataExportPage: React.FC = () => {
         buttonLabel="Export staff"
         loading={exporting === 'staff'}
         disabled={busy}
+        permission="Reports.Export"
         onExport={() => void runExport('staff', () => dataExportsApi.exportStaff({
           search: staffSearch.trim() || undefined,
           branchId: staffBranchId || undefined,
@@ -197,6 +204,7 @@ export const DataExportPage: React.FC = () => {
         buttonLabel="Export regional rules"
         loading={exporting === 'regionalMarkups'}
         disabled={busy}
+        permission="RegionalPricing.Export"
         onExport={() => void runExport('regionalMarkups', dataExportsApi.exportRegionalMarkups)}
       />
 
@@ -206,6 +214,7 @@ export const DataExportPage: React.FC = () => {
         buttonLabel="Export customer rules"
         loading={exporting === 'customerMarkups'}
         disabled={busy}
+        permission="CustomerPricing.Export"
         onExport={() => void runExport('customerMarkups', () => dataExportsApi.exportCustomerMarkups(markupRegionId || undefined))}
       >
         <div className="max-w-sm">

@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../../hooks/usePermissions';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSuccess }) => {
+  const { can } = usePermissions();
   const [regionId, setRegionId]               = useState('');
   const [branchId, setBranchId]               = useState('');
   const [scheduledDate, setScheduledDate]     = useState('');
@@ -83,6 +85,11 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
   );
 
   const handleSubmit = async () => {
+    if (!can('Treks.Edit')) return;
+    if ((vehicleId !== trek.vehicleId || salesStaffId !== (trek.salesStaffId || '')) && !can('Treks.Assign')) {
+      toast.error('You do not have permission to change trek assignments.');
+      return;
+    }
     const result = schema.safeParse({ regionId, scheduledDate, vehicleId });
     if (!result.success) {
       const errs: Errors = {};
@@ -142,7 +149,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={saving} />
-          <FlatButton variant="primary" label={saving ? 'Saving...' : 'Save Changes'} icon="pi pi-check" onClick={handleSubmit} loading={saving} disabled={saving} />
+          <FlatButton permission={'Treks.Edit'} variant="primary" label={saving ? 'Saving...' : 'Save Changes'} icon="pi pi-check" onClick={handleSubmit} loading={saving} disabled={saving} />
         </div>
       }
     >
@@ -190,7 +197,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
           required
           placeholder={vehicleRegionFilter === 'trek' ? (regionId ? 'Search vehicles in trekking region...' : 'Select a trekking region first...') : 'Search vehicles across all regions...'}
           helperText={vehicleRegionFilter === 'trek' && !regionId ? 'Select a trekking region above to see its vehicles.' : undefined}
-          value={vehicleId}
+          disabled={!can('Treks.Assign')} value={vehicleId}
           initialSelectedItem={vehicleId === trek.vehicleId ? selectedInitialVehicle : undefined}
           onChange={(v, item) => { setVehicleId(v || ''); setSelectedVehicle(item ?? null); clearError('vehicleId'); }}
           fetchFn={fetchVehicles}
@@ -231,7 +238,7 @@ export const EditTrekModal: React.FC<Props> = ({ visible, onHide, trek, onSucces
 
         <FlatAsyncSelect<StaffItem>
           label="Sales Staff (Optional)"
-          value={salesStaffId}
+          disabled={!can('Treks.Assign')} value={salesStaffId}
           initialSelectedItem={initialSalesStaff}
           onChange={(value) => setSalesStaffId(value || '')}
           fetchFn={fetchSalesStaff}

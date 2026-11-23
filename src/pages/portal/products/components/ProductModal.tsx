@@ -155,7 +155,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={product ? 'Products.Edit' : 'Products.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Product'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

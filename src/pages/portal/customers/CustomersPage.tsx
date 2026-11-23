@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -64,8 +65,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const CustomersPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canRegisterCustomers = hasAnyPermission('Customers.Register', 'Customers.Create');
-  const canEditCustomers = hasAnyPermission('Customers.Edit', 'Customers.Manage');
+  const canRegisterCustomers = hasAnyPermission('Customers.Register');
+  const canEditCustomers = hasAnyPermission('Customers.Edit');
   const canViewLedger = hasAnyPermission('CustomerCredit.View', 'Ledger.View', 'Ledger.ViewDetails');
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
@@ -193,13 +194,13 @@ export const CustomersPage: React.FC = () => {
         header: 'Business Name',
         body: (row) => (
           <div>
-            <button
+            <PermissionButton permission={'Customers.ViewDetails'}
               type="button"
               onClick={() => navigate(`/portal/customers/${row.id}`)}
               className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
             >
               {row.businessName}
-            </button>
+            </PermissionButton>
             {row.tradingName && (
               <div className="text-[11px] text-portal-muted truncate max-w-sm mt-0.5">
                 {row.tradingName}
@@ -280,7 +281,7 @@ export const CustomersPage: React.FC = () => {
               >
                 Edit
               </FlatButton>}
-            {canViewLedger && <FlatButton
+            {canViewLedger && <FlatButton permission={'Customers.ViewDetails'}
                 variant="outline"
                 size="sm"
                 leftIcon="pi pi-wallet"
@@ -292,7 +293,7 @@ export const CustomersPage: React.FC = () => {
         ),
       },
     ],
-    []
+    [canEditCustomers, canViewLedger, navigate]
   );
 
   const importFields: Array<{ key: keyof CustomerImportMapping; label: string; required?: boolean }> = [
@@ -441,6 +442,7 @@ export const CustomersPage: React.FC = () => {
         variant="danger"
       />
       {locationCustomer && <CustomerLocationModal
+        permission={locationEditing ? 'CustomerLocations.Edit' : 'CustomerLocations.Add'}
         visible={Boolean(locationCustomer)}
         onHide={() => setLocationCustomer(null)}
         customerName={locationCustomer.businessName}
@@ -459,7 +461,7 @@ export const CustomersPage: React.FC = () => {
         }}
       />}
       <FlatModal visible={importVisible} onHide={() => !importing && setImportVisible(false)} title="Import customers" size="lg"
-        footer={<><FlatButton size="sm" variant="ghost" onClick={() => setImportVisible(false)} disabled={importing}>Cancel</FlatButton><FlatButton size="sm" onClick={() => void runImport()} loading={importing} disabled={!importFile || !importMapping.businessNameColumn}>Import customers</FlatButton></>}>
+        footer={<><FlatButton size="sm" variant="ghost" onClick={() => setImportVisible(false)} disabled={importing}>Cancel</FlatButton><FlatButton size="sm" permission="Customers.Register" onClick={() => void runImport()} loading={importing} disabled={!importFile || !importMapping.businessNameColumn}>Import customers</FlatButton></>}>
         <div className="space-y-4">
           <div className="space-y-1.5 text-xs leading-relaxed text-portal-muted">
             <p>Upload an <span className="text-portal-text">.xlsx</span> or <span className="text-portal-text">.xls</span> workbook. Each sheet represents one region and row 1 must contain the same headers on every sheet.</p>

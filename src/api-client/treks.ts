@@ -1,3 +1,4 @@
+import { requirePermission } from './api';
 import apiClient, { publicApi } from './api';
 import type { StopInvoiceSummary } from './invoices';
 
@@ -399,7 +400,8 @@ export const treksApi = {
     await apiClient.delete(`/treks/${trekId}/stops/${stopId}`);
   },
 
-  recordDelivery: async (id: string, payload: RecordDeliveryPayload) => {
+  recordDelivery: async (id: string, payload: RecordDeliveryPayload, permission: 'TrekDeliveries.Record' | 'TrekDeliveries.Edit' = 'TrekDeliveries.Record') => {
+    requirePermission(permission);
     const res = await apiClient.post(`/treks/${id}/record`, payload);
     return res.data;
   },

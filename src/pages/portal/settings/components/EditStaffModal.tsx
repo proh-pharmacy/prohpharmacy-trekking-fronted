@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../../hooks/usePermissions';
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
@@ -44,6 +45,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
   branches,
   availableRoles,
 }) => {
+  const { can } = usePermissions();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -61,6 +63,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!can('Staff.UploadPhoto')) return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -106,6 +109,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photoFile && !can('Staff.UploadPhoto')) { toast.error('You do not have permission to upload staff photos.'); return; }
     const nextEmail = emailAddress.trim();
     const currentEmail = (staff.emailAddress || staff.email || '').trim();
     const emailChanged = nextEmail !== currentEmail;
@@ -178,7 +182,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
             onClick={onHide}
             disabled={saving}
           />
-          <FlatButton
+          <FlatButton permission={'Staff.Edit'}
             variant="primary"
             label={saving ? 'Saving...' : 'Save Changes'}
             icon="pi pi-check"
@@ -192,10 +196,10 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
         {/* Read-Only Summary Header with avatar */}
         <div className="p-3 bg-portal-canvas border border-portal-border/60 rounded flex items-center gap-3">
-          <button
+          <button disabled={!photoPreview && !can('Staff.UploadPhoto')}
             type="button"
-            onClick={() => photoPreview ? setShowPhotoViewer(true) : photoInputRef.current?.click()}
-            className="relative w-10 h-10 rounded overflow-hidden border border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-surface"
+            onClick={() => photoPreview ? setShowPhotoViewer(true) : can('Staff.UploadPhoto') && photoInputRef.current?.click()}
+            className="relative w-10 h-10 rounded overflow-hidden border border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-surface disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {photoPreview ? (
               <img src={photoPreview} alt="Staff photo" className="w-full h-full object-cover" />
@@ -212,7 +216,7 @@ export const EditStaffModal: React.FC<EditStaffModalProps> = ({
               {staff.emailAddress || staff.email || 'No email registered'}
             </span>
             <div className="flex items-center gap-3 mt-0.5">
-              <button type="button" onClick={() => photoInputRef.current?.click()} className="text-[10px] text-portal-accent hover:text-portal-accent-hover">
+              <button disabled={!can('Staff.UploadPhoto')} type="button" onClick={() => photoInputRef.current?.click()} className="text-[10px] text-portal-accent hover:text-portal-accent-hover disabled:opacity-40 disabled:cursor-not-allowed">
                 {photoPreview ? 'Change photo' : 'Upload photo'}
               </button>
               {photoFile && (

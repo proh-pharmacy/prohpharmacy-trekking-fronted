@@ -29,6 +29,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const { data: pendingRefundCount = 0 } = useQuery({
     queryKey: PENDING_RETURNS_COUNT_QUERY_KEY,
+    enabled: hasAnyPermission('TrekReturns.View'),
     queryFn: returnsApi.getPendingCount,
     refetchInterval: 45_000,
     refetchIntervalInBackground: false,

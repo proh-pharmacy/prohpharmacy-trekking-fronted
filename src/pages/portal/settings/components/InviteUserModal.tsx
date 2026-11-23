@@ -181,7 +181,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={'Users.Invite'}
             variant="primary"
             label={submitting ? 'Sending...' : 'Send Invitation'}
             icon="pi pi-send"

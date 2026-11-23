@@ -110,7 +110,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ visible, onHide, devic
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={device ? 'TrackingDevices.Edit' : 'TrackingDevices.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Register'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

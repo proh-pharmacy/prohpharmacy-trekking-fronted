@@ -1,3 +1,5 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
+import { usePermissions } from '../../../hooks/usePermissions';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -28,6 +30,8 @@ function todayStr() {
 
 // ── Page ───────────────────────────────────────────────────────────────
 export const CustomerBalancesPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
+  const canExportBalances = hasAnyPermission('Reports.Export', 'Ledger.Export');
   const navigate = useNavigate();
 
   // ── Summary stats (side-effected from dataMapper) ──────────────────
@@ -80,6 +84,7 @@ export const CustomerBalancesPage: React.FC = () => {
   };
 
   const handleExport = async () => {
+    if (!canExportBalances) return;
     setExporting(true);
     try {
       const { blob, filename } = await customersApi.exportLedgerSummary({
@@ -141,13 +146,13 @@ export const CustomerBalancesPage: React.FC = () => {
         field: 'businessName',
         header: 'Business Name',
         body: (row) => (
-          <button
+          <PermissionButton permission={'Customers.ViewDetails'}
             type="button"
             onClick={() => navigate(`/portal/customers/${row.customerId}`)}
             className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
           >
             {row.businessName}
-          </button>
+          </PermissionButton>
         ),
       },
       {
@@ -243,7 +248,7 @@ export const CustomerBalancesPage: React.FC = () => {
         dataSourceUrl="/ledger/summary"
         columns={columns}
         heading="Customer Balances"
-        hasAction
+        hasAction={canExportBalances}
         actionName="Export Report"
         onAction={() => setExportVisible(true)}
         filterable="search"
@@ -303,7 +308,7 @@ export const CustomerBalancesPage: React.FC = () => {
               variant="primary"
               label={exporting ? 'Generating...' : 'Download'}
               icon="pi pi-download"
-              onClick={handleExport}
+              permission={['Reports.Export', 'Ledger.Export']} onClick={handleExport}
               loading={exporting}
               disabled={exporting}
             />

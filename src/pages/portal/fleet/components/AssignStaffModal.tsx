@@ -63,7 +63,7 @@ export const AssignStaffModal: React.FC<AssignStaffModalProps> = ({ visible, onH
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={'Vehicles.AssignStaff'}
             variant="primary"
             label={submitting ? 'Assigning...' : 'Assign'}
             icon="pi pi-user-plus"

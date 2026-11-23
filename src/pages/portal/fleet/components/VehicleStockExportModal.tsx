@@ -95,7 +95,7 @@ export const VehicleStockExportModal: React.FC<Props> = ({
             variant="primary"
             label={exporting ? 'Generating...' : 'Download'}
             leftIcon="pi pi-download"
-            onClick={handleExport}
+            permission="VehicleStock.Export" onClick={handleExport}
             loading={exporting}
             disabled={exporting}
           />

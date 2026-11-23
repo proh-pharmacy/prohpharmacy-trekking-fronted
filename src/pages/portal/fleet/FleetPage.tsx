@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +37,7 @@ const VEHICLE_STATUS_FILTER_OPTIONS = [
 export const FleetPage: React.FC = () => {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const canManageVehicles = hasAnyPermission('Vehicles.Manage', 'Vehicles.Create', 'Vehicles.Edit');
+  const canManageVehicles = hasAnyPermission('Vehicles.Create');
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
     { label: 'All Regions', value: '' },
   ]);
@@ -158,14 +159,14 @@ export const FleetPage: React.FC = () => {
       header: 'Registration',
       style: { width: '130px' },
       body: (row) => (
-        <button
+        <PermissionButton permission={['VehicleStock.View', 'VehicleStock.ViewLedger']}
           type="button"
           onClick={() => navigate(`/portal/fleet/vehicles/${row.id}/stock`)}
           className="font-mono text-xs text-portal-accent hover:text-portal-accent-hover hover:underline"
           title={`Manage stock for ${row.registrationNumber}`}
         >
           {row.registrationNumber}
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -312,34 +313,34 @@ export const FleetPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={['VehicleStock.View', 'VehicleStock.ViewLedger']}
                 type="button"
                 onClick={() => { const id = vehicleMenu.vehicle.id; setVehicleMenu(null); navigate(`/portal/fleet/vehicles/${id}/stock`); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-box text-portal-accent text-xs w-4" />
                 <span>Manage Stock</span>
-              </button>
-              <button
+              </PermissionButton>
+              <PermissionButton permission={'Vehicles.Edit'}
                 type="button"
                 onClick={() => { setEditingVehicle(vehicleMenu.vehicle); setVehicleModalVisible(true); setVehicleMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-pencil text-portal-accent text-xs w-4" />
                 <span>Edit Vehicle</span>
-              </button>
-              <button
+              </PermissionButton>
+              <PermissionButton permission={'Vehicles.ChangeStatus'}
                 type="button"
                 onClick={() => { setStatusModalVehicle(vehicleMenu.vehicle); setVehicleMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-sync text-portal-accent text-xs w-4" />
                 <span>Change Status</span>
-              </button>
+              </PermissionButton>
             </div>
             <div className="py-0.5">
               {vehicleMenu.vehicle.currentStaffName ? (
-                <button
+                <PermissionButton permission={'Vehicles.UnassignStaff'}
                   type="button"
                   onClick={() => {
                     const v = vehicleMenu.vehicle;
@@ -350,16 +351,16 @@ export const FleetPage: React.FC = () => {
                 >
                   <i className="pi pi-user-minus text-amber-400 text-xs w-4" />
                   <span>Unassign Staff</span>
-                </button>
+                </PermissionButton>
               ) : (
-                <button
+                <PermissionButton permission={'Vehicles.AssignStaff'}
                   type="button"
                   onClick={() => { setAssignVehicle(vehicleMenu.vehicle); setVehicleMenu(null); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
                 >
                   <i className="pi pi-user-plus text-portal-accent text-xs w-4" />
                   <span>Assign Staff</span>
-                </button>
+                </PermissionButton>
               )}
             </div>
           </div>,

@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../../components/auth/PermissionButton';
 import { useRef, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { getApiError, treksApi, type Trek } from '../../../../api-client';
@@ -57,9 +58,9 @@ export function TrekDocumentsModal({ visible, onHide, trek }: {
                 <p className="mt-0.5 text-xs text-portal-muted">{document.description}</p>
                 {unavailable && <p className="mt-1 text-[11px] text-portal-muted">Available after the trek is completed.</p>}
               </div>
-              <button type="button" disabled={unavailable || Boolean(busy)} onClick={() => void download(document)} className="shrink-0 text-xs font-medium text-portal-accent hover:underline disabled:cursor-not-allowed disabled:text-portal-muted disabled:no-underline">
+              <PermissionButton permission={document.kind === 'sheet' ? 'Treks.DownloadSheet' : document.kind === 'snapshot' ? 'TrekStock.View' : 'Reports.Export'} type="button" disabled={unavailable || Boolean(busy)} onClick={() => void download(document)} className="shrink-0 text-xs font-medium text-portal-accent hover:underline disabled:cursor-not-allowed disabled:text-portal-muted disabled:no-underline">
                 {busy === document.kind ? 'Downloading…' : 'Download'}
-              </button>
+              </PermissionButton>
             </div>
           );
         })}

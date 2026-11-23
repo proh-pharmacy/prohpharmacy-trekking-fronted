@@ -1,3 +1,4 @@
+import { useActionPermission } from '../auth/PermissionButton';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
@@ -58,8 +59,23 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
   const outstandingActions = paymentActions.filter(action => action.status !== 'synced');
   const reserved = outstandingActions.reduce((sum, action) => sum + Number(action.payload.amount || 0), 0);
   const totalAmount = Number(invoice?.totalAmount ?? offlineInvoice?.totalAmount ?? summary.invoiceTotal ?? 0);
+  const totalPaid = Number(invoice?.totalPaid ?? offlineInvoice?.totalPaid ?? summary.invoicePaid ?? 0);
   const balance = Math.max(0, Number(invoice?.balance ?? offlineInvoice?.balance ?? summary.invoiceBalance ?? 0) - reserved);
-  const buttonDisabled = Boolean(disabled || totalAmount <= 0 || balance <= 0);
+  const canViewInvoice = useActionPermission(token ? undefined : 'Invoices.ViewDetails');
+  const canRecordPayment = useActionPermission(token ? undefined : 'Payments.Record');
+  const canViewReceipt = useActionPermission(token ? undefined : 'Receipts.View');
+  const hasPayments = totalPaid > 0 || (invoice?.payments?.length ?? 0) > 0 || paymentActions.length > 0;
+  const canCollect = Boolean(!disabled && canRecordPayment && totalAmount > 0 && balance > 0);
+  const canInspectReceipts = Boolean(canViewReceipt && hasPayments);
+  const buttonDisabled = Boolean(!canViewInvoice || (!canCollect && !canInspectReceipts));
+  const triggerPermission = token
+    ? undefined
+    : hasPayments
+      ? (['Payments.Record', 'Receipts.View'] as const)
+      : 'Payments.Record';
+  const effectiveButtonLabel = !canCollect && canInspectReceipts && buttonLabel === 'Make Payment'
+    ? 'View Receipts'
+    : buttonLabel;
   const paymentRevision = paymentActions.map(action => `${action.clientId}:${action.status}`).join('|');
 
   useEffect(() => {
@@ -130,7 +146,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
   };
 
   const collect = async () => {
-    if (busyRef.current) return;
+    if (busyRef.current || !canRecordPayment) return;
     busyRef.current = true; setBusy(true); setError('');
     const run = async () => {
       // Re-read under the browser lock: another tab may have an uncertain payment.
@@ -195,6 +211,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
   };
 
   const viewReceipt = async (paymentId: string) => {
+    if (!canViewReceipt) return;
     setBusy(true); setError('');
     try { setReceipt(await invoicesApi.getReceipt(paymentId, token)); }
     catch (e) { setError(message(e)); }
@@ -207,10 +224,10 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
         <span className="font-mono text-portal-accent">{summary.invoiceNumber || 'Invoice awaiting sync'}</span>
         <span>{invoiceStatusLabel(summary.invoiceStatus)}</span>
         <span>Total {fmtGhs(summary.invoiceTotal)}</span><span>Paid {fmtGhs(summary.invoicePaid)}</span><span>Balance {fmtGhs(summary.invoiceBalance)}</span>
-        <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} onClick={() => void show()}>{buttonLabel}</FlatButton>
+        <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} permission={triggerPermission} onClick={() => void show()}>{effectiveButtonLabel}</FlatButton>
       </div>
     ) : (
-      <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} onClick={() => void show()}>{buttonLabel}</FlatButton>
+      <FlatButton size="sm" variant="danger-outline" leftIcon="pi pi-wallet" disabled={buttonDisabled} className={buttonClassName} permission={triggerPermission} onClick={() => void show()}>{effectiveButtonLabel}</FlatButton>
     )}
     <FlatModal
       visible={open}
@@ -272,7 +289,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
 
             {/* Collect Payment & Payment History */}
             <div className="space-y-4">
-              {(pending || (invoice && invoice.status !== 'Voided' && balance > 0 && !disabled)) && (
+              {canRecordPayment && (pending || (invoice && invoice.status !== 'Voided' && balance > 0 && !disabled)) && (
                 <div className="rounded border border-portal-border bg-portal-canvas p-4 space-y-3 !shadow-none">
                   <div className="border-b border-portal-border/60 pb-2">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-portal-heading">Collect Payment</h3>
@@ -350,7 +367,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                       size="sm"
                       loading={busy}
                       disabled={busy || (!pending && (!invoice || outstandingActions.length > 0 || (!!goodsPending && online)))}
-                      onClick={() => void collect()}
+                      permission={token ? undefined : 'Payments.Record'} onClick={() => void collect()}
                     >
                       {pending ? 'Retry saved payment' : online ? 'Record payment' : 'Save payment offline'}
                     </FlatButton>
@@ -400,12 +417,12 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                             className="sm:!w-auto"
                             title="View imported payment record"
                             aria-label="View imported payment record"
-                            onClick={() => setReceipt(payment)}
+                            permission={token ? undefined : 'Receipts.View'} onClick={() => setReceipt(payment)}
                           >
                             View Payment Record
                           </FlatButton>
                         ) : (
-                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={`View receipt ${payment.receiptNumber}`} aria-label={`View receipt ${payment.receiptNumber}`} onClick={() => void viewReceipt(payment.paymentId)}>
+                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={`View receipt ${payment.receiptNumber}`} aria-label={`View receipt ${payment.receiptNumber}`} permission={token ? undefined : 'Receipts.View'} onClick={() => void viewReceipt(payment.paymentId)}>
                             View Receipt
                           </FlatButton>
                         )}
@@ -430,7 +447,7 @@ export function InvoicePayments({ summary, token, customerName, stopId, stopClie
                       </div>
                       <div role="cell" className="mt-1 sm:mt-0 sm:justify-self-end">
                         {action.status === 'synced' && action.serverId && (
-                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} aria-label={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} onClick={() => void viewReceipt(action.serverId!)}>
+                          <FlatButton size="sm" variant="danger" fullWidth leftIcon="pi pi-receipt" className="sm:!w-auto" title={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} aria-label={action.receiptNumber ? `View receipt ${action.receiptNumber}` : 'View receipt'} permission={token ? undefined : 'Receipts.View'} onClick={() => void viewReceipt(action.serverId!)}>
                             View Receipt
                           </FlatButton>
                         )}

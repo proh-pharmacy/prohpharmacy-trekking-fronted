@@ -75,7 +75,7 @@ export const DistrictModal: React.FC<DistrictModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={'Districts.Create'}
             variant="primary"
             label={submitting ? 'Creating...' : 'Create District'}
             icon="pi pi-plus"

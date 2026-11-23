@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -51,7 +52,7 @@ export const InvoiceDetailPage: React.FC = () => {
   if (!invoice) {
     return (
       <div className="space-y-4">
-        <button type="button" onClick={() => navigate('/portal/invoices')} className="text-portal-muted transition hover:text-portal-heading" aria-label="Back to invoices"><i className="pi pi-arrow-left" /></button>
+        <PermissionButton permission="Invoices.View" type="button" onClick={() => navigate('/portal/invoices')} className="text-portal-muted transition hover:text-portal-heading" aria-label="Back to invoices"><i className="pi pi-arrow-left" /></PermissionButton>
         <div className="border border-red-accent/30 bg-red-accent/10 p-5 text-xs text-red-accent">{error || 'Invoice not found.'}</div>
       </div>
     );
@@ -60,7 +61,7 @@ export const InvoiceDetailPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => navigate('/portal/invoices')} className="text-portal-muted transition hover:text-portal-heading" aria-label="Back to invoices"><i className="pi pi-arrow-left" /></button>
+        <PermissionButton permission="Invoices.View" type="button" onClick={() => navigate('/portal/invoices')} className="text-portal-muted transition hover:text-portal-heading" aria-label="Back to invoices"><i className="pi pi-arrow-left" /></PermissionButton>
         <FlatButton size="sm" variant="outline" leftIcon="pi pi-print" onClick={openPrintPreview}>Print invoice</FlatButton>
       </div>
 
@@ -78,7 +79,7 @@ export const InvoiceDetailPage: React.FC = () => {
         <section className="grid gap-6 border-b border-portal-border/60 p-4 sm:grid-cols-2 sm:p-6">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted">Customer</p>
-            <button type="button" onClick={() => navigate(`/portal/customers/${invoice.customerAccountId}`)} className="mt-1 text-left text-xs font-semibold text-portal-text transition hover:text-portal-accent">{invoice.customerName}</button>
+            <PermissionButton permission="Customers.ViewDetails" type="button" onClick={() => navigate(`/portal/customers/${invoice.customerAccountId}`)} className="mt-1 text-left text-xs font-semibold text-portal-text transition hover:text-portal-accent">{invoice.customerName}</PermissionButton>
             {invoice.customerTradingName && <p className="mt-1 text-[11px] text-portal-muted">{invoice.customerTradingName}</p>}
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
               <div><p className="text-[10px] uppercase tracking-wide text-portal-muted">Code</p><p className="mt-0.5 font-mono text-portal-text">{invoice.customerCode || '—'}</p></div>
@@ -89,7 +90,7 @@ export const InvoiceDetailPage: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-portal-muted">Trek</p>
-            <button type="button" onClick={() => navigate(`/portal/trekking/${invoice.trekkingTripId}`)} className="mt-1 font-mono text-xs text-portal-text transition hover:text-portal-accent">{invoice.trekNumber}</button>
+            <PermissionButton permission="Treks.ViewDetails" type="button" onClick={() => navigate(`/portal/trekking/${invoice.trekkingTripId}`)} className="mt-1 font-mono text-xs text-portal-text transition hover:text-portal-accent">{invoice.trekNumber}</PermissionButton>
             <p className="mt-1 text-[11px] text-portal-muted">{invoice.trekDate}</p>
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
               <div><p className="text-[10px] uppercase tracking-wide text-portal-muted">Driver</p><p className="mt-0.5 text-portal-text">{invoice.driverName || '—'}</p></div>

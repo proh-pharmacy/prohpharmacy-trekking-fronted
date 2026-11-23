@@ -135,7 +135,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ visibl
             onClick={() => { setStep('upload'); setFile(null); setHeaders([]); if (fileInputRef.current) fileInputRef.current.value = ''; }}
             disabled={importing}
           />
-          <FlatButton
+          <FlatButton permission={'Products.Import'}
             variant="primary"
             label={importing ? 'Importing...' : 'Import'}
             icon="pi pi-upload"

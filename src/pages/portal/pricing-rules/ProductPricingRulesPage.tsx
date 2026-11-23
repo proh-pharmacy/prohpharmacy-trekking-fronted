@@ -24,9 +24,12 @@ const formatPercentage = (value: number) => `${value > 0 ? '+' : ''}${Number(val
 
 export const ProductPricingRulesPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canManageRules = hasAnyPermission('Products.Manage', 'Products.Create', 'Products.Edit');
   const [searchParams, setSearchParams] = useSearchParams();
-  const scope: RuleScope = searchParams.get('tab') === 'customer' ? 'customer' : 'region';
+  const canViewRegion = hasAnyPermission('RegionalPricing.View');
+  const canViewCustomer = hasAnyPermission('CustomerPricing.View');
+  const scope: RuleScope = (searchParams.get('tab') === 'customer' && canViewCustomer) || !canViewRegion ? 'customer' : 'region';
+  const managePermission = scope === 'region' ? 'RegionalPricing.Manage' : 'CustomerPricing.Manage';
+  const canManageRules = hasAnyPermission(managePermission);
 
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionsLoading, setRegionsLoading] = useState(true);
@@ -177,6 +180,7 @@ export const ProductPricingRulesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!canManageRules) return;
     const mutationTargetId = scope === 'region'
       ? editorRegionId || regionId
       : editorCustomerId || customerId;
@@ -213,7 +217,7 @@ export const ProductPricingRulesPage: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteRule) return;
+    if (!deleteRule || !canManageRules) return;
     const mutationTargetId = scope === 'region'
       ? deleteRule.regionId || regionId
       : deleteRule.customerId || customerId;
@@ -326,8 +330,8 @@ export const ProductPricingRulesPage: React.FC = () => {
     <div className="space-y-5">
       <FlatTabs<RuleScope>
         tabs={[
-          { value: 'region', label: 'Regional Rules' },
-          { value: 'customer', label: 'Customer Rules' },
+          ...(canViewRegion ? [{ value: 'region' as const, label: 'Regional Rules' }] : []),
+          ...(canViewCustomer ? [{ value: 'customer' as const, label: 'Customer Rules' }] : []),
         ]}
         value={scope}
         onChange={handleScopeChange}
@@ -451,7 +455,7 @@ export const ProductPricingRulesPage: React.FC = () => {
             <FlatButton variant="outline" size="sm" onClick={resetEditor} disabled={saving}>
               Cancel
             </FlatButton>
-            <FlatButton size="sm" leftIcon="pi pi-check" loading={saving} onClick={handleSave}>
+            <FlatButton size="sm" leftIcon="pi pi-check" loading={saving} permission={managePermission} onClick={handleSave}>
               {editingRule ? 'Update Rule' : 'Save Rule'}
             </FlatButton>
           </>

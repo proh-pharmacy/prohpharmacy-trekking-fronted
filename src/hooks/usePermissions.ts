@@ -1,3 +1,4 @@
+import type { Permission } from '../lib/permissions/catalogue';
 import { useAuth } from '../context';
 
 /**
@@ -8,16 +9,16 @@ import { useAuth } from '../context';
 export function usePermissions() {
   const { user, can: contextCan, permissions } = useAuth();
 
-  const can = (permission: string): boolean => {
+  const can = (permission: Permission): boolean => {
     if (contextCan) return contextCan(permission);
     return user?.permissions?.includes(permission) ?? false;
   };
 
-  const hasAnyPermission = (...requiredPermissions: string[]): boolean => {
+  const hasAnyPermission = (...requiredPermissions: Permission[]): boolean => {
     return requiredPermissions.some((p) => can(p));
   };
 
-  const hasAllPermissions = (...requiredPermissions: string[]): boolean => {
+  const hasAllPermissions = (...requiredPermissions: Permission[]): boolean => {
     return requiredPermissions.every((p) => can(p));
   };
 

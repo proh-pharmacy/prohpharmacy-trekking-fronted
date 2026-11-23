@@ -5,6 +5,8 @@ import {
   type DeviceLivePosition,
   type PositionHistoryPoint,
 } from '../../../../api-client';
+import { PermissionButton } from '../../../../components/auth/PermissionButton';
+import { usePermissions } from '../../../../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
 interface VehicleTelemetryCardProps {
@@ -22,6 +24,9 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
   onTrailLoaded,
   hasActiveTrail,
 }) => {
+  const { hasAnyPermission } = usePermissions();
+  const canViewLive = hasAnyPermission('Tracking.ViewLive', 'Tracking.ViewAll', 'Tracking.ViewAssigned');
+  const canViewHistory = hasAnyPermission('Tracking.ViewHistory');
   const [isRefreshingLive, setIsRefreshingLive] = useState(false);
   const [liveOverride, setLiveOverride] = useState<DeviceLivePosition | null>(null);
   const [isLoadingTrail, setIsLoadingTrail] = useState(false);
@@ -37,6 +42,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
 
   // Fetch live direct Traccar position
   const handleRefreshLive = async () => {
+    if (!canViewLive) return;
     if (!device.backendDeviceId) {
       toast.error('Backend device link is not available for this vehicle');
       return;
@@ -56,6 +62,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
 
   // Fetch historical GPS trail
   const handleFetchTrail = async (preset: TrailPreset = trailPreset) => {
+    if (!canViewHistory) return;
     if (!device.backendDeviceId) {
       toast.error('Backend device link is not available for this vehicle');
       return;
@@ -212,7 +219,8 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
         </div>
 
         {/* Action: Direct Traccar Ping */}
-        <button
+        <PermissionButton
+          permission={['Tracking.ViewLive', 'Tracking.ViewAll', 'Tracking.ViewAssigned']}
           type="button"
           onClick={handleRefreshLive}
           disabled={isRefreshingLive}
@@ -220,7 +228,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
         >
           <i className={`pi pi-sync text-xs ${isRefreshingLive ? 'animate-spin' : ''}`} />
           {isRefreshingLive ? 'Pinging Traccar...' : 'Ping Live Position'}
-        </button>
+        </PermissionButton>
 
         {/* Route Trail History Section */}
         <div className="pt-2 border-t border-portal-border/60">
@@ -265,7 +273,8 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           </div>
 
           {/* Load Trail Button */}
-          <button
+          <PermissionButton
+            permission="Tracking.ViewHistory"
             type="button"
             onClick={() => handleFetchTrail()}
             disabled={isLoadingTrail}
@@ -273,7 +282,7 @@ export const VehicleTelemetryCard: React.FC<VehicleTelemetryCardProps> = ({
           >
             <i className={`pi pi-map text-xs ${isLoadingTrail ? 'animate-spin' : ''}`} />
             {isLoadingTrail ? 'Loading Trail...' : 'Draw Route Trail'}
-          </button>
+          </PermissionButton>
 
           {trailPointCount !== null && (
             <div className="mt-1.5 text-center text-[10px] text-portal-muted font-mono">

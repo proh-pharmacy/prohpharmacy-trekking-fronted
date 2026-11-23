@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -202,10 +203,10 @@ export const RefundApprovalsPage: React.FC = () => {
       field: 'customerName',
       header: 'Customer',
       body: (row) => (
-        <button type="button" onClick={() => navigate(`/portal/customers/${row.customerId}`)} className="text-left">
+        <PermissionButton permission="Customers.ViewDetails" type="button" onClick={() => navigate(`/portal/customers/${row.customerId}`)} className="text-left">
           <span className="block text-xs font-semibold text-portal-text transition hover:text-portal-accent">{row.customerName || '—'}</span>
           <span className="mt-0.5 block font-mono text-[10px] text-portal-muted">{row.customerCode || '—'}</span>
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -214,12 +215,12 @@ export const RefundApprovalsPage: React.FC = () => {
       style: { width: '155px' },
       body: (row) => (
         <div>
-          <button type="button" onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`)} className="block font-mono text-xs font-semibold text-portal-accent transition hover:text-portal-accent-hover">
+          <PermissionButton permission="Invoices.ViewDetails" type="button" onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`)} className="block font-mono text-xs font-semibold text-portal-accent transition hover:text-portal-accent-hover">
             {row.invoiceNumber || '—'}
-          </button>
-          <button type="button" onClick={() => navigate(`/portal/trekking/${row.trekId}`)} className="mt-0.5 block font-mono text-[10px] text-portal-muted transition hover:text-portal-accent">
+          </PermissionButton>
+          <PermissionButton permission="Treks.ViewDetails" type="button" onClick={() => navigate(`/portal/trekking/${row.trekId}`)} className="mt-0.5 block font-mono text-[10px] text-portal-muted transition hover:text-portal-accent">
             {row.trekNumber || '—'}
-          </button>
+          </PermissionButton>
           <span className="mt-0.5 block truncate text-[10px] text-portal-muted" title={`${row.trekDate || 'No trek date'} · ${row.regionName || 'No region'}`}>
             {[row.trekDate, row.regionName].filter(Boolean).join(' · ') || '—'}
           </span>
@@ -284,8 +285,8 @@ export const RefundApprovalsPage: React.FC = () => {
       headerStyle: { textAlign: 'right' },
       body: (row) => row.approvalStatus === 'Pending' ? (
         <div className="flex items-center justify-end gap-2">
-          <FlatButton variant="outline" size="icon-sm" leftIcon="pi pi-check" title="Approve refund" aria-label={`Approve return for ${row.productName}`} onClick={() => setApproveTarget(row)} />
-          <FlatButton variant="danger-outline" size="icon-sm" leftIcon="pi pi-times" title="Reject refund" aria-label={`Reject return for ${row.productName}`} onClick={() => setRejectTarget(row)} />
+          <FlatButton variant="outline" size="icon-sm" leftIcon="pi pi-check" permission="TrekReturns.Approve" title="Approve refund" aria-label={`Approve return for ${row.productName}`} onClick={() => setApproveTarget(row)} />
+          <FlatButton variant="danger-outline" size="icon-sm" leftIcon="pi pi-times" permission="TrekReturns.Reject" title="Reject refund" aria-label={`Reject return for ${row.productName}`} onClick={() => setRejectTarget(row)} />
         </div>
       ) : <span className="text-[11px] text-portal-muted">—</span>,
     },
@@ -366,7 +367,7 @@ export const RefundApprovalsPage: React.FC = () => {
         footer={(
           <>
             <FlatButton variant="outline" size="sm" label="Cancel" onClick={closeReject} disabled={deciding} />
-            <FlatButton variant="danger" size="sm" label="Reject" onClick={rejectReturn} loading={deciding} />
+            <FlatButton variant="danger" size="sm" label="Reject" permission="TrekReturns.Reject" onClick={rejectReturn} loading={deciding} />
           </>
         )}
       >

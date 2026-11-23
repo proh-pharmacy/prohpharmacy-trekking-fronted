@@ -1,3 +1,5 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
+import { usePermissions } from '../../../hooks/usePermissions';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
@@ -65,6 +67,7 @@ const normalizeInvoice = (value: any): SaleInvoice => ({
 });
 
 export const InvoicesPage: React.FC = () => {
+  const { hasAnyPermission } = usePermissions();
   const navigate = useNavigate();
   const [exportVisible, setExportVisible] = useState(false);
   const [exportFilters, setExportFilters] = useState<InvoiceListFilters>({});
@@ -124,26 +127,26 @@ export const InvoicesPage: React.FC = () => {
       header: 'Invoice',
       style: { width: '150px' },
       body: (row) => row.invoiceNumber ? (
-        <button
+        <PermissionButton permission="Invoices.ViewDetails"
           type="button"
           onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber!)}`)}
           className="font-mono text-xs font-semibold text-portal-accent transition hover:text-portal-accent-hover"
         >
           {row.invoiceNumber}
-        </button>
+        </PermissionButton>
       ) : <span className="text-xs text-portal-muted">—</span>,
     },
     {
       field: 'customerName',
       header: 'Customer',
       body: (row) => (
-        <button
+        <PermissionButton permission="Customers.ViewDetails"
           type="button"
           onClick={() => navigate(`/portal/customers/${row.customerAccountId}`)}
           className="text-left text-xs font-semibold text-portal-text transition hover:text-portal-accent"
         >
           {row.customerName || '—'}
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -151,13 +154,13 @@ export const InvoicesPage: React.FC = () => {
       header: 'Trek',
       style: { width: '125px' },
       body: (row) => (
-        <button
+        <PermissionButton permission="Treks.ViewDetails"
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.trekkingTripId}`)}
           className="font-mono text-[11px] text-portal-text transition hover:text-portal-accent"
         >
           {row.trekNumber || '—'}
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -201,7 +204,7 @@ export const InvoicesPage: React.FC = () => {
       dataSourceUrl="/invoices"
       columns={columns}
       heading="Invoices"
-      hasAction
+      hasAction={hasAnyPermission('Invoices.Export')}
       actionName="Export"
       actionIcon="pi pi-download"
       onAction={openExport}

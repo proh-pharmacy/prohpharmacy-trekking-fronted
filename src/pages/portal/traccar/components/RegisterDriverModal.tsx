@@ -49,7 +49,7 @@ export const RegisterDriverModal: React.FC<RegisterDriverModalProps> = ({ visibl
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={'FleetDrivers.Register'}
             variant="primary"
             label={submitting ? 'Registering...' : 'Register Driver'}
             icon="pi pi-user-plus"

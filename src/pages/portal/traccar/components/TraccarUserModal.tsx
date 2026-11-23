@@ -114,7 +114,7 @@ export const TraccarUserModal: React.FC<TraccarUserModalProps> = ({ visible, onH
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={user ? 'TraccarUsers.Edit' : 'TraccarUsers.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create User'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

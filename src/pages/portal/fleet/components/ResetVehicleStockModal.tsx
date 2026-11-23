@@ -74,7 +74,7 @@ export const ResetVehicleStockModal: React.FC<Props> = ({ visible, vehicleId, ve
       footer={(
         <>
           <FlatButton size="sm" variant="outline" onClick={close} disabled={resetting}>Cancel</FlatButton>
-          <FlatButton size="sm" variant="danger" leftIcon="pi pi-trash" onClick={() => void reset()} loading={resetting} disabled={resetting}>Reset stock</FlatButton>
+          <FlatButton size="sm" permission="VehicleStock.Reset" variant="danger" leftIcon="pi pi-trash" onClick={() => void reset()} loading={resetting} disabled={resetting}>Reset stock</FlatButton>
         </>
       )}
     >

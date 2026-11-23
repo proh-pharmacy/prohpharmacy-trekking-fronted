@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -26,15 +27,17 @@ type ActiveTab = 'traccar-users' | 'drivers' | 'devices';
 
 export const TraccarPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canManageTraccarUsers = hasAnyPermission('TraccarUsers.Manage', 'TrackingDevices.Manage');
-  const canManageFleetDrivers = hasAnyPermission('FleetDrivers.Manage', 'Vehicles.Manage');
-  const canManageDevices = hasAnyPermission('TrackingDevices.Manage', 'TrackingDevices.Create', 'TrackingDevices.Edit');
+  const canManageTraccarUsers = hasAnyPermission('TraccarUsers.Create');
+  const canManageFleetDrivers = hasAnyPermission('FleetDrivers.Register');
+  const canManageDevices = hasAnyPermission('TrackingDevices.Create');
   const [searchParams, setSearchParams] = useSearchParams();
+  const allowedTabs = ([
+    { value: 'devices', label: 'Tracking Devices', permission: 'TrackingDevices.View' },
+    { value: 'drivers', label: 'Drivers', permission: 'FleetDrivers.View' },
+    { value: 'traccar-users', label: 'Traccar Users', permission: 'TraccarUsers.View' },
+  ] as const).filter(tab => hasAnyPermission(tab.permission));
   const rawTab = searchParams.get('tab');
-  const activeTab: ActiveTab =
-    rawTab === 'drivers' ? 'drivers' :
-    rawTab === 'traccar-users' ? 'traccar-users' :
-    'devices';
+  const activeTab: ActiveTab = allowedTabs.find(tab => tab.value === rawTab)?.value ?? allowedTabs[0]?.value ?? 'devices';
 
   const handleTabChange = (tab: ActiveTab) => {
     setSearchParams((prev) => {
@@ -584,11 +587,7 @@ export const TraccarPage: React.FC = () => {
     <div className="space-y-6">
       {/* ── Tab bar ─────────────────────────────────────────────────── */}
       <FlatTabs<ActiveTab>
-        tabs={[
-          { value: 'devices', label: 'Tracking Devices' },
-          { value: 'drivers', label: 'Drivers' },
-          { value: 'traccar-users', label: 'Traccar Users' },
-        ]}
+        tabs={allowedTabs}
         value={activeTab}
         onChange={handleTabChange}
         ariaLabel="Traccar sections"
@@ -614,7 +613,7 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/drivers"
             columns={driverColumns}
             heading="Fleet Drivers"
-            secondaryAction={canManageFleetDrivers}
+            secondaryAction={hasAnyPermission('FleetDrivers.Sync')}
             secondaryActionName="Sync Drivers to Traccar"
             secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
@@ -634,7 +633,7 @@ export const TraccarPage: React.FC = () => {
             dataSourceUrl="/fleet/devices"
             columns={deviceColumns}
             heading="Tracking Devices"
-            secondaryAction={canManageDevices}
+            secondaryAction={hasAnyPermission('TrackingDevices.Sync')}
             secondaryActionName="Sync to Traccar"
             secondaryActionNameMobile="Sync"
             secondaryActionIcon="pi pi-refresh"
@@ -688,7 +687,7 @@ export const TraccarPage: React.FC = () => {
           ) : (
             <div className="flex items-center justify-end gap-3 w-full">
               <FlatButton variant="outline" label="Cancel" size="sm" onClick={handleSyncDevicesClose} disabled={syncingDevices} />
-              <FlatButton
+              <FlatButton permission={'TrackingDevices.Sync'}
                 variant={syncDevicesForce ? 'danger' : 'primary'}
                 label={syncingDevices ? 'Syncing...' : syncDevicesForce ? 'Force Sync' : 'Sync'}
                 icon="pi pi-refresh"
@@ -729,7 +728,7 @@ export const TraccarPage: React.FC = () => {
           ) : (
             <div className="flex items-center justify-end gap-3 w-full">
               <FlatButton variant="outline" label="Cancel" size="sm" onClick={handleSyncDriversClose} disabled={syncingDrivers} />
-              <FlatButton
+              <FlatButton permission={'FleetDrivers.Sync'}
                 variant={syncDriversForce ? 'danger' : 'primary'}
                 label={syncingDrivers ? 'Syncing...' : syncDriversForce ? 'Force Sync' : 'Sync'}
                 icon="pi pi-refresh"
@@ -816,24 +815,24 @@ export const TraccarPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'TraccarUsers.Edit'}
                 type="button"
                 onClick={() => { setEditingTraccarUser(traccarUserMenu.user); setTraccarUserModalVisible(true); setTraccarUserMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-pencil text-portal-accent text-xs w-4" />
                 <span>Edit User</span>
-              </button>
+              </PermissionButton>
             </div>
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'TraccarUsers.Delete'}
                 type="button"
                 onClick={() => { setDeleteTraccarUser(traccarUserMenu.user); setTraccarUserMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-trash text-xs w-4" />
                 <span>Delete User</span>
-              </button>
+              </PermissionButton>
             </div>
           </div>,
           document.body
@@ -849,14 +848,14 @@ export const TraccarPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'FleetDrivers.Remove'}
                 type="button"
                 onClick={() => { setRemoveDriverTarget(driverMenu.driver); setDriverMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-user-minus text-xs w-4" />
                 <span>Remove Driver</span>
-              </button>
+              </PermissionButton>
             </div>
           </div>,
           document.body
@@ -872,24 +871,24 @@ export const TraccarPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'TrackingDevices.Edit'}
                 type="button"
                 onClick={() => { setEditingDevice(deviceMenu.device); setDeviceModalVisible(true); setDeviceMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-pencil text-portal-accent text-xs w-4" />
                 <span>Edit Device</span>
-              </button>
+              </PermissionButton>
             </div>
             <div className="py-0.5">
-              <button
+              <PermissionButton permission={'TrackingDevices.Delete'}
                 type="button"
                 onClick={() => { setDeleteDevice(deviceMenu.device); setDeviceMenu(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-white/10 transition-colors text-left cursor-pointer font-medium"
               >
                 <i className="pi pi-trash text-xs w-4" />
                 <span>Delete Device</span>
-              </button>
+              </PermissionButton>
             </div>
           </div>,
           document.body

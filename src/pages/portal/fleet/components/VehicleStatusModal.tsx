@@ -52,7 +52,7 @@ export const VehicleStatusModal: React.FC<VehicleStatusModalProps> = ({ visible,
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={'Vehicles.ChangeStatus'}
             variant="primary"
             label={submitting ? 'Saving...' : 'Update Status'}
             icon="pi pi-check"

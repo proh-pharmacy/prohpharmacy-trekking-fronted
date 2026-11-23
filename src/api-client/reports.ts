@@ -1,4 +1,4 @@
-import apiClient, { baseURL } from './api';
+import apiClient, { baseURL, requirePermission } from './api';
 import { getAccessToken } from './tokenStorage';
 
 // ── Trek Report ────────────────────────────────────────────────────────
@@ -76,6 +76,7 @@ export interface ProductsReportResponse {
 
 // ── Helpers ────────────────────────────────────────────────────────────
 async function exportFile(url: string, fallback: string): Promise<{ blob: Blob; filename: string }> {
+  requirePermission('Reports.Export');
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${getAccessToken()}` },
   });

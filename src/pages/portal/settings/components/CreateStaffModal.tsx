@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../../hooks/usePermissions';
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { FlatModal } from '../../../../components/overlay';
@@ -50,6 +51,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
   branches,
   availableRoles,
 }) => {
+  const { can } = usePermissions();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [emailAddress, setEmailAddress] = useState('');
@@ -76,6 +78,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!can('Staff.UploadPhoto')) return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -141,6 +144,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photoFile && !can('Staff.UploadPhoto')) { toast.error('You do not have permission to upload staff photos.'); return; }
 
     const result = createStaffSchema.safeParse({
       firstName: firstName.trim(),
@@ -161,6 +165,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       return;
     }
 
+    if (grantAppAccess && !can('Staff.GrantAccess')) return;
     if (grantAppAccess && selectedRoles.length === 0) {
       toast.error('Please assign at least one platform system role.');
       return;
@@ -318,7 +323,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={'Staff.Create'}
             variant="primary"
             label={submitting ? 'Creating...' : 'Create Staff'}
             icon="pi pi-check"
@@ -340,7 +345,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
         {/* Passport Photo */}
         <div className="flex items-center gap-4 pb-1">
-          <button
+          <button disabled={!can('Staff.UploadPhoto')}
             type="button"
             onClick={() => photoPreview ? setShowPhotoViewer(true) : photoInputRef.current?.click()}
             className="relative w-16 h-16 rounded overflow-hidden border-2 border-dashed border-portal-border hover:border-portal-accent transition-colors flex-shrink-0 group bg-portal-canvas"
@@ -360,7 +365,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             </p>
             <p className="text-[11px] text-portal-muted">JPEG, PNG or WebP · Max 5 MB · Optional</p>
             <div className="flex items-center gap-3 mt-0.5">
-              <button type="button" onClick={() => photoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">
+              <button disabled={!can('Staff.UploadPhoto')} type="button" onClick={() => photoInputRef.current?.click()} className="text-[11px] text-portal-accent hover:text-portal-accent-hover">
                 {photoPreview ? 'Change photo' : 'Upload photo'}
               </button>
               {photoFile && (
@@ -473,6 +478,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
               </span>
             </div>
             <FlatSwitch
+              disabled={!can('Staff.GrantAccess')}
               checked={grantAppAccess}
               onChange={(val) => setGrantAppAccess(val)}
             />

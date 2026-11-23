@@ -1,3 +1,5 @@
+import { usePermissions } from '../../../../hooks/usePermissions';
+import { canChangeRoles } from '../../../../lib/permissions/catalogue';
 import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatMultiSelect } from '../../../../components/flat-form';
@@ -30,6 +32,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
   availableRoles,
   onSuccess,
 }) => {
+  const { can, permissions } = usePermissions();
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -54,6 +57,10 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
     selectedRoles.some((r) => !currentRoles.includes(r));
 
   const handleSave = async () => {
+    if (!canChangeRoles(permissions, currentRoles, selectedRoles)) {
+      toast.error('You do not have permission for these role changes.');
+      return;
+    }
     if (selectedRoles.length === 0) {
       toast.error('User must have at least one role assigned.');
       return;
@@ -105,9 +112,9 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
             variant="primary"
             label={saving ? 'Saving...' : 'Save Roles'}
             icon="pi pi-check"
-            onClick={handleSave}
+            permission={['Users.AssignRoles', 'Users.RemoveRoles']} onClick={handleSave}
             loading={saving}
-            disabled={saving || selectedRoles.length === 0 || !hasChanges}
+            disabled={saving || selectedRoles.length === 0 || !hasChanges || !canChangeRoles(permissions, currentRoles, selectedRoles)}
           />
         </div>
       }
@@ -135,7 +142,9 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
           label="Assigned Roles"
           required
           value={selectedRoles}
-          onChange={(val) => setSelectedRoles(val || [])}
+          onChange={(val) => { if (canChangeRoles(permissions, currentRoles, val || [])) setSelectedRoles(val || []); }}
+          disabled={!can('Users.AssignRoles') && !can('Users.RemoveRoles')}
+          optionDisabled={(option) => currentRoles.includes(option.value) ? !can('Users.RemoveRoles') : !can('Users.AssignRoles')}
           options={roleOptions}
           placeholder="Select system roles..."
           size="sm"

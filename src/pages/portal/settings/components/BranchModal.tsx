@@ -252,7 +252,7 @@ export const BranchModal: React.FC<BranchModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={branch ? 'Branches.Edit' : 'Branches.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Branch'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

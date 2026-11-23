@@ -1,3 +1,5 @@
+import { PERMISSION_MODULES } from '../../../../lib/permissions/catalogue';
+import { resetTableData } from '../../../../components/data-table';
 import React, { useState, useEffect } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton, FlatInputText } from '../../../../components/flat-form';
@@ -11,60 +13,7 @@ interface CreateRoleModalProps {
   initialModules?: SystemModulePermissions[];
 }
 
-const DEFAULT_SYSTEM_MODULES: SystemModulePermissions[] = [
-  {
-    module: 'Customers',
-    permissions: ['Customers.Register', 'Customers.Edit', 'Customers.Approve'],
-  },
-  {
-    module: 'CustomerKyc',
-    permissions: ['CustomerKyc.View', 'CustomerKyc.Manage'],
-  },
-  {
-    module: 'CustomerCredit',
-    permissions: ['CustomerCredit.View', 'CustomerCredit.Manage'],
-  },
-  {
-    module: 'Staff',
-    permissions: ['Staff.View', 'Staff.Manage'],
-  },
-  {
-    module: 'Treks',
-    permissions: ['Treks.ViewAll', 'Treks.Create', 'Treks.Assign', 'Treks.Start', 'Treks.Complete'],
-  },
-  {
-    module: 'Vehicles',
-    permissions: ['Vehicles.Manage'],
-  },
-  {
-    module: 'Tracking',
-    permissions: ['Tracking.ViewAll'],
-  },
-  {
-    module: 'TrackingDevices',
-    permissions: ['TrackingDevices.Manage'],
-  },
-  {
-    module: 'Visits',
-    permissions: ['Visits.Record', 'Visits.Verify'],
-  },
-  {
-    module: 'Roles',
-    permissions: ['Roles.Manage'],
-  },
-  {
-    module: 'Branches',
-    permissions: ['Branches.Manage'],
-  },
-  {
-    module: 'Reports',
-    permissions: ['Reports.Export'],
-  },
-  {
-    module: 'Audit',
-    permissions: ['Audit.View'],
-  },
-];
+const DEFAULT_SYSTEM_MODULES: SystemModulePermissions[] = PERMISSION_MODULES;
 
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
   Audit: 'Audit',
@@ -178,6 +127,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       });
 
       toast.success(`Role "${created.name}" created successfully.`);
+      resetTableData();
       onSuccess?.(created);
       onHide();
     } catch (err: any) {
@@ -379,7 +329,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
           >
             Cancel
           </FlatButton>
-          <FlatButton
+          <FlatButton permission="Roles.Create"
             type="submit"
             variant="primary"
             size="sm"

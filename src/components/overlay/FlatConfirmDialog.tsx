@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FlatModal, type ModalSize } from './FlatModal';
 import { FlatButton } from '../flat-form/FlatButton';
+import type { Permission } from '../../lib/permissions/catalogue';
 
 export type ConfirmVariant = 'primary' | 'danger' | 'warning';
 
@@ -11,6 +12,7 @@ export interface FlatConfirmDialogProps {
   title: React.ReactNode;
   message: React.ReactNode;
   confirmLabel?: string;
+  confirmPermission?: Permission | readonly Permission[];
   cancelLabel?: string;
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
@@ -28,6 +30,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
   title,
   message,
   confirmLabel = 'Confirm',
+  confirmPermission,
   cancelLabel = 'Cancel',
   secondaryActionLabel,
   onSecondaryAction,
@@ -114,6 +117,7 @@ export const FlatConfirmDialog: React.FC<FlatConfirmDialogProps> = ({
 
           <FlatButton
             size="sm"
+            permission={confirmPermission}
             onClick={handleConfirm}
             loading={isBusy}
             disabled={isBusy}

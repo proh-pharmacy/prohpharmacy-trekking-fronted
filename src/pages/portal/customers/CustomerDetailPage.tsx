@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
 import { FlatButton, FlatDatePicker, FlatDropdown, FlatInputNumber } from '../../../components/flat-form';
 import { FlatModal, FlatConfirmDialog } from '../../../components/overlay';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import {
   customersApi,
   type Customer,
@@ -84,9 +85,9 @@ function formatDate(dateStr: string): string {
 // ── Page ───────────────────────────────────────────────────────────────
 export const CustomerDetailPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canEditCustomer = hasAnyPermission('Customers.Edit', 'Customers.Manage');
-  const canExportReports = hasAnyPermission('Reports.Export', 'Customers.Export');
-  const canManageLedger = hasAnyPermission('Ledger.View', 'Ledger.ViewDetails', 'Ledger.CreateEntry', 'CustomerCredit.View');
+  const canEditCustomer = hasAnyPermission('Customers.Edit');
+  const canExportReports = hasAnyPermission('Ledger.Export', 'Reports.Export');
+  const canManageLedger = hasAnyPermission('Ledger.View', 'Ledger.ViewDetails');
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
 
@@ -117,7 +118,7 @@ export const CustomerDetailPage: React.FC = () => {
   };
 
   const handleExport = async () => {
-    if (!customerId || !customer) return;
+    if (!customerId || !customer || !canExportReports) return;
     setExporting(true);
     try {
       const { blob, filename } = await customersApi.exportCustomerLedger(customerId, {
@@ -225,12 +226,14 @@ export const CustomerDetailPage: React.FC = () => {
         body: (row) =>
           row.trekNumber ? (
             row.trekId ? (
-              <Link
-                to={`/portal/trekking/${row.trekId}`}
+              <PermissionButton
+                permission="Treks.ViewDetails"
+                type="button"
+                onClick={() => navigate(`/portal/trekking/${row.trekId}`)}
                 className="font-mono text-xs text-portal-accent hover:underline"
               >
                 {row.trekNumber}
-              </Link>
+              </PermissionButton>
             ) : (
               <span className="font-mono text-xs text-portal-accent">{row.trekNumber}</span>
             )
@@ -243,12 +246,14 @@ export const CustomerDetailPage: React.FC = () => {
         header: 'Invoice',
         style: { width: '150px' },
         body: (row) => row.invoiceNumber ? (
-          <Link
-            to={`/portal/invoices/${encodeURIComponent(row.invoiceNumber)}`}
+          <PermissionButton
+            permission="Invoices.ViewDetails"
+            type="button"
+            onClick={() => navigate(`/portal/invoices/${encodeURIComponent(row.invoiceNumber!)}`)}
             className="font-mono text-[11px] text-portal-accent hover:underline"
           >
             {row.invoiceNumber}
-          </Link>
+          </PermissionButton>
         ) : (
           <span className="text-xs text-portal-muted">—</span>
         ),
@@ -292,7 +297,7 @@ export const CustomerDetailPage: React.FC = () => {
         body: (row) => <span className="text-xs text-portal-muted">{row.recordedBy}</span>,
       },
     ],
-    []
+    [navigate]
   );
 
   // ── Add entry submit ───────────────────────────────────────────────
@@ -432,20 +437,22 @@ export const CustomerDetailPage: React.FC = () => {
       )}
 
       {/* ── Balance summary tiles ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Debits</p>
-          <p className="text-xs font-medium text-red-400 truncate" title={fmtGhs(totals.totalDebits)}>{fmtGhsShort(totals.totalDebits)}</p>
+      {canManageLedger && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+            <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Debits</p>
+            <p className="text-xs font-medium text-red-400 truncate" title={fmtGhs(totals.totalDebits)}>{fmtGhsShort(totals.totalDebits)}</p>
+          </div>
+          <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+            <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Credits</p>
+            <p className="text-xs font-medium text-portal-accent truncate" title={fmtGhs(totals.totalCredits)}>{fmtGhsShort(totals.totalCredits)}</p>
+          </div>
+          <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
+            <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Balance</p>
+            <p className={`text-xs font-medium truncate ${balanceColor}`} title={fmtGhs(totals.currentBalance)}>{fmtGhsShort(totals.currentBalance)}</p>
+          </div>
         </div>
-        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Total Credits</p>
-          <p className="text-xs font-medium text-portal-accent truncate" title={fmtGhs(totals.totalCredits)}>{fmtGhsShort(totals.totalCredits)}</p>
-        </div>
-        <div className="bg-portal-surface border border-portal-border/60 p-3 min-w-0">
-          <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1">Balance</p>
-          <p className={`text-xs font-medium truncate ${balanceColor}`} title={fmtGhs(totals.currentBalance)}>{fmtGhsShort(totals.currentBalance)}</p>
-        </div>
-      </div>
+      )}
 
       {/* ── Ledger table ── */}
       {canManageLedger && <FlatDataTable<LedgerEntry>
@@ -453,7 +460,7 @@ export const CustomerDetailPage: React.FC = () => {
         dataSourceUrl={`/customers/${customerId}/ledger`}
         columns={columns}
         heading="Ledger"
-        hasAction={hasAnyPermission('Ledger.CreateEntry', 'CustomerCredit.Manage')}
+        hasAction={hasAnyPermission('Ledger.CreateEntry')}
         actionName="Add Entry"
         onAction={() => setAddVisible(true)}
         enablePaginator
@@ -492,7 +499,7 @@ export const CustomerDetailPage: React.FC = () => {
               variant="primary"
               label={exporting ? 'Generating...' : 'Download'}
               icon="pi pi-download"
-              onClick={handleExport}
+              permission={['Ledger.Export', 'Reports.Export']} onClick={handleExport}
               loading={exporting}
               disabled={exporting}
             />
@@ -553,6 +560,7 @@ export const CustomerDetailPage: React.FC = () => {
       />
 
       {customer && <CustomerLocationModal
+        permission={editingLocation ? 'CustomerLocations.Edit' : 'CustomerLocations.Add'}
         visible={locationVisible}
         onHide={() => setLocationVisible(false)}
         customerName={customer.businessName}
@@ -583,7 +591,7 @@ export const CustomerDetailPage: React.FC = () => {
               onClick={resetAddModal}
               disabled={adding}
             />
-            <FlatButton
+            <FlatButton permission={'Ledger.CreateEntry'}
               variant="primary"
               label={adding ? 'Adding...' : 'Add Entry'}
               icon="pi pi-check"

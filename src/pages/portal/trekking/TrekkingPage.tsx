@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FlatDataTable, resetTableData, type ColumnDef, type PaginatedDataResponse } from '../../../components/data-table';
@@ -32,8 +33,8 @@ const STATUS_FILTER_OPTIONS = [
 export const TrekkingPage: React.FC = () => {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const canCreateTrek = hasAnyPermission('Treks.Create', 'Treks.Manage');
-  const canDeleteTrek = hasAnyPermission('Treks.Delete', 'Treks.Manage');
+  const canCreateTrek = hasAnyPermission('Treks.Create');
+  const canDeleteTrek = hasAnyPermission('Treks.Delete');
   const [trekToDelete, setTrekToDelete] = useState<Trek | null>(null);
   const [deletingTrek, setDeletingTrek] = useState(false);
   const [regionOptions, setRegionOptions] = useState<{ label: string; value: string }[]>([
@@ -134,13 +135,13 @@ export const TrekkingPage: React.FC = () => {
       header: 'Trek #',
       style: { width: '120px' },
       body: (row) => (
-        <button
+        <PermissionButton permission={'Treks.ViewDetails'}
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.id}`)}
           className="text-left font-mono text-xs font-medium text-portal-accent hover:underline"
         >
           {row.trekNumber}
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -188,7 +189,7 @@ export const TrekkingPage: React.FC = () => {
       style: { width: '100px', textAlign: 'right' },
       body: (row) => (
         <div className="flex items-center justify-end gap-2">
-          <FlatButton
+          <FlatButton permission={'Treks.ViewDetails'}
             variant="outline"
             size="icon-sm"
             leftIcon="pi pi-eye"

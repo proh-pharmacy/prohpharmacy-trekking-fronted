@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FlatDataTable, type ColumnDef, type PaginatedDataResponse, resetTableData } from '../../../components/data-table';
@@ -13,11 +14,16 @@ import { usePermissions } from '../../../hooks/usePermissions';
 
 export const ProductsPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canManageProducts = hasAnyPermission('Products.Manage', 'Products.Create', 'Products.Edit');
-  const canImportProducts = hasAnyPermission('Products.Import', 'Products.Manage');
+  const canManageProducts = hasAnyPermission('Products.Create');
+  const canImportProducts = hasAnyPermission('Products.Import');
   const [searchParams, setSearchParams] = useSearchParams();
+  const allowedTabs = ([
+    { value: 'products', label: 'Products Catalog', permission: 'Products.View' },
+    { value: 'units', label: 'Basic Units', permission: 'Units.View' },
+    { value: 'packaging', label: 'Packaging Units', permission: 'Products.View' },
+  ] as const).filter(tab => hasAnyPermission(tab.permission));
   const rawTab = searchParams.get('tab');
-  const activeTab: 'products' | 'units' | 'packaging' = rawTab === 'units' || rawTab === 'packaging' ? rawTab : 'products';
+  const activeTab: 'products' | 'units' | 'packaging' = allowedTabs.find(tab => tab.value === rawTab)?.value ?? allowedTabs[0]?.value ?? 'products';
 
   const handleTabChange = (tab: 'products' | 'units' | 'packaging') => {
     const nextParams = new URLSearchParams(searchParams);
@@ -153,7 +159,7 @@ export const ProductsPage: React.FC = () => {
         header: 'Product Name',
         body: (product) => (
           <div>
-            <button
+            <PermissionButton permission={'Products.Edit'}
               type="button"
               onClick={() => {
                 setEditingProduct(product);
@@ -162,7 +168,7 @@ export const ProductsPage: React.FC = () => {
               className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
             >
               {product.name}
-            </button>
+            </PermissionButton>
             {product.description && (
               <div className="text-[11px] text-portal-muted truncate max-w-sm mt-0.5">
                 {product.description}
@@ -213,7 +219,7 @@ export const ProductsPage: React.FC = () => {
         style: { width: '130px', textAlign: 'right' },
         body: (product) => (
           <div className="flex items-center justify-end gap-2">
-            <FlatButton
+            <FlatButton permission={'Products.Edit'}
               variant="outline"
               size="sm"
               leftIcon="pi pi-pencil"
@@ -224,7 +230,7 @@ export const ProductsPage: React.FC = () => {
             >
               Edit
             </FlatButton>
-            <FlatButton
+            <FlatButton permission={'Products.ChangeStatus'}
               variant={product.isActive ? 'danger-outline' : 'outline'}
               size="icon-sm"
               leftIcon={product.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
@@ -271,7 +277,7 @@ export const ProductsPage: React.FC = () => {
         style: { width: '130px', textAlign: 'right' },
         body: (unit) => (
           <div className="flex items-center justify-end gap-2">
-            <FlatButton
+            <FlatButton permission={'Units.Edit'}
               variant="outline"
               size="sm"
               leftIcon="pi pi-pencil"
@@ -282,7 +288,7 @@ export const ProductsPage: React.FC = () => {
             >
               Rename
             </FlatButton>
-            <FlatButton
+            <FlatButton permission={'Units.ChangeStatus'}
               variant={unit.isActive ? 'danger-outline' : 'outline'}
               size="icon-sm"
               leftIcon={unit.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
@@ -325,7 +331,7 @@ export const ProductsPage: React.FC = () => {
       headerStyle: { textAlign: 'right' },
       style: { width: '120px', textAlign: 'right' },
       body: (product) => (
-        <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setPackagingProduct(product)}>
+        <FlatButton permission={'Products.Edit'} variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setPackagingProduct(product)}>
           {product.packagingUnitId ? 'Edit' : 'Assign'}
         </FlatButton>
       ),
@@ -336,11 +342,7 @@ export const ProductsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Navigation Tabs */}
       <FlatTabs<'products' | 'units' | 'packaging'>
-        tabs={[
-          { value: 'products', label: 'Products Catalog' },
-          { value: 'units', label: 'Basic Units' },
-          { value: 'packaging', label: 'Packaging Units' },
-        ]}
+        tabs={allowedTabs}
         value={activeTab}
         onChange={handleTabChange}
         ariaLabel="Products sections"
@@ -390,7 +392,7 @@ export const ProductsPage: React.FC = () => {
           dataSourceUrl="/units"
           columns={unitColumns}
           heading="Basic Units"
-          hasAction
+          hasAction={hasAnyPermission('Units.Create')}
           actionName="Add Basic Unit"
           onAction={() => {
             setEditingUnit(null);
@@ -422,7 +424,7 @@ export const ProductsPage: React.FC = () => {
           dataSourceUrl="/products"
           columns={packagingColumns}
           heading="Packaging Units"
-          hasAction
+          hasAction={hasAnyPermission('Units.Create')}
           actionName="Add Unit"
           onAction={() => { setEditingUnit(null); setUnitModalVisible(true); }}
           filterable="search"

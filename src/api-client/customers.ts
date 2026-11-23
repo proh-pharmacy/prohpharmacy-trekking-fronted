@@ -1,5 +1,5 @@
 import { validateIdDocument, validateIdImage, type CustomerIdDocument, type CustomerIdentification } from './customerDocuments';
-import apiClient, { baseURL } from './api';
+import apiClient, { baseURL, requireAnyPermission } from './api';
 import { getAccessToken } from './tokenStorage';
 import type {
   PaginatedPricingMarkupRules,
@@ -443,6 +443,7 @@ export const customersApi = {
     branchId?: string;
     regionId?: string;
   }): Promise<{ blob: Blob; filename: string }> => {
+    requireAnyPermission(['Reports.Export', 'Ledger.Export']);
     const query = new URLSearchParams();
     if (params?.from) query.set('from', params.from);
     if (params?.to) query.set('to', params.to);
@@ -464,6 +465,7 @@ export const customersApi = {
     customerId: string,
     params?: { from?: string; to?: string },
   ): Promise<{ blob: Blob; filename: string }> => {
+    requireAnyPermission(['Ledger.Export', 'Reports.Export']);
     const query = new URLSearchParams();
     if (params?.from) query.set('from', params.from);
     if (params?.to) query.set('to', params.to);

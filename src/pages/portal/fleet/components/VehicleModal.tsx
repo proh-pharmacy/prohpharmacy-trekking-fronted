@@ -149,7 +149,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ visible, onHide, veh
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={submitting} />
-          <FlatButton
+          <FlatButton permission={vehicle ? 'Vehicles.Edit' : 'Vehicles.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Register'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

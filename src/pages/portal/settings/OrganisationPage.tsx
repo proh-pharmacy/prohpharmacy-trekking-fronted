@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,7 +14,7 @@ import {
   type PaginatedDataResponse,
   resetTableData,
 } from '../../../components/data-table';
-import { FlatButton, FlatTabs, type FlatTabItem } from '../../../components/flat-form';
+import { FlatButton, FlatTabs } from '../../../components/flat-form';
 import { FlatConfirmDialog } from '../../../components/overlay';
 import { BranchModal } from './components/BranchModal';
 import { DistrictModal } from './components/DistrictModal';
@@ -22,15 +23,19 @@ import { usePermissions } from '../../../hooks/usePermissions';
 
 export const OrganisationPage: React.FC = () => {
   const { hasAnyPermission } = usePermissions();
-  const canManageBranches = hasAnyPermission('Branches.Create', 'Branches.Edit', 'Branches.Manage');
-  const canManageDistricts = hasAnyPermission('Districts.Create', 'Districts.Edit', 'Branches.Manage');
+  const canManageBranches = hasAnyPermission('Branches.Create');
+  const canManageDistricts = hasAnyPermission('Districts.Create');
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   // Infer active tab from query parameter: 'branches' | 'districts' | 'regions'
+  const allowedTabs = ([
+    { value: 'branches', label: 'Branches', permission: 'Branches.View' },
+    { value: 'districts', label: 'Districts', permission: 'Districts.View' },
+    { value: 'regions', label: 'Regions', permission: 'Regions.View' },
+  ] as const).filter(tab => hasAnyPermission(tab.permission));
   const rawTab = searchParams.get('tab');
-  const activeTab: 'branches' | 'districts' | 'regions' =
-    rawTab === 'districts' || rawTab === 'regions' ? rawTab : 'branches';
+  const activeTab: 'branches' | 'districts' | 'regions' = allowedTabs.find(tab => tab.value === rawTab)?.value ?? allowedTabs[0]?.value ?? 'branches';
 
   const handleTabChange = (tab: 'branches' | 'districts' | 'regions') => {
     setSearchParams((prev) => {
@@ -253,7 +258,7 @@ export const OrganisationPage: React.FC = () => {
         body: (branch) => (
           <div>
             <div className="flex items-center gap-2">
-              <button
+              <PermissionButton permission={'Branches.Edit'}
                 type="button"
                 onClick={() => {
                   setEditingBranch(branch);
@@ -262,7 +267,7 @@ export const OrganisationPage: React.FC = () => {
                 className="text-xs text-portal-text hover:text-portal-accent text-left transition cursor-pointer"
               >
                 {branch.name}
-              </button>
+              </PermissionButton>
               {branch.branchType && (
                 <span className="text-[11px] text-portal-muted font-normal">
                   ({branch.branchType})
@@ -320,7 +325,7 @@ export const OrganisationPage: React.FC = () => {
         style: { width: '130px', textAlign: 'right' },
         body: (branch) => (
           <div className="flex items-center justify-end gap-2">
-            <FlatButton
+            <FlatButton permission={'Branches.Edit'}
               variant="outline"
               size="sm"
               leftIcon="pi pi-pencil"
@@ -331,7 +336,7 @@ export const OrganisationPage: React.FC = () => {
             >
               Edit
             </FlatButton>
-            <FlatButton
+            <FlatButton permission={'Branches.ChangeStatus'}
               variant={branch.isActive ? 'danger-outline' : 'outline'}
               size="icon-sm"
               leftIcon={branch.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
@@ -417,11 +422,7 @@ export const OrganisationPage: React.FC = () => {
     []
   );
 
-  const organisationTabs: FlatTabItem<'branches' | 'districts' | 'regions'>[] = [
-    { value: 'branches', label: 'Branches' },
-    { value: 'districts', label: 'Districts' },
-    { value: 'regions', label: 'Regions' },
-  ];
+  const organisationTabs = allowedTabs;
 
   return (
     <div className="space-y-6">

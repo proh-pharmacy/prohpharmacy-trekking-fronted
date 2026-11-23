@@ -73,7 +73,7 @@ export const UnitModal: React.FC<UnitModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={unit ? 'Units.Edit' : 'Units.Create'}
             variant="primary"
             label={submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Unit'}
             icon={isEditing ? 'pi pi-check' : 'pi pi-plus'}

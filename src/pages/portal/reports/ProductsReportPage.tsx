@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../hooks/usePermissions';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
@@ -12,6 +13,7 @@ function todayStr() {
 }
 
 export const ProductsReportPage: React.FC = () => {
+  const { can } = usePermissions();
   const [stats, setStats] = useState({
     totalProductLines: 0,
     totalAmountCollected: 0,
@@ -44,6 +46,7 @@ export const ProductsReportPage: React.FC = () => {
   };
 
   const handleExport = async () => {
+    if (!can('Reports.Export')) return;
     setExporting(true);
     try {
       const { blob, filename } = await reportsApi.exportProductsReport({
@@ -178,7 +181,7 @@ export const ProductsReportPage: React.FC = () => {
         dataSourceUrl="/reports/products"
         columns={columns}
         heading="Product Delivery"
-        hasAction
+        hasAction={can('Reports.Export')}
         actionName="Export Report"
         onAction={() => setExportVisible(true)}
         filterable="search"
@@ -222,7 +225,7 @@ export const ProductsReportPage: React.FC = () => {
               variant="primary"
               label={exporting ? 'Generating...' : 'Download'}
               icon="pi pi-download"
-              onClick={handleExport}
+              permission="Reports.Export" onClick={handleExport}
               loading={exporting}
               disabled={exporting}
             />

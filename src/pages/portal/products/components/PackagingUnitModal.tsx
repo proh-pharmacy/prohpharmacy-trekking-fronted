@@ -72,10 +72,10 @@ export const PackagingUnitModal: React.FC<PackagingUnitModalProps> = ({ visible,
       footer={
         <div className="flex items-center justify-end gap-2 w-full">
           {product?.packagingUnitId && (
-            <FlatButton variant="danger-outline" label="Clear" onClick={() => updatePackagingUnit(null, null)} disabled={saving} />
+            <FlatButton permission={'Products.Edit'} variant="danger-outline" label="Clear" onClick={() => updatePackagingUnit(null, null)} disabled={saving} />
           )}
           <FlatButton variant="outline" label="Cancel" onClick={onHide} disabled={saving} />
-          <FlatButton variant="primary" label={saving ? 'Saving...' : 'Save'} onClick={handleSave} loading={saving} disabled={saving || !packagingUnitId || packagingUnitPrice === null} />
+          <FlatButton permission={'Products.Edit'} variant="primary" label={saving ? 'Saving...' : 'Save'} onClick={handleSave} loading={saving} disabled={saving || !packagingUnitId || packagingUnitPrice === null} />
         </div>
       }
     >

@@ -1,10 +1,11 @@
+import type { Permission } from '../../lib/permissions/catalogue';
 import React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../hooks/usePermissions';
 
 interface PermissionGuardProps {
-  permission?: string;
-  permissions?: string[];
+  permission?: Permission;
+  permissions?: Permission[];
   mode?: 'any' | 'all';
   children: React.ReactNode;
   fallback?: React.ReactNode;
@@ -71,8 +72,8 @@ const ForbiddenOverlay: React.FC = () => {
 
 /** Inline visibility guard for buttons, tabs, menu items, and other UI actions. */
 export const PermissionGate: React.FC<{
-  permission?: string;
-  permissions?: string[];
+  permission?: Permission;
+  permissions?: Permission[];
   mode?: 'any' | 'all';
   children: React.ReactNode;
   fallback?: React.ReactNode;

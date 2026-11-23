@@ -1,3 +1,5 @@
+import { usePermissions } from '../../../../hooks/usePermissions';
+import { PermissionButton } from '../../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { FlatConfirmDialog, FlatModal } from '../../../../components/overlay';
@@ -54,6 +56,7 @@ interface Props {
 }
 
 export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVehicleId, trekRegionId, trekRegionName, nextSequence, existingCustomerIds = [], stop, onSuccess }) => {
+  const { can } = usePermissions();
   const [customerAccountId, setCustomerAccountId] = useState('');
   const [districtId, setDistrictId]               = useState('');
   const [sequence, setSequence]                   = useState(nextSequence);
@@ -150,8 +153,10 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
     ...(productScope === 'vehicle' ? { vehicleId: trekVehicleId } : {}),
   }), [productScope, trekVehicleId]);
 
+  const canViewVehicleStock = can('VehicleStock.View');
+
   useEffect(() => {
-    if (!visible || !productFormOpen || !productEntry.productId) {
+    if (!visible || !productFormOpen || !productEntry.productId || !canViewVehicleStock) {
       setStockBalance(null);
       setStockLoading(false);
       setStockNotTracked(false);
@@ -184,7 +189,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
       .finally(() => { if (!cancelled) setStockLoading(false); });
 
     return () => { cancelled = true; };
-  }, [visible, productFormOpen, productEntry.productId, trekVehicleId]);
+  }, [visible, productFormOpen, productEntry.productId, trekVehicleId, canViewVehicleStock]);
 
   // fetchFn recreated when the trek region or selected district changes
   const fetchCustomers = useCallback(async (params: { pageNumber: number; pageSize: number; search?: string }) => {
@@ -270,7 +275,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
   const packagingExceedsStock = Boolean(
     stockBalance && productEntry.hasPackagingUnit && plannedPackagingQuantity > stockBalance.packaging,
   );
-  const manageVehicleStockLink = (
+  const manageVehicleStockLink = canViewVehicleStock ? (
     <a
       href={`/portal/fleet/vehicles/${trekVehicleId}/stock`}
       target="_blank"
@@ -279,9 +284,25 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
     >
       Manage vehicle stock <i className="pi pi-external-link text-[9px]" />
     </a>
-  );
+  ) : null;
 
   const handleSubmit = async () => {
+    if (!can(stop ? 'TrekStops.Edit' : 'TrekStops.Add')) return;
+    if (stop && ((customerChanged && !can('TrekStops.ChangeCustomer')) || (sequence !== stop.sequence && !can('TrekStops.Reorder')))) {
+      toast.error('You do not have permission to change the customer or stop order.');
+      return;
+    }
+    const originalProducts = stop?.products ?? [];
+    const added = products.some(row => !originalProducts.some(item => item.stopProductId === row.key));
+    const removed = originalProducts.some(item => !products.some(row => row.key === item.stopProductId));
+    const edited = products.some(row => {
+      const original = originalProducts.find(item => item.stopProductId === row.key);
+      return original && (row.productId !== original.productId || Number(row.plannedBasicQuantity || 0) !== original.plannedBasicQuantity || Number(row.plannedPackagingQuantity || 0) !== Number(original.plannedPackagingQuantity || 0));
+    });
+    if ((added && !can('TrekProducts.Add')) || (removed && !can('TrekProducts.Delete')) || (edited && !can('TrekProducts.Edit'))) {
+      toast.error('You do not have permission for these product changes.');
+      return;
+    }
     const shouldSendProducts = !stop || (customerChanged ? enteredProducts.length > 0 : productsChanged);
     const validProducts = products.filter((p) => p.productId);
     const result = schema.safeParse({ customerAccountId, sequence });
@@ -352,7 +373,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
       footer={
         <div className={`flex items-center justify-end gap-3 w-full transition-opacity ${productFormOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-hidden={productFormOpen}>
           <FlatButton variant="danger-outline" label="Cancel" onClick={onHide} disabled={saving} />
-          <FlatButton variant="primary" label={saving ? 'Saving...' : stop ? 'Save Stop' : 'Add Stop'} icon={stop ? 'pi pi-check' : 'pi pi-plus'} onClick={handleSubmit} loading={saving} disabled={saving} />
+          <FlatButton permission={stop ? 'TrekStops.Edit' : 'TrekStops.Add'} variant="primary" label={saving ? 'Saving...' : stop ? 'Save Stop' : 'Add Stop'} icon={stop ? 'pi pi-check' : 'pi pi-plus'} onClick={handleSubmit} loading={saving} disabled={saving} />
         </div>
       }
     >
@@ -384,7 +405,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
             <FlatAsyncSelect<Customer>
               key={stop ? `edit:${stop.stopId}` : `${trekRegionId}:${districtId}`}
               label="Customer"
-              disabled={!!stop?.invoiceId}
+              disabled={!!stop?.invoiceId || (!!stop && !can('TrekStops.ChangeCustomer'))}
               required
               placeholder="Search by name, code, or phone..."
               value={customerAccountId}
@@ -416,7 +437,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
               errorMessage={errors.customerAccountId}
             />
           </div>
-          <FlatInputNumber label="Sequence" required min={1} useGrouping={false} size="sm"
+          <FlatInputNumber disabled={!!stop && !can('TrekStops.Reorder')} label="Sequence" required min={1} useGrouping={false} size="sm"
             value={sequence} onChange={(value) => setSequence(value ?? 0)} errorMessage={errors.sequence} />
         </div>
 
@@ -432,7 +453,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
               <span className="text-[11px] font-medium uppercase tracking-wide text-portal-muted">
                 Products ({products.length}) <span className="font-normal normal-case tracking-normal">(Optional)</span>
               </span>
-              <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" label="Add new item" onClick={openNewProductEntry} />
+              <FlatButton permission={'TrekProducts.Add'} size="sm" variant="outline" leftIcon="pi pi-plus" label="Add new item" onClick={openNewProductEntry} />
             </div>
 
             {products.length === 0 ? (
@@ -479,12 +500,12 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
                             {Number(row.plannedBasicQuantity || 0)} {row.product?.basicUnitName || 'basic'}
                           </td>
                           <td className="whitespace-nowrap px-2 py-2 text-right">
-                            <button type="button" onClick={() => openProductEntry(row)} className="h-6 w-6 rounded text-portal-muted transition hover:bg-white/[0.08] hover:text-white" title="Edit product">
+                            <PermissionButton permission={'TrekProducts.Edit'} type="button" onClick={() => openProductEntry(row)} className="h-6 w-6 rounded text-portal-muted transition hover:bg-white/[0.08] hover:text-white" title="Edit product">
                               <i className="pi pi-pencil text-[10px]" />
-                            </button>
-                            <button type="button" onClick={() => setPendingRemoveKey(row.key)} className="h-6 w-6 rounded text-red-400 transition hover:bg-red-500/10 hover:text-red-300" title="Remove product">
+                            </PermissionButton>
+                            <PermissionButton permission={'TrekProducts.Delete'} type="button" onClick={() => setPendingRemoveKey(row.key)} className="h-6 w-6 rounded text-red-400 transition hover:bg-red-500/10 hover:text-red-300" title="Remove product">
                               <i className="pi pi-times text-[10px]" />
-                            </button>
+                            </PermissionButton>
                           </td>
                         </tr>
                       ))}
@@ -646,7 +667,7 @@ export const AddStopModal: React.FC<Props> = ({ visible, onHide, trekId, trekVeh
               {productEntryError && <p className="text-[11px] text-red-400">{productEntryError}</p>}
               <div className="flex items-center justify-end gap-2 pt-1">
                 <FlatButton size="sm" variant="outline" label="Close" onClick={closeProductEntry} />
-                <FlatButton size="sm" variant="primary" leftIcon="pi pi-plus" label={editingProductKey ? 'Update' : 'Add'} onClick={saveProductEntry} />
+                <FlatButton permission={editingProductKey ? 'TrekProducts.Edit' : 'TrekProducts.Add'} size="sm" variant="primary" leftIcon="pi pi-plus" label={editingProductKey ? 'Update' : 'Add'} onClick={saveProductEntry} />
               </div>
             </div>
           </div>

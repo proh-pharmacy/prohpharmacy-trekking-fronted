@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { InvoicePayments } from '../../../components/invoices/InvoicePayments';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { TrekDocumentsModal } from './components/TrekDocumentsModal';
 import toast from 'react-hot-toast';
 import { fmtGhs, parseNumericInput } from '../../../lib/utils';
 import { usePermissions } from '../../../hooks/usePermissions';
+import type { Permission } from '../../../lib/permissions/catalogue';
 
 // ── Constants ──────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<TrekStatus, string> = {
@@ -122,10 +124,15 @@ export const TrekDetailPage: React.FC = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const canManageStops = hasAnyPermission('TrekStops.Add', 'TrekStops.Edit', 'Treks.Edit', 'Treks.Manage');
-  const canRecordDelivery = hasAnyPermission('TrekDeliveries.Record', 'Visits.Record');
-  const canRecordReturns = hasAnyPermission('TrekReturns.Record', 'Visits.Record');
-  const canManagePricing = hasAnyPermission('TrekPricing.Sync', 'TrekProducts.OverridePrice');
+  const canViewStock = hasAnyPermission('TrekStock.View');
+  const canViewVehicleStock = hasAnyPermission('VehicleStock.View');
+  const canViewVehicleStockPage = hasAnyPermission('VehicleStock.View', 'VehicleStock.ViewLedger');
+  const canManageStops = hasAnyPermission('TrekStops.Add', 'TrekStops.Edit', 'TrekStops.Delete');
+  const canRecordDelivery = hasAnyPermission('TrekDeliveries.Record', 'TrekDeliveries.Edit');
+  const canViewReturns = hasAnyPermission('TrekReturns.View', 'TrekReturns.Record', 'TrekReturns.Delete');
+  const canRecordReturns = hasAnyPermission('TrekReturns.Record');
+  const canDeleteReturns = hasAnyPermission('TrekReturns.Delete');
+  const canInspectPricing = hasAnyPermission('TrekPricing.ViewDiff', 'TrekPricing.Sync');
 
   const [trek, setTrek] = useState<Trek | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,7 +164,7 @@ export const TrekDetailPage: React.FC = () => {
   const [stockWarningVisible, setStockWarningVisible] = useState(false);
 
   const loadStockReadiness = useCallback(async () => {
-    if (!trekId) return;
+    if (!trekId || !canViewStock) return;
     setStockReadinessLoading(true);
     try {
       const data = await treksApi.getStockLoads(trekId);
@@ -168,7 +175,7 @@ export const TrekDetailPage: React.FC = () => {
     } finally {
       setStockReadinessLoading(false);
     }
-  }, [trekId]);
+  }, [trekId, canViewStock]);
 
   const loadTrek = useCallback(async (silent = false) => {
     if (!trekId) return;
@@ -204,7 +211,8 @@ export const TrekDetailPage: React.FC = () => {
   }, []);
 
   const handleRecordProduct = useCallback(async (product: TrekStopProduct): Promise<boolean> => {
-    if (!trek) return false;
+    const permission = product.deliveredAt ? 'TrekDeliveries.Edit' : 'TrekDeliveries.Record';
+    if (!trek || !hasAnyPermission(permission)) return false;
     const row = deliveryRows[product.stopProductId] ?? {};
     const basic = row.basicQtyDelivered === '' ? null : parseNumericInput(row.basicQtyDelivered);
     const packaging = row.packagingQtyDelivered === '' ? null : parseNumericInput(row.packagingQtyDelivered);
@@ -227,7 +235,7 @@ export const TrekDetailPage: React.FC = () => {
           packagingQtyDelivered: product.packagingUnitName && packaging !== null ? packaging : undefined,
           notes: row.notes || undefined,
         }],
-      });
+      }, permission);
       resetTableData();
       toast.success(`${product.productName} delivery saved.`);
       await loadTrek(true);
@@ -239,7 +247,7 @@ export const TrekDetailPage: React.FC = () => {
     } finally {
       setRecordingProduct(null);
     }
-  }, [trek, deliveryRows, loadTrek]);
+  }, [trek, deliveryRows, loadTrek, hasAnyPermission]);
 
   const handleRecordReturn = useCallback(async (stop: TrekStop, payload: RecordReturnPayload): Promise<boolean> => {
     if (!trek) return false;
@@ -294,6 +302,7 @@ export const TrekDetailPage: React.FC = () => {
       toast.error('A trek with payments or recorded deliveries cannot be cancelled.');
       return;
     }
+    if (!canViewStock) { await handleStatusChange(status); return; }
     setCheckingStatus(status);
     try {
       const result = await treksApi.checkStockLoads(trek.id, stockCheckItems(trek, status));
@@ -485,9 +494,9 @@ export const TrekDetailPage: React.FC = () => {
         {/* Right: edit + share + status actions */}
         <div className="flex items-center gap-2 flex-wrap">
 
-          {!isLocked && canManagePricing && trek.syncRequired && (
+          {!isLocked && canInspectPricing && trek.syncRequired && (
             <div className="relative inline-flex">
-              <FlatButton
+              <FlatButton permission={['TrekPricing.ViewDiff', 'TrekPricing.Sync']}
                 variant="outline"
                 size="sm"
                 leftIcon="pi pi-refresh"
@@ -508,8 +517,8 @@ export const TrekDetailPage: React.FC = () => {
                 <div className="absolute right-0 top-full z-[100] mt-2 w-72 rounded border border-portal-border bg-portal-surface p-3 shadow-xl">
                   <p className="text-[11px] leading-relaxed text-portal-orange">These trek products were created before the latest catalogue update.</p>
                   <div className="mt-3 flex items-center justify-end gap-2">
-                    <FlatButton size="sm" variant="outline" onClick={handleViewPriceChanges}>View updates</FlatButton>
-                    <FlatButton size="sm" variant="primary" onClick={confirmSyncPrices} loading={syncingPrices} disabled={syncingPrices}>Sync update</FlatButton>
+                    <FlatButton permission={'TrekPricing.ViewDiff'} size="sm" variant="outline" onClick={handleViewPriceChanges}>View updates</FlatButton>
+                    <FlatButton permission={'TrekPricing.Sync'} size="sm" variant="primary" onClick={confirmSyncPrices} loading={syncingPrices} disabled={syncingPrices}>Sync update</FlatButton>
                   </div>
                 </div>
               )}
@@ -517,10 +526,10 @@ export const TrekDetailPage: React.FC = () => {
           )}
 
           {/* Share dropdown */}
-          {hasAnyPermission('Treks.DownloadSheet', 'Reports.Export', 'Treks.Manage') && (
+          {hasAnyPermission('Treks.DownloadSheet', 'Reports.Export', 'TrekStock.View') && (
             <FlatButton variant="outline" size="sm" leftIcon="pi pi-download" onClick={() => setDocumentsVisible(true)}>Download</FlatButton>
           )}
-          {hasAnyPermission('Treks.GenerateDriverLink', 'Treks.SendEmail', 'Treks.DownloadSheet', 'Reports.Export', 'Treks.Manage') && <div className="relative" ref={shareRef}>
+          {(hasAnyPermission('Treks.GenerateDriverLink') || (trek.status === 'InProgress' && hasAnyPermission('Treks.SendEmail'))) && <div className="relative" ref={shareRef}>
             <FlatButton
               variant="outline"
               size="sm"
@@ -532,7 +541,7 @@ export const TrekDetailPage: React.FC = () => {
             </FlatButton>
             {shareOpen && (
               <div className="absolute right-0 top-full mt-1 w-52 bg-portal-surface border border-portal-border rounded shadow-2xl z-50 overflow-hidden py-1">
-                <button
+                <PermissionButton permission={'Treks.GenerateDriverLink'}
                   type="button"
                   onClick={handleGenerateLink}
                   disabled={generatingLink}
@@ -540,8 +549,8 @@ export const TrekDetailPage: React.FC = () => {
                 >
                   <i className="pi pi-link text-portal-accent text-[11px]" />
                   {generatingLink ? 'Generating...' : 'Copy Trekking Link'}
-                </button>
-                <button
+                </PermissionButton>
+                <PermissionButton permission={'Treks.GenerateDriverLink'}
                   type="button"
                   onClick={handleOpenDriverLink}
                   disabled={openingDriverLink}
@@ -549,10 +558,10 @@ export const TrekDetailPage: React.FC = () => {
                 >
                   <i className="pi pi-external-link text-portal-accent text-[11px]" />
                   {openingDriverLink ? 'Opening...' : 'Open Trekking Link'}
-                </button>
+                </PermissionButton>
                 <div className="border-t border-portal-border/60 mx-2" />
                 {trek.status === 'InProgress' && (
-                  <button
+                  <PermissionButton permission={'Treks.SendEmail'}
                     type="button"
                     onClick={handleResendEmail}
                     disabled={resendingEmail}
@@ -560,18 +569,19 @@ export const TrekDetailPage: React.FC = () => {
                   >
                     <i className="pi pi-envelope text-portal-accent text-[11px]" />
                     {resendingEmail ? 'Sending...' : 'Resend Sheet & Link'}
-                  </button>
+                  </PermissionButton>
                 )}
               </div>
             )}
           </div>}
 
           {(() => {
-            const visibleNextStatuses = nextStatuses.filter((s) =>
-              s === 'InProgress' ? hasAnyPermission('Treks.Start', 'Treks.ChangeStatus', 'Treks.Manage') :
-                s === 'Completed' ? hasAnyPermission('Treks.Complete', 'Treks.ChangeStatus', 'Treks.Manage') :
-                  hasAnyPermission('Treks.Cancel', 'Treks.ChangeStatus', 'Treks.Manage')
-            );
+            const statusPermission = (s: TrekStatus): Permission =>
+              s === 'InProgress' ? 'Treks.Start'
+                : s === 'Completed' ? 'Treks.Complete'
+                  : s === 'Cancelled' ? 'Treks.Cancel'
+                    : 'Treks.ChangeStatus';
+            const visibleNextStatuses = nextStatuses.filter((s) => hasAnyPermission(statusPermission(s)));
             if (visibleNextStatuses.length === 0) return null;
             return (
               <>
@@ -579,6 +589,7 @@ export const TrekDetailPage: React.FC = () => {
                 {visibleNextStatuses.map((s) => (
                   <FlatButton
                     key={s}
+                    permission={statusPermission(s)}
                     variant={s === 'Cancelled' ? 'danger-outline' : 'primary'}
                     size="sm"
                     leftIcon={s === 'Cancelled' ? undefined : 'pi pi-check-circle'}
@@ -619,7 +630,7 @@ export const TrekDetailPage: React.FC = () => {
       <FlatTabs<'stops' | 'inventory'>
         tabs={[
           { value: 'stops', label: 'Stops', id: 'planning-tab-stops', ariaControls: 'planning-panel-stops' },
-          { value: 'inventory', label: 'Vehicle Inventory', id: 'planning-tab-inventory', ariaControls: 'planning-panel-inventory' },
+          ...(canViewVehicleStock ? [{ value: 'inventory' as const, label: 'Vehicle Inventory', id: 'planning-tab-inventory', ariaControls: 'planning-panel-inventory' }] : []),
         ]}
         value={planningTab}
         onChange={(tab) => {
@@ -629,15 +640,15 @@ export const TrekDetailPage: React.FC = () => {
         ariaLabel="Trek planning"
       />
       <div id="planning-panel-inventory" role="tabpanel" aria-labelledby="planning-tab-inventory" hidden={planningTab !== 'inventory'}>
-        {inventoryOpened && <VehicleInventory key={trek.vehicleId} vehicleId={trek.vehicleId} embedded onChanged={() => { void loadStockReadiness(); }} />}
+        {inventoryOpened && canViewVehicleStock && <VehicleInventory key={trek.vehicleId} vehicleId={trek.vehicleId} embedded onChanged={() => { void loadStockReadiness(); }} />}
       </div>
       <div id="planning-panel-stops" role="tabpanel" aria-labelledby="planning-tab-stops" hidden={planningTab !== 'stops'} className="space-y-5">
-        <StockReadinessPanel
+        {canViewStock && <StockReadinessPanel
           loads={stockLoads}
           loading={stockReadinessLoading}
           hasError={stockReadinessError}
           onRetry={loadStockReadiness}
-        />
+        />}
 
         {/* ── Stops ── */}
         <div className="bg-portal-surface border border-portal-border/60 rounded">
@@ -647,7 +658,7 @@ export const TrekDetailPage: React.FC = () => {
               <span className="text-portal-muted font-normal text-xs ml-2">({sortedStops.length})</span>
             </span>
             {!isStructureLocked && canManageStops && (
-              <FlatButton variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
+              <FlatButton permission={'TrekStops.Add'} variant="primary" size="sm" leftIcon="pi pi-plus" onClick={() => setAddStopVisible(true)}>
                 Add Stop
               </FlatButton>
             )}
@@ -677,7 +688,9 @@ export const TrekDetailPage: React.FC = () => {
                   onRemove={setRemovingStop}
                   canManageStops={canManageStops}
                   canRecordDelivery={canRecordDelivery}
+                  canViewReturns={canViewReturns}
                   canRecordReturns={canRecordReturns}
+                  canDeleteReturns={canDeleteReturns}
                 />
               ))}
             </div>
@@ -793,16 +806,18 @@ export const TrekDetailPage: React.FC = () => {
             {pendingStatus === 'Completed' && (
               <p className="text-portal-orange">Completing the trek saves its deliveries permanently and prevents further changes.</p>
             )}
-            <div className="flex justify-end">
-              <a
-                href={`/portal/fleet/vehicles/${trek.vehicleId}/stock`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-portal-accent hover:underline"
-              >
-                Manage vehicle stock <i className="pi pi-external-link text-[9px]" />
-              </a>
-            </div>
+            {canViewVehicleStockPage && (
+              <div className="flex justify-end">
+                <a
+                  href={`/portal/fleet/vehicles/${trek.vehicleId}/stock`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-portal-accent hover:underline"
+                >
+                  Manage vehicle stock <i className="pi pi-external-link text-[9px]" />
+                </a>
+              </div>
+            )}
           </div>
         }
         confirmLabel="Continue anyway"
@@ -862,6 +877,7 @@ export const TrekDetailPage: React.FC = () => {
         secondaryActionLabel={!priceDiffExpanded ? 'View changes' : undefined}
         onSecondaryAction={!priceDiffExpanded ? () => setPriceDiffExpanded(true) : undefined}
         confirmLabel="Sync update"
+        confirmPermission="TrekPricing.Sync"
         variant="primary"
         loading={syncingPrices}
       />
@@ -977,7 +993,9 @@ interface StopCardProps {
   onRemove: (stop: TrekStop) => void;
   canManageStops: boolean;
   canRecordDelivery: boolean;
+  canViewReturns: boolean;
   canRecordReturns: boolean;
+  canDeleteReturns: boolean;
 }
 
 const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }> = ({ label, value, mono }) => {
@@ -991,7 +1009,7 @@ const InfoRow: React.FC<{ label: string; value?: string | null; mono?: boolean }
 };
 
 const StopCard: React.FC<StopCardProps> = React.memo(({
-  stop, showInvoicePayments, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canRecordReturns, onInvoiceChanged,
+  stop, showInvoicePayments, isLocked, isDeliveryLocked, deliveryRows, updateRow, onRecordProduct, onRecordReturn, onVoidReturn, recordingProduct, onEdit, onRemove, canManageStops, canRecordDelivery, canViewReturns, canRecordReturns, canDeleteReturns, onInvoiceChanged,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [activeStopTab, setActiveStopTab] = useState<'products' | 'details' | 'returns'>('products');
@@ -1069,16 +1087,16 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
         </button>
         {!isLocked && canManageStops && (
           <div className="flex items-center gap-1 shrink-0">
-            <button type="button" onClick={() => onEdit(stop)}
+            <PermissionButton permission={'TrekStops.Edit'} type="button" onClick={() => onEdit(stop)}
               className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
               title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
               <i className="pi pi-pencil text-xs" />
-            </button>
-            {!stop.invoiceId && <button type="button" onClick={() => onRemove(stop)}
+            </PermissionButton>
+            {!stop.invoiceId && <PermissionButton permission={'TrekStops.Delete'} type="button" onClick={() => onRemove(stop)}
               className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
               title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
               <i className="pi pi-trash text-xs" />
-            </button>}
+            </PermissionButton>}
           </div>
         )}
       </div>
@@ -1127,7 +1145,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
                   tabs={[
                     { value: 'products', label: 'Products', badge: stop.products.length || undefined },
                     { value: 'details', label: 'Customer details' },
-                    { value: 'returns', label: 'Returns', badge: stop.returns?.length || undefined },
+                    ...(canViewReturns ? [{ value: 'returns' as const, label: 'Returns', badge: stop.returns?.length || undefined }] : []),
                   ]}
                   value={activeStopTab}
                   onChange={setActiveStopTab}
@@ -1153,7 +1171,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
                 </div>
               </div>}
 
-              {activeStopTab === 'returns' && (
+              {activeStopTab === 'returns' && canViewReturns && (
                 <div className="ml-0 sm:ml-10">
                   <div className="mb-3 flex justify-end">
                     {canRecordReturns && <FlatButton size="sm" variant="outline" leftIcon="pi pi-plus" disabled={isLocked} onClick={() => setReturnModalOpen(true)}>Record return</FlatButton>}
@@ -1173,7 +1191,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
                       { field: 'refundMethod', header: 'Method', body: (item) => <span className="text-xs text-portal-text">{item.refundMethod || '—'}</span> },
                       { field: 'reason', header: 'Reason', body: (item) => <span className="text-xs text-portal-muted">{item.reason || '—'}</span> },
                       { field: 'recordedAt', header: 'Recorded', body: (item) => <span className="text-xs text-portal-muted">{item.recordedAt ? new Date(item.recordedAt).toLocaleString() : '—'}</span> },
-                      ...(canRecordReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></button> }] : []),
+                      ...(canDeleteReturns ? [{ field: 'actions', header: 'Action', body: (item: DriverReturn) => <PermissionButton permission={'TrekReturns.Delete'} type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-red-400/10 hover:text-red-300" title="Remove return" aria-label="Remove return" disabled={isLocked} onClick={() => setVoidingReturn(item)}><i className="pi pi-trash text-xs" /></PermissionButton> }] : []),
                     ]}
                   />
                 </div>
@@ -1195,7 +1213,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
                       { field: 'planned', header: 'Planned', body: (product) => <><span className="text-xs text-portal-text">{product.packagingUnitName && Number(product.plannedPackagingQuantity || 0) > 0 ? `${product.plannedPackagingQuantity} ${product.packagingUnitName} · ` : ''}{product.plannedBasicQuantity} {product.basicUnitName || 'basic units'}</span><span className="mt-1 block text-[10px] text-portal-muted">Due · {fmtGhs(Number(product.amountDue ?? 0))}</span></> },
                       { field: 'delivered', header: 'Qty Delivered', body: (product) => { const row = product.displayRow ?? {}; return <span className="text-xs text-portal-text">{row.packagingQtyDelivered && parseNumericInput(row.packagingQtyDelivered) > 0 ? `${row.packagingQtyDelivered} ${product.packagingUnitName} · ` : ''}{row.basicQtyDelivered && parseNumericInput(row.basicQtyDelivered) > 0 ? `${row.basicQtyDelivered} ${product.basicUnitName || 'basic units'}` : '—'}</span>; } },
                       { field: 'total', header: 'Total', body: (product) => <span className="text-xs text-portal-accent">{fmtGhs(calculateDeliveredAmount(product, product.displayRow ?? {}))}</span> },
-                      ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></button> }] : []),
+                      ...(canRecordDelivery ? [{ field: 'actions', header: 'Record', body: (product: TrekStopProduct) => <PermissionButton permission={product.deliveredAt ? 'TrekDeliveries.Edit' : 'TrekDeliveries.Record'} type="button" className="inline-flex h-7 w-7 items-center justify-center rounded text-portal-muted hover:bg-white/[0.08] hover:text-portal-accent disabled:opacity-40" title="Record delivery" aria-label={`Record ${product.productName} delivery`} disabled={isDeliveryLocked} onClick={() => setEditingProduct(product)}><i className="pi pi-pencil text-xs" /></PermissionButton> }] : []),
                     ]}
                   />
                 </div>
@@ -1222,7 +1240,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
             footer={(
               <div className="flex items-center justify-end gap-2">
                 <FlatButton variant="outline" size="sm" onClick={() => setEditingProduct(null)}>Cancel</FlatButton>
-                <FlatButton size="sm" onClick={async () => { const saved = await onRecordProduct(editingProduct); if (saved) setEditingProduct(null); }} loading={savingProduct} disabled={savingProduct || isDeliveryLocked}>Save changes</FlatButton>
+                <FlatButton permission={editingProduct.deliveredAt ? 'TrekDeliveries.Edit' : 'TrekDeliveries.Record'} size="sm" onClick={async () => { const saved = await onRecordProduct(editingProduct); if (saved) setEditingProduct(null); }} loading={savingProduct} disabled={savingProduct || isDeliveryLocked}>Save changes</FlatButton>
               </div>
             )}
           >
@@ -1250,7 +1268,7 @@ const StopCard: React.FC<StopCardProps> = React.memo(({
         title="Record return"
         subtitle="Log products returned at this stop"
         size="md"
-        footer={<div className="flex justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => { setReturnModalOpen(false); resetReturnForm(); }} disabled={savingReturn}>Cancel</FlatButton><FlatButton size="sm" loading={savingReturn} disabled={savingReturn || returnTotal <= 0 || !returnMethod} onClick={async () => {
+        footer={<div className="flex justify-end gap-2"><FlatButton variant="outline" size="sm" onClick={() => { setReturnModalOpen(false); resetReturnForm(); }} disabled={savingReturn}>Cancel</FlatButton><FlatButton permission="TrekReturns.Record" size="sm" loading={savingReturn} disabled={savingReturn || returnTotal <= 0 || !returnMethod} onClick={async () => {
           if (!selectedReturnProduct || !returnBasicQty || parseNumericInput(returnBasicQty) <= 0) { toast.error('Select a product and enter a positive basic quantity.'); return; }
           if (!returnMethod) { toast.error('Select a refund method.'); return; }
           if (returnTotal <= 0) { toast.error('The calculated refund must be greater than zero.'); return; }

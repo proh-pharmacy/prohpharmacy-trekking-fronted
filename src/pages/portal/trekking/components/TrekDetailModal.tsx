@@ -1,3 +1,4 @@
+import { PermissionButton } from '../../../../components/auth/PermissionButton';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FlatModal } from '../../../../components/overlay';
 import { FlatButton } from '../../../../components/flat-form';
@@ -168,7 +169,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center gap-2">
               {nextStatuses.map((s) => (
-                <FlatButton
+                <FlatButton permission={s === 'InProgress' ? 'Treks.Start' : s === 'Completed' ? 'Treks.Complete' : s === 'Cancelled' ? 'Treks.Cancel' : 'Treks.ChangeStatus'}
                   key={s}
                   variant={s === 'Cancelled' ? 'danger-outline' : s === 'Completed' ? 'primary' : 'outline'}
                   size="sm"
@@ -181,7 +182,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
             </div>
             <div className="flex items-center gap-2">
               {!isLocked && trek && (
-                <FlatButton variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setEditVisible(true)}>
+                <FlatButton permission={'Treks.Edit'} variant="outline" size="sm" leftIcon="pi pi-pencil" onClick={() => setEditVisible(true)}>
                   Edit
                 </FlatButton>
               )}
@@ -225,7 +226,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
 
             {/* Actions row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <FlatButton
+              <FlatButton permission={'Treks.GenerateDriverLink'}
                 variant="outline"
                 size="sm"
                 leftIcon="pi pi-link"
@@ -235,7 +236,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
               >
                 {generatingLink ? 'Generating...' : 'Driver Link'}
               </FlatButton>
-              <FlatButton
+              <FlatButton permission={'Treks.DownloadSheet'}
                 variant="outline"
                 size="sm"
                 leftIcon="pi pi-file-pdf"
@@ -264,7 +265,7 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                   Stops <span className="text-portal-muted font-normal normal-case tracking-normal ml-1">({trek.stops.length})</span>
                 </span>
                 {!isLocked && (
-                  <FlatButton
+                  <FlatButton permission={'TrekStops.Add'}
                     variant="outline"
                     size="sm"
                     leftIcon="pi pi-plus"
@@ -339,16 +340,16 @@ export const TrekDetailModal: React.FC<Props> = ({ visible, onHide, trekId, onUp
                         </div>
                         {!isLocked && (
                           <div className="flex items-center gap-1 shrink-0">
-                            <button type="button" onClick={() => setEditingStop(stop)}
+                            <PermissionButton permission={'TrekStops.Edit'} type="button" onClick={() => setEditingStop(stop)}
                               className="text-portal-text hover:text-portal-accent transition-colors p-1 cursor-pointer"
                               title="Edit stop" aria-label={`Edit stop ${stop.sequence}`}>
                               <i className="pi pi-pencil text-xs" />
-                            </button>
-                            <button type="button" onClick={() => setRemovingStop(stop)}
+                            </PermissionButton>
+                            <PermissionButton permission={'TrekStops.Delete'} type="button" onClick={() => setRemovingStop(stop)}
                               className="text-red-accent hover:text-red-accent-hover transition-colors p-1 cursor-pointer"
                               title="Remove stop" aria-label={`Remove stop ${stop.sequence}`}>
                               <i className="pi pi-trash text-xs" />
-                            </button>
+                            </PermissionButton>
                           </div>
                         )}
                       </div>

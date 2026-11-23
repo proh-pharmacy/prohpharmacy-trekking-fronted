@@ -1,3 +1,5 @@
+import { PermissionButton } from '../../../components/auth/PermissionButton';
+import { usePermissions } from '../../../hooks/usePermissions';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveAs } from 'file-saver';
@@ -42,6 +44,7 @@ function todayStr() {
 }
 
 export const TrekReportPage: React.FC = () => {
+  const { can } = usePermissions();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -98,6 +101,7 @@ export const TrekReportPage: React.FC = () => {
   };
 
   const handleExport = async () => {
+    if (!can('Reports.Export')) return;
     setExporting(true);
     try {
       const { blob, filename } = await reportsApi.exportTrekReport({
@@ -159,13 +163,13 @@ export const TrekReportPage: React.FC = () => {
       field: 'trekNumber',
       header: 'Trek',
       body: (row) => (
-        <button
+        <PermissionButton permission={'Treks.ViewDetails'}
           type="button"
           onClick={() => navigate(`/portal/trekking/${row.id}`)}
           className="font-mono text-xs text-portal-accent hover:text-portal-accent-hover transition cursor-pointer"
         >
           {row.trekNumber}
-        </button>
+        </PermissionButton>
       ),
     },
     {
@@ -260,7 +264,7 @@ export const TrekReportPage: React.FC = () => {
         dataSourceUrl="/reports/treks"
         columns={columns}
         heading="Trek Performance"
-        hasAction
+        hasAction={can('Reports.Export')}
         actionName="Export Report"
         onAction={() => setExportVisible(true)}
         filterable="search"
@@ -296,7 +300,7 @@ export const TrekReportPage: React.FC = () => {
               variant="primary"
               label={exporting ? 'Generating...' : 'Download'}
               icon="pi pi-download"
-              onClick={handleExport}
+              permission="Reports.Export" onClick={handleExport}
               loading={exporting}
               disabled={exporting}
             />

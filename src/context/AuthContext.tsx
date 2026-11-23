@@ -1,5 +1,7 @@
+import { setRequestPermissions } from '../api-client/api';
 import React, {
   useState,
+  useLayoutEffect,
   useEffect,
   useMemo,
   useCallback,
@@ -151,6 +153,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const roles = useMemo(() => user?.roles || user?.systemRoles || [], [user?.roles, user?.systemRoles]);
   const permissions = useMemo(() => user?.permissions || [], [user?.permissions]);
+
+  // Keep Axios request-guard permissions synchronously in sync before child effects run.
+  setRequestPermissions(permissions);
+
+  useLayoutEffect(() => {
+    setRequestPermissions(permissions);
+  }, [permissions]);
+
+  useEffect(() => () => setRequestPermissions([]), []);
 
   const hasRole = useCallback(
     (role: string): boolean => {

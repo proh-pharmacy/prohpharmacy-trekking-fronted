@@ -178,13 +178,14 @@ export default function CreateTrekPage() {
     }
   };
   const { hasAnyPermission } = usePermissions();
-  const canAssignDriver = hasAnyPermission('Vehicles.AssignStaff', 'Vehicles.Manage');
+  const canAssignDriver = hasAnyPermission('Vehicles.AssignStaff');
+  const canUnassignDriver = hasAnyPermission('Vehicles.UnassignStaff');
   const [assignVehicle, setAssignVehicle] = useState<VehicleStockOverview | null>(null);
   const [unassignVehicle, setUnassignVehicle] = useState<VehicleStockOverview | null>(null);
   const [unassigning, setUnassigning] = useState(false);
 
   const handleUnassign = async () => {
-    if (!unassignVehicle || unassigning || saving || !canAssignDriver) return;
+    if (!unassignVehicle || unassigning || saving || !canUnassignDriver) return;
     setUnassigning(true);
     try {
       await fleetApi.unassignVehicleStaff(unassignVehicle.id);
@@ -241,7 +242,7 @@ export default function CreateTrekPage() {
       field: 'currentStaffName', header: 'Driver',
       body: (vehicle) => <div className="flex flex-col items-start gap-1 text-xs">
         <span>{vehicle.currentStaffName || 'No driver assigned'}</span>
-        {canAssignDriver && (
+        {(vehicle.currentStaffId ? canUnassignDriver : canAssignDriver) && (
           <button type="button"
             disabled={saving || unassigning || (!vehicle.currentStaffId && vehicle.operationalStatus !== 'Active')}
             className={`inline-flex items-center gap-1.5 cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed ${vehicle.currentStaffId ? 'text-red-accent hover:text-red-accent-hover' : 'text-portal-accent hover:text-portal-accent-hover'}`}
@@ -379,6 +380,7 @@ export default function CreateTrekPage() {
       </FlatButton>
       <FlatButton
         size="sm"
+        permission="Treks.Create"
         loading={saving}
         disabled={saving || !reviewReady}
         onClick={handleCreateTrek}

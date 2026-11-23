@@ -1,3 +1,6 @@
+import { resetTableData } from '../../../components/data-table';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { canChangeRoles } from '../../../lib/permissions/catalogue';
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -17,6 +20,7 @@ const DEFAULT_SYSTEM_ROLES = [
 ];
 
 export const UserDetailsPage: React.FC = () => {
+  const { can, permissions } = usePermissions();
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
@@ -58,8 +62,8 @@ export const UserDetailsPage: React.FC = () => {
     try {
       const [userData, staffData, rolesData] = await Promise.all([
         usersApi.getUser(userId),
-        usersApi.getStaffMembers().catch(() => []),
-        usersApi.getRoles().catch(() => []),
+        can('Staff.View') ? usersApi.getStaffMembers().catch(() => []) : [],
+        (can('Roles.View') || can('Users.AssignRoles') || can('Users.RemoveRoles')) ? usersApi.getRoles().catch(() => []) : [],
       ]);
 
       setUser(userData);
@@ -105,10 +109,12 @@ export const UserDetailsPage: React.FC = () => {
         try {
           if (isCurrentlyActive) {
             await usersApi.suspendUser(user.id);
+          resetTableData();
             toast.success(`Account for ${user.fullName} suspended.`);
             setUser({ ...user, status: 'Suspended', isActive: false });
           } else {
             await usersApi.activateUser(user.id);
+          resetTableData();
             toast.success(`Account for ${user.fullName} activated.`);
             setUser({ ...user, status: 'Active', isActive: true });
           }
@@ -133,6 +139,7 @@ export const UserDetailsPage: React.FC = () => {
       action: async () => {
         try {
           await usersApi.revokeSessions(user.id);
+          resetTableData();
           toast.success(`Active sessions revoked for ${user.fullName}.`);
         } catch (err: any) {
           toast.error(err.response?.data?.message || 'Failed to revoke sessions.');
@@ -155,6 +162,7 @@ export const UserDetailsPage: React.FC = () => {
       action: async () => {
         try {
           const res = await usersApi.adminResetPassword(user.id);
+          resetTableData();
           if (res && res.newPassword) {
             setResetResult({
               user,
@@ -185,6 +193,7 @@ export const UserDetailsPage: React.FC = () => {
       action: async () => {
         try {
           await usersApi.resendInvitation(user.id);
+          resetTableData();
           toast.success(`New invitation email sent to ${user.email}.`);
         } catch (err: any) {
           toast.error(err.response?.data?.message || 'Failed to resend invitation.');
@@ -197,6 +206,10 @@ export const UserDetailsPage: React.FC = () => {
 
   // Handle updating user roles
   const handleUpdateRoles = async () => {
+    if (!canChangeRoles(permissions, assignedRoles, selectedRoles)) {
+      toast.error('You do not have permission for these role changes.');
+      return;
+    }
     if (!userId || !user) return;
     if (selectedRoles.length === 0) {
       toast.error('At least one role must be assigned to the user.');
@@ -215,6 +228,7 @@ export const UserDetailsPage: React.FC = () => {
         await usersApi.removeRole(userId, role);
       }
 
+      resetTableData();
       setAssignedRoles(selectedRoles);
       setUser((prev) =>
         prev
@@ -451,7 +465,7 @@ export const UserDetailsPage: React.FC = () => {
             </h4>
             <div className="flex flex-col gap-2.5 pt-1">
               {user.status === 'Pending' ? (
-                <FlatButton
+                <FlatButton permission={'Users.ResendInvitation'}
                   fullWidth
                   variant="outline"
                   label="Resend Invitation"
@@ -461,7 +475,7 @@ export const UserDetailsPage: React.FC = () => {
                   className="!bg-portal-accent/15 !border-portal-accent/50 !text-portal-accent hover:!bg-portal-accent/25 hover:!border-portal-accent hover:!text-portal-accent-hover text-xs font-semibold"
                 />
               ) : (
-                <FlatButton
+                <FlatButton permission={isUserActive ? 'Users.Suspend' : 'Users.Activate'}
                   fullWidth
                   variant="outline"
                   label={isUserActive ? 'Suspend Account' : 'Activate Account'}
@@ -475,7 +489,7 @@ export const UserDetailsPage: React.FC = () => {
                   }
                 />
               )}
-              <FlatButton
+              <FlatButton permission={'Users.RevokeSessions'}
                 fullWidth
                 variant="outline"
                 label="Revoke All Sessions"
@@ -484,7 +498,7 @@ export const UserDetailsPage: React.FC = () => {
                 onClick={handleRevokeSessions}
                 className="!bg-red-accent/15 !border-red-accent/50 !text-red-accent hover:!bg-red-accent/25 hover:!border-red-accent hover:!text-red-accent-hover text-xs font-semibold"
               />
-              <FlatButton
+              <FlatButton permission={'Users.ResetPassword'}
                 fullWidth
                 variant="outline"
                 label="Reset Password"
@@ -502,7 +516,9 @@ export const UserDetailsPage: React.FC = () => {
                 </label>
                 <FlatMultiSelect
                   value={selectedRoles}
-                  onChange={(val) => setSelectedRoles(val || [])}
+                  onChange={(val) => { if (canChangeRoles(permissions, assignedRoles, val || [])) setSelectedRoles(val || []); }}
+          disabled={!can('Users.AssignRoles') && !can('Users.RemoveRoles')}
+          optionDisabled={(option) => assignedRoles.includes(option.value) ? !can('Users.RemoveRoles') : !can('Users.AssignRoles')}
                   options={roleOptions}
                   placeholder="Select roles..."
                   size="sm"
@@ -512,7 +528,7 @@ export const UserDetailsPage: React.FC = () => {
                   }
                 />
                 {hasRoleChanges && (
-                  <FlatButton
+                  <FlatButton permission={['Users.AssignRoles', 'Users.RemoveRoles']}
                     fullWidth
                     variant="primary"
                     label={updatingRoles ? 'Updating Roles...' : 'Update Roles'}
@@ -520,7 +536,7 @@ export const UserDetailsPage: React.FC = () => {
                     size="sm"
                     onClick={handleUpdateRoles}
                     loading={updatingRoles}
-                    disabled={updatingRoles || selectedRoles.length === 0}
+                    disabled={updatingRoles || selectedRoles.length === 0 || !canChangeRoles(permissions, assignedRoles, selectedRoles)}
                   />
                 )}
               </div>

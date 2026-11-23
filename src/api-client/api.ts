@@ -1,3 +1,5 @@
+import type { Permission } from '../lib/permissions/catalogue';
+import { requestAcceptedPermissions, additionalRequestPermissions } from '../lib/permissions/requests';
 import axios, {
   type AxiosInstance,
   type AxiosRequestConfig,
@@ -15,6 +17,24 @@ import {
   setLastRefreshTime,
   isJwtExpired,
 } from './tokenStorage';
+
+// Updated by AuthProvider; unknown sessions fail closed for catalogued mutations.
+let currentPermissions: readonly string[] = [];
+export function setRequestPermissions(permissions: readonly string[]) {
+  currentPermissions = permissions;
+}
+
+export function requirePermission(permission: Permission) {
+  if (!currentPermissions.includes(permission)) {
+    throw new Error(`You do not have permission for this action (${permission}).`);
+  }
+}
+
+export function requireAnyPermission(permissions: readonly Permission[]) {
+  if (!permissions.some(permission => currentPermissions.includes(permission))) {
+    throw new Error(`You do not have permission for this action (${permissions.join(' or ')}).`);
+  }
+}
 
 // Resolve and normalize base URL to guarantee /api/v1 prefix
 const rawBaseURL: string = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1')
@@ -149,6 +169,16 @@ api.interceptors.request.use(
       } else if (config.url.startsWith('api/v1/')) {
         config.url = config.url.replace('api/v1', '');
       }
+    }
+
+    const accepted = requestAcceptedPermissions(config.method || 'get', config.url || '', config.data);
+    if (accepted && !accepted.some(permission => currentPermissions.includes(permission))) {
+      throw new axios.AxiosError(`You do not have permission for this action (${accepted.join(' or ')}).`, 'ERR_PERMISSION_DENIED', config);
+    }
+    const additional = additionalRequestPermissions(config.method || 'get', config.url || '', config.data);
+    const missing = additional.find(permission => !currentPermissions.includes(permission));
+    if (missing) {
+      throw new axios.AxiosError(`You do not have permission for this action (${missing}).`, 'ERR_PERMISSION_DENIED', config);
     }
 
     // Let the browser set the multipart boundary for file uploads. The Axios

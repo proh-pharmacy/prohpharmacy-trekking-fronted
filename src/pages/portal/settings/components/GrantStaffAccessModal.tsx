@@ -213,7 +213,7 @@ export const GrantStaffAccessModal: React.FC<GrantStaffAccessModalProps> = ({
             onClick={onHide}
             disabled={submitting}
           />
-          <FlatButton
+          <FlatButton permission={'Staff.GrantAccess'}
             variant="primary"
             label={submitting ? 'Granting Access...' : 'Grant Access'}
             icon="pi pi-key"

@@ -14,6 +14,8 @@ import {
   type TrekReportItem,
 } from '../../../api-client';
 import { FlatDropdown } from '../../../components/flat-form';
+import { PermissionButton } from '../../../components/auth/PermissionButton';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { fmtGhs, fmtGhsShort } from '../../../lib/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -59,6 +61,9 @@ const PaymentTooltip = ({ active, payload, label }: any) => {
 // ── Page ───────────────────────────────────────────────────────────────
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hasAnyPermission } = usePermissions();
+  const canViewLedgerReport = hasAnyPermission('Reports.View', 'Reports.ViewLedger');
+  const canViewTrekReport = hasAnyPermission('Reports.View', 'Reports.ViewTreks');
 
   const [period, setPeriod] = useState<'week' | 'month'>('week');
   const [branchId, setBranchId] = useState('');
@@ -85,20 +90,34 @@ export const DashboardPage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashData, debtorData, trekData] = await Promise.all([
+      const [dashResult, debtorResult, trekResult] = await Promise.allSettled([
         dashboardApi.get({ period, ...(branchId ? { branchId } : {}) }),
-        customersApi.getLedgerSummary({ pageSize: 5, sort: 'balance_desc', hasBalance: true }),
-        reportsApi.getTrekReport({ pageSize: 5 }),
+        canViewLedgerReport
+          ? customersApi.getLedgerSummary({ pageSize: 5, sort: 'balance_desc', hasBalance: true })
+          : Promise.resolve(null),
+        canViewTrekReport
+          ? reportsApi.getTrekReport({ pageSize: 5 })
+          : Promise.resolve(null),
       ]);
-      setDashboard(dashData);
-      setDebtors(Array.isArray(debtorData.customers) ? debtorData.customers : []);
-      setRecentTreks(Array.isArray(trekData.treks) ? trekData.treks : []);
-    } catch {
-      toast.error('Failed to load dashboard.');
+      if (dashResult.status === 'fulfilled') {
+        setDashboard(dashResult.value);
+      } else {
+        toast.error('Failed to load dashboard.');
+      }
+      setDebtors(
+        debtorResult.status === 'fulfilled' && Array.isArray(debtorResult.value?.customers)
+          ? debtorResult.value.customers
+          : []
+      );
+      setRecentTreks(
+        trekResult.status === 'fulfilled' && Array.isArray(trekResult.value?.treks)
+          ? trekResult.value.treks
+          : []
+      );
     } finally {
       setLoading(false);
     }
-  }, [period, branchId]);
+  }, [period, branchId, canViewLedgerReport, canViewTrekReport]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -195,7 +214,8 @@ export const DashboardPage: React.FC = () => {
           <p className="text-[10px] text-portal-muted uppercase tracking-wide mb-1.5">Active Treks</p>
           <p className="text-sm font-bold text-blue-400">{dashboard?.activeTreks ?? 0}</p>
         </div>
-        <button
+        <PermissionButton
+          permission={['Reports.View', 'Reports.ViewLedger']}
           type="button"
           onClick={() => navigate('/portal/finance/customer-balances?hasBalance=true')}
           className="flex-1 min-w-[140px] min-w-0 bg-portal-surface border border-portal-border/60 p-4 text-left hover:border-portal-accent/50 transition cursor-pointer group"
@@ -205,7 +225,7 @@ export const DashboardPage: React.FC = () => {
             <p className="text-sm font-bold text-portal-heading">{dashboard?.customersWithDebt ?? 0}</p>
             <i className="pi pi-arrow-right text-[10px] text-portal-muted group-hover:text-portal-accent transition" />
           </div>
-        </button>
+        </PermissionButton>
       </div>
 
       {/* ── Charts row ── */}
@@ -295,21 +315,23 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-portal-surface border border-portal-border/60">
           <div className="px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
             <span className="text-sm font-bold text-portal-heading">Top Debtors</span>
-            <button
+            <PermissionButton
+              permission={['Reports.View', 'Reports.ViewLedger']}
               type="button"
               onClick={() => navigate('/portal/finance/customer-balances')}
               className="text-[11px] text-portal-muted hover:text-portal-accent transition cursor-pointer"
             >
               View all →
-            </button>
+            </PermissionButton>
           </div>
           {debtors.length === 0 ? (
             <p className="text-xs text-portal-muted text-center py-10">No outstanding balances.</p>
           ) : (
             <div className="divide-y divide-portal-border/30">
               {debtors.map((d) => (
-                <button
+                <PermissionButton
                   key={d.customerId}
+                  permission="Customers.ViewDetails"
                   type="button"
                   onClick={() => navigate(`/portal/customers/${d.customerId}`)}
                   className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-portal-hover transition-colors cursor-pointer group text-left"
@@ -326,7 +348,7 @@ export const DashboardPage: React.FC = () => {
                   >
                     {fmtGhsShort(d.currentBalance)}
                   </span>
-                </button>
+                </PermissionButton>
               ))}
             </div>
           )}
@@ -336,21 +358,23 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-portal-surface border border-portal-border/60">
           <div className="px-5 py-3 border-b border-portal-border/60 flex items-center justify-between">
             <span className="text-sm font-bold text-portal-heading">Recent Treks</span>
-            <button
+            <PermissionButton
+              permission={['Treks.ViewAll', 'Treks.ViewAssigned']}
               type="button"
               onClick={() => navigate('/portal/trekking')}
               className="text-[11px] text-portal-muted hover:text-portal-accent transition cursor-pointer"
             >
               View all →
-            </button>
+            </PermissionButton>
           </div>
           {recentTreks.length === 0 ? (
             <p className="text-xs text-portal-muted text-center py-10">No treks found.</p>
           ) : (
             <div className="divide-y divide-portal-border/30">
               {recentTreks.map((trek) => (
-                <button
+                <PermissionButton
                   key={trek.id}
+                  permission="Treks.ViewDetails"
                   type="button"
                   onClick={() => navigate(`/portal/trekking/${trek.id}`)}
                   className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-portal-hover transition-colors cursor-pointer group text-left"
@@ -372,7 +396,7 @@ export const DashboardPage: React.FC = () => {
                   <span className="font-mono text-xs text-portal-accent shrink-0" title={fmtGhs(trek.totalCollected)}>
                     {fmtGhsShort(trek.totalCollected)}
                   </span>
-                </button>
+                </PermissionButton>
               ))}
             </div>
           )}
